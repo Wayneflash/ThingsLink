@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据查询 - 物联网平台</title>
+    <link rel="stylesheet" href="common-style.css">
+    <style>
+        .query-form { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 0.5px solid rgba(0,0,0,0.08); }
+        .form-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+        .chart-area { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 0.5px solid rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🚀 物联网平台</div>
+        <div class="user-info"><span>👤 admin</span><a href="login.html">退出</a></div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <a href="dashboard.html" class="menu-item"><span class="icon">📊</span> 数据监控</a>
+            <a href="device-group.html" class="menu-item"><span class="icon">🗂️</span> 设备分组</a>
+            <a href="device-list.html" class="menu-item"><span class="icon">📱</span> 设备管理</a>
+            <a href="product-manage.html" class="menu-item"><span class="icon">📦</span> 产品管理</a>
+            <a href="data-query.html" class="menu-item active"><span class="icon">🔍</span> 数据查询</a>
+            <div class="menu-divider"></div>
+            <a href="user-manage.html" class="menu-item"><span class="icon">👥</span> 用户管理</a>
+            <a href="role-manage.html" class="menu-item"><span class="icon">🎭</span> 角色管理</a>
+            <div class="menu-divider"></div>
+            <a href="index.html" class="menu-item"><span class="icon">🏠</span> 返回导航</a>
+        </div>
+
+        <div class="main-content">
+            <h1 class="page-title">数据查询</h1>
+
+            <div class="prototype-note">
+                <strong>📌 原型说明</strong>
+                数据查询用于查询设备的历史数据，支持多维度筛选<br>
+                • 可按设备、时间范围、属性字段查询<br>
+                • 支持趋势图表展示和数据导出<br>
+                • 数据按月分区存储，查询效率高
+            </div>
+
+            <div class="query-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>设备选择 *</label>
+                        <select>
+                            <option>温湿度传感器-01 (TEM1111)</option>
+                            <option>智能门锁-会议室 (LOCK2001)</option>
+                            <option>温湿度传感器-02 (TEM1112)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>开始时间 *</label>
+                        <input type="datetime-local" value="2025-12-24T00:00">
+                    </div>
+                    <div class="form-group">
+                        <label>结束时间 *</label>
+                        <input type="datetime-local" value="2025-12-25T23:59">
+                    </div>
+                    <div class="form-group">
+                        <label>查询属性</label>
+                        <select multiple>
+                            <option selected>tem（温度）</option>
+                            <option selected>hum（湿度）</option>
+                            <option>window（窗户状态）</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-primary" onclick="queryData()">🔍 查询数据</button>
+                    <button class="btn btn-default" onclick="alert('数据导出为 Excel')">📥 导出数据</button>
+                    <button class="btn btn-default" onclick="alert('重置查询条件')">🔄 重置</button>
+                </div>
+            </div>
+
+            <div class="chart-area">
+                <h3 style="margin-bottom: 16px;">📈 数据趋势图</h3>
+                <div style="height: 300px; background: #f5f5f7; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #86868b;">
+                    📊 折线图：显示选中属性的时间序列趋势<br>
+                    （正式版使用 ECharts 渲染，支持缩放、数据点提示）
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📋 数据列表</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>温度 (tem)</th>
+                            <th>湿度 (hum)</th>
+                            <th>窗户状态 (window)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2025-12-25 22:30:00</td>
+                            <td>24.5 ℃</td>
+                            <td>65 %</td>
+                            <td>1（打开）</td>
+                        </tr>
+                        <tr>
+                            <td>2025-12-25 22:29:00</td>
+                            <td>24.3 ℃</td>
+                            <td>66 %</td>
+                            <td>1（打开）</td>
+                        </tr>
+                        <tr>
+                            <td>2025-12-25 22:28:00</td>
+                            <td>24.1 ℃</td>
+                            <td>67 %</td>
+                            <td>0（关闭）</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div style="margin-top: 16px; text-align: right; color: #86868b; font-size: 13px;">
+                    共 1,256 条数据 | 第 1/126 页
+                </div>
+            </div>
+
+            <div class="prototype-note" style="margin-top: 20px;">
+                <strong>💡 交互说明</strong>
+                • 支持分页查询，避免一次加载过多数据<br>
+                • 导出数据限制最多10万条<br>
+                • 鼠标悬停图表可查看具体数值
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function queryData() {
+            alert('🔍 正在查询...\n\n查询条件：\n- 设备：温湿度传感器-01\n- 时间：2025-12-24 ~ 2025-12-25\n- 属性：tem, hum\n\n查询结果将显示在下方表格和图表中');
+        }
+    </script>
+</body>
+</html>

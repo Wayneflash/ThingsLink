@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 物联网平台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f2f2f7;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            background: white;
+            border-radius: 16px;
+            border: 0.5px solid rgba(0,0,0,0.08);
+            width: 400px;
+            padding: 48px;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .logo-icon {
+            font-size: 52px;
+            margin-bottom: 16px;
+        }
+        .logo-text {
+            font-size: 24px;
+            color: #1d1d1f;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #1d1d1f;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 0.5px solid rgba(0,0,0,0.2);
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #0071e3;
+            box-shadow: 0 0 0 3px rgba(0,113,227,0.1);
+        }
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: #0071e3;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-login:hover {
+            background: #0077ed;
+        }
+        .tips {
+            margin-top: 24px;
+            padding: 12px;
+            background: rgba(255,204,0,0.1);
+            border-left: 3px solid #ffcc00;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #86868b;
+        }
+        .tips strong {
+            color: #1d1d1f;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-link a {
+            color: #0071e3;
+            text-decoration: none;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <div class="logo-icon">🔐</div>
+            <div class="logo-text">物联网平台</div>
+        </div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" value="admin" placeholder="请输入用户名">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" value="admin" placeholder="请输入密码">
+            </div>
+            
+            <button type="submit" class="btn-login">登 录</button>
+        </form>
+        
+        <div class="tips">
+            <strong>💡 原型提示</strong>
+            默认账号：<strong>admin</strong><br>
+            默认密码：<strong>admin</strong><br>
+            点击登录后跳转到主界面
+        </div>
+
+        <div class="back-link">
+            <a href="index.html">← 返回导航页</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (username === 'admin' && password === 'admin') {
+                alert('✅ 登录成功！跳转到主界面...');
+                window.location.href = 'dashboard.html';
+            } else {
+                alert('❌ 用户名或密码错误！\n请使用：admin / admin');
+            }
+        });
+    </script>
+</body>
+</html>

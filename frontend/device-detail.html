@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设备详情 - IoT设备管理平台</title>
+  <link rel="stylesheet" href="/src/styles/common.css">
+  <style>
+    body {
+      background: var(--bg-dark);
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 260px;
+      background: var(--bg-sidebar);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sidebar-header {
+      padding: 28px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text-dark);
+      letter-spacing: -0.02em;
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-primary);
+    }
+
+    .topbar {
+      height: 72px;
+      background: var(--bg-topbar);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-dark-secondary);
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .breadcrumb a {
+      color: var(--text-dark-secondary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .breadcrumb a:hover {
+      color: #007aff;
+    }
+
+    .content {
+      flex: 1;
+      padding: 40px;
+      overflow-y: auto;
+    }
+
+    /* 设备头部 */
+    .device-header {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .device-header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 28px;
+    }
+
+    .device-title {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .device-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #007aff 0%, #5ac8fa 100%);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.25);
+    }
+
+    .device-name {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+
+    .device-code {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-family: 'SF Mono', 'Consolas', monospace;
+      background: var(--bg-tertiary);
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    .device-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .meta-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .meta-value {
+      font-size: 16px;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    /* 标签页 - Apple风格 */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 28px;
+      background: var(--bg-card);
+      padding: 8px 8px 0;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    .tab {
+      padding: 12px 24px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+      margin-bottom: -1px;
+      transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      position: relative;
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+    }
+
+    .tab.active {
+      color: var(--primary);
+      background: var(--bg-card);
+    }
+
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--primary);
+      border-radius: 2px 2px 0 0;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 实时数据 */
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .data-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      box-shadow: var(--shadow-card);
+    }
+
+    .data-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: var(--shadow-md);
+    }
+
+    .data-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .data-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: -0.02em;
+    }
+
+    .data-unit {
+      font-size: 15px;
+      color: var(--text-secondary);
+      margin-left: 6px;
+      font-weight: 600;
+    }
+
+    .data-time {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 10px;
+      font-weight: 500;
+    }
+
+    /* 命令控制 */
+    .command-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .command-btn {
+      padding: 28px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      text-align: center;
+      box-shadow: var(--shadow-card);
+    }
+
+    .command-btn:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.3);
+    }
+
+    .command-btn:hover .command-icon {
+      transform: scale(1.2);
+    }
+
+    .command-btn:hover .command-name {
+      color: #fff;
+    }
+
+    .command-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      transition: transform 0.3s;
+    }
+
+    .command-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      transition: color 0.3s;
+    }
+
+    /* 历史数据 */
+    .history-toolbar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      box-shadow: var(--shadow-card);
+    }
+
+    .history-table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+
+    .empty-data {
+      padding: 80px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .empty-icon {
+      font-size: 72px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <span style="font-size: 32px;">⚙️</span>
+          <span>IoT管理平台</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+      <div class="topbar">
+        <nav class="breadcrumb">
+          <a href="/dashboard.html">首页</a>
+          <span>/</span>
+          <a href="/devices.html">设备管理</a>
+          <span>/</span>
+          <span>设备详情</span>
+        </nav>
+        <button class="btn btn-sm" onclick="history.back()">返回</button>
+      </div>
+
+      <div class="content">
+        <!-- 设备头部 -->
+        <div class="device-header">
+          <div class="device-header-top">
+            <div class="device-title">
+              <div class="device-icon">📱</div>
+              <div>
+                <h1 class="device-name" id="deviceName">加载中...</h1>
+                <div class="device-code" id="deviceCode">-</div>
+              </div>
+            </div>
+            <div>
+              <span class="badge badge-offline" id="deviceStatus">离线</span>
+            </div>
+          </div>
+
+          <div class="device-meta">
+            <div class="meta-item">
+              <span class="meta-label">所属产品</span>
+              <span class="meta-value" id="productName">-</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">设备分组</span>
+              <span class="meta-value" id="groupName">-</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">最后在线</span>
+              <span class="meta-value" id="lastOnlineTime">-</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">创建时间</span>
+              <span class="meta-value" id="createTime">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 标签页 -->
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('realtime')">实时数据</button>
+          <button class="tab" onclick="switchTab('history')">历史数据</button>
+          <button class="tab" onclick="switchTab('command')">命令控制</button>
+        </div>
+
+        <!-- 实时数据 -->
+        <div class="tab-content active" id="realtimeTab">
+          <div class="data-grid" id="realtimeData">
+            <div class="empty-data">
+              <div class="empty-icon">📊</div>
+              <div>加载中...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 历史数据 -->
+        <div class="tab-content" id="historyTab">
+          <div class="history-toolbar">
+            <div class="filter-item" style="flex: 1; min-width: 200px;">
+              <label class="filter-label">开始时间</label>
+              <input type="datetime-local" class="input" id="startTime">
+            </div>
+            <div class="filter-item" style="flex: 1; min-width: 200px;">
+              <label class="filter-label">结束时间</label>
+              <input type="datetime-local" class="input" id="endTime">
+            </div>
+            <div style="flex: 0;">
+              <button class="btn btn-primary" onclick="queryHistory()">查询</button>
+            </div>
+          </div>
+
+          <div class="history-table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>属性标识</th>
+                  <th>属性值</th>
+                  <th>上报时间</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <tr>
+                  <td colspan="3" class="empty-data">
+                    <div class="empty-icon">📭</div>
+                    <div>请选择时间范围查询</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 命令控制 -->
+        <div class="tab-content" id="commandTab">
+          <div class="command-grid" id="commandGrid">
+            <div class="empty-data">
+              <div class="empty-icon">🎮</div>
+              <div>加载中...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { deviceApi, deviceDataApi, commandApi } from '/src/utils/api.js';
+
+    // 检查登录
+    if (!localStorage.getItem('token')) {
+      window.location.href = '/login.html';
+    }
+
+    // 获取设备编码
+    const urlParams = new URLSearchParams(window.location.search);
+    const deviceCode = urlParams.get('code');
+
+    if (!deviceCode) {
+      alert('设备编码不能为空');
+      window.location.href = '/devices.html';
+    }
+
+    let deviceInfo = null;
+    let productId = null;
+
+    // 加载设备详情
+    async function loadDeviceDetail() {
+      try {
+        const result = await deviceApi.detail(deviceCode);
+        if (result.code === 200) {
+          deviceInfo = result.data;
+          productId = deviceInfo.productId;
+          
+          document.getElementById('deviceName').textContent = deviceInfo.deviceName || '-';
+          document.getElementById('deviceCode').textContent = deviceInfo.deviceCode || '-';
+          document.getElementById('productName').textContent = deviceInfo.productName || '-';
+          document.getElementById('groupName').textContent = deviceInfo.groupPath || deviceInfo.groupName || '-';
+          document.getElementById('lastOnlineTime').textContent = deviceInfo.lastOnlineTime || '-';
+          document.getElementById('createTime').textContent = deviceInfo.createTime || '-';
+          
+          const statusBadge = document.getElementById('deviceStatus');
+          if (deviceInfo.status === 1) {
+            statusBadge.className = 'badge badge-online';
+            statusBadge.textContent = '在线';
+          } else {
+            statusBadge.className = 'badge badge-offline';
+            statusBadge.textContent = '离线';
+          }
+
+          // 加载实时数据
+          loadRealtimeData();
+          
+          // 加载命令列表
+          if (productId) {
+            loadCommands();
+          }
+        }
+      } catch (error) {
+        console.error('加载设备详情失败:', error);
+      }
+    }
+
+    // 加载实时数据
+    async function loadRealtimeData() {
+      try {
+        const result = await deviceApi.latestData(deviceCode);
+        if (result.code === 200 && result.data.data) {
+          const data = result.data.data;
+          const reportTime = result.data.reportTime;
+          
+          const container = document.getElementById('realtimeData');
+          const entries = Object.entries(data);
+          
+          if (entries.length === 0) {
+            container.innerHTML = `
+              <div class="empty-data">
+                <div class="empty-icon">📭</div>
+                <div>暂无实时数据</div>
+              </div>
+            `;
+            return;
+          }
+
+          container.innerHTML = entries.map(([key, value]) => {
+            const unit = getUnit(key);
+            return `
+              <div class="data-card">
+                <div class="data-label">${getLabel(key)}</div>
+                <div>
+                  <span class="data-value">${value}</span>
+                  ${unit ? `<span class="data-unit">${unit}</span>` : ''}
+                </div>
+                <div class="data-time">📅 ${reportTime || '-'}</div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          document.getElementById('realtimeData').innerHTML = `
+            <div class="empty-data">
+              <div class="empty-icon">📭</div>
+              <div>暂无实时数据</div>
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.error('加载实时数据失败:', error);
+      }
+    }
+
+    // 加载命令列表
+    async function loadCommands() {
+      try {
+        const result = await commandApi.productCommands(productId);
+        if (result.code === 200) {
+          const commands = result.data.list || [];
+          const container = document.getElementById('commandGrid');
+          
+          if (commands.length === 0) {
+            container.innerHTML = `
+              <div class="empty-data">
+                <div class="empty-icon">🎮</div>
+                <div>暂无可用命令</div>
+              </div>
+            `;
+            return;
+          }
+
+          container.innerHTML = commands.map(cmd => `
+            <button class="command-btn" onclick="sendCommand('${cmd.commandIdentifier}', '${cmd.commandValue}', '${cmd.commandName}')">
+              <div class="command-icon">⚡</div>
+              <div class="command-name">${cmd.commandName}</div>
+            </button>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('加载命令列表失败:', error);
+      }
+    }
+
+    // 发送命令
+    window.sendCommand = async function(addr, addrv, name) {
+      if (deviceInfo && deviceInfo.status !== 1) {
+        alert('设备离线，无法下发命令');
+        return;
+      }
+
+      if (!confirm(`确定要执行命令"${name}"吗？`)) {
+        return;
+      }
+
+      try {
+        const result = await commandApi.send(deviceCode, [{ addr, addrv }]);
+        if (result.code === 200) {
+          alert('✅ 命令已下发\n\n' + (result.data.message || '命令已通过MQTT发送到设备'));
+          // 1秒后刷新实时数据
+          setTimeout(loadRealtimeData, 1000);
+        } else {
+          alert('命令下发失败：' + (result.message || '未知错误'));
+        }
+      } catch (error) {
+        console.error('命令下发失败:', error);
+        alert('命令下发失败，请重试');
+      }
+    };
+
+    // 查询历史数据
+    window.queryHistory = async function() {
+      const startTime = document.getElementById('startTime').value;
+      const endTime = document.getElementById('endTime').value;
+
+      if (!startTime || !endTime) {
+        alert('请选择时间范围');
+        return;
+      }
+
+      // 转换为后端格式
+      const formatTime = (dt) => dt.replace('T', ' ') + ':00';
+
+      try {
+        const result = await deviceDataApi.list({
+          deviceCode: deviceCode,
+          startTime: formatTime(startTime),
+          endTime: formatTime(endTime),
+        });
+
+        if (result.code === 200) {
+          const data = result.data || [];
+          const tbody = document.getElementById('historyTableBody');
+          
+          if (data.length === 0) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="3" class="empty-data">
+                  <div class="empty-icon">📭</div>
+                  <div>该时间段内无数据</div>
+                </td>
+              </tr>
+            `;
+            return;
+          }
+
+          tbody.innerHTML = data.map(item => `
+            <tr>
+              <td><code>${item.addr || '-'}</code></td>
+              <td>${item.addrv || '-'}</td>
+              <td>${item.ctime || item.receiveTime || '-'}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('查询历史数据失败:', error);
+        alert('查询失败，请重试');
+      }
+    };
+
+    // 切换标签
+    window.switchTab = function(tabName) {
+      // 更新标签状态
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      event.target.classList.add('active');
+
+      // 更新内容
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.getElementById(tabName + 'Tab').classList.add('active');
+    };
+
+    // 工具函数
+    function getLabel(key) {
+      const labels = {
+        tem: '温度',
+        hum: '湿度',
+        window: '窗户状态',
+        light: '灯光状态',
+      };
+      return labels[key] || key;
+    }
+
+    function getUnit(key) {
+      const units = {
+        tem: '℃',
+        hum: '%',
+      };
+      return units[key] || '';
+    }
+
+    // 初始化
+    loadDeviceDetail();
+
+    // 定时刷新实时数据（30秒）
+    setInterval(loadRealtimeData, 30000);
+  </script>
+</body>
+</html>

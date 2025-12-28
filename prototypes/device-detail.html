@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备详情 - 物联网平台</title>
+    <link rel="stylesheet" href="common-style.css">
+    <style>
+        /* 面包屑导航 */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #86868b;
+        }
+        .breadcrumb a {
+            color: #0071e3;
+            text-decoration: none;
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        .breadcrumb-separator {
+            color: #d2d2d7;
+        }
+        
+        /* 页面头部 */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .page-header-actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        /* 信息卡片 */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .info-item {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            border: 0.5px solid rgba(0,0,0,0.08);
+        }
+        .info-label {
+            font-size: 13px;
+            color: #86868b;
+            margin-bottom: 6px;
+        }
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        
+        /* Tab区域 */
+        .detail-tabs {
+            background: white;
+            border-radius: 12px;
+            border: 0.5px solid rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .tabs-header {
+            display: flex;
+            border-bottom: 0.5px solid rgba(0,0,0,0.08);
+        }
+        .tab-item {
+            flex: 1;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-item:hover {
+            background: #f5f5f7;
+        }
+        .tab-item.active {
+            color: #0071e3;
+            border-bottom-color: #0071e3;
+            font-weight: 500;
+        }
+        .tab-content {
+            padding: 24px;
+        }
+        .tab-pane {
+            display: none;
+        }
+        .tab-pane.active {
+            display: block;
+        }
+        
+        /* 数据卡片 */
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .data-card {
+            background: #f5f5f7;
+            padding: 16px;
+            border-radius: 8px;
+        }
+        .data-card-label {
+            font-size: 13px;
+            color: #86868b;
+            margin-bottom: 8px;
+        }
+        .data-card-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0071e3;
+        }
+        .data-card-unit {
+            font-size: 14px;
+            color: #86868b;
+            margin-left: 4px;
+        }
+        
+        /* 命令按钮组 */
+        .cmd-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+        }
+        .cmd-btn {
+            padding: 16px;
+            border-radius: 8px;
+            border: 0.5px solid rgba(0,0,0,0.2);
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 14px;
+        }
+        .cmd-btn:hover {
+            background: #0071e3;
+            color: white;
+            border-color: #0071e3;
+        }
+        
+        /* 历史数据表格 */
+        .history-table {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        /* 内容布局 */
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 24px;
+        }
+        .content-main {
+            min-width: 0;
+        }
+        .content-sidebar {
+            position: sticky;
+            top: 76px;
+            height: fit-content;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">物联网平台</div>
+        <div class="user-info"><span>👤 admin</span><a href="login.html">退出</a></div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <a href="dashboard.html" class="menu-item"><span class="icon">📊</span> 数据监控</a>
+            <a href="device-group.html" class="menu-item"><span class="icon">🗂️</span> 设备分组</a>
+            <a href="device-list.html" class="menu-item active"><span class="icon">📱</span> 设备管理</a>
+            <a href="product-manage.html" class="menu-item"><span class="icon">📦</span> 产品管理</a>
+            <!-- <a href="data-query.html" class="menu-item"><span class="icon">🔍</span> 数据查询</a> -->
+            <div class="menu-divider"></div>
+            <a href="user-manage.html" class="menu-item"><span class="icon">👥</span> 用户管理</a>
+            <a href="role-manage.html" class="menu-item"><span class="icon">🎭</span> 角色管理</a>
+            <div class="menu-divider"></div>
+            <a href="index.html" class="menu-item"><span class="icon">🏠</span> 返回导航</a>
+        </div>
+
+        <div class="main-content">
+            <!-- 面包屑导航 -->
+            <div class="breadcrumb">
+                <a href="device-list.html">设备管理</a>
+                <span class="breadcrumb-separator">›</span>
+                <span id="deviceName">设备详情</span>
+            </div>
+
+            <div class="content-wrapper">
+                <div class="content-main">
+                    <!-- 页面头部 -->
+                    <div class="page-header">
+                        <h1 class="page-title" id="pageTitle">设备详情</h1>
+                        <div class="page-header-actions">
+                            <button class="btn btn-default" onclick="goBack()">← 返回列表</button>
+                        </div>
+                    </div>
+
+                    <!-- 基本信息 -->
+                    <div class="card" style="margin-bottom: 24px;">
+                        <div class="card-title">设备基本信息</div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">设备名称</div>
+                                <div class="info-value" id="info_name">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">设备编码</div>
+                                <div class="info-value" id="info_code">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">产品类型</div>
+                                <div class="info-value" id="info_product">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">所属分组</div>
+                                <div class="info-value" id="info_group">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">在线状态</div>
+                                <div class="info-value" id="info_status">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">最后上线时间</div>
+                                <div class="info-value" id="info_lastOnline">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab切换区域 -->
+                    <div class="detail-tabs">
+                        <div class="tabs-header">
+                            <div class="tab-item active" onclick="switchTab('realtime')">实时数据</div>
+                            <div class="tab-item" onclick="switchTab('history')">历史数据</div>
+                            <div class="tab-item" onclick="switchTab('command')">命令控制</div>
+                        </div>
+                        
+                        <div class="tab-content">
+                            <!-- 实时数据 -->
+                            <div class="tab-pane active" id="realtimePane">
+                                <div style="margin-bottom: 16px;">
+                                    <strong>最新上报数据</strong>
+                                    <span style="color: #86868b; font-size: 13px; margin-left: 12px;">更新时间: <span id="updateTime">-</span></span>
+                                </div>
+                                <div class="data-grid" id="realtimeData">
+                                    <!-- 动态生成 -->
+                                </div>
+                                <div class="prototype-note">
+                                    💡 实时数据从设备最新一次上报中获取，每次设备上报会自动更新
+                                </div>
+                            </div>
+
+                            <!-- 历史数据 -->
+                            <div class="tab-pane" id="historyPane">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <div>
+                                        <strong>历史数据记录</strong>
+                                        <span style="margin-left: 16px;">
+                                            <label style="margin-right: 12px;">
+                                                <input type="radio" name="viewMode" value="table" checked onchange="switchViewMode('table')"> 表格
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="viewMode" value="chart" onchange="switchViewMode('chart')"> 图表
+                                            </label>
+                                        </span>
+                                    </div>
+                                    <div style="display: flex; gap: 12px;">
+                                        <input type="datetime-local" id="startTime" style="padding: 6px 12px; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px;">
+                                        <input type="datetime-local" id="endTime" style="padding: 6px 12px; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px;">
+                                        <button class="btn btn-primary" onclick="queryHistory()">查询</button>
+                                        <button class="btn btn-default" onclick="exportHistory()">导出Excel</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 表格视图 -->
+                                <div id="tableView" class="history-table">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>时间</th>
+                                                <th>温度(℃)</th>
+                                                <th>湿度(%)</th>
+                                                <th>窗户状态</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="historyList">
+                                            <!-- 示例数据 -->
+                                            <tr><td>2025-12-25 22:30:00</td><td>22.5</td><td>65</td><td>关闭</td></tr>
+                                            <tr><td>2025-12-25 22:29:00</td><td>22.6</td><td>64</td><td>关闭</td></tr>
+                                            <tr><td>2025-12-25 22:28:00</td><td>22.4</td><td>65</td><td>打开</td></tr>
+                                            <tr><td>2025-12-25 22:27:00</td><td>22.3</td><td>66</td><td>打开</td></tr>
+                                            <tr><td>2025-12-25 22:26:00</td><td>22.2</td><td>67</td><td>打开</td></tr>
+                                            <tr><td>2025-12-25 22:25:00</td><td>22.1</td><td>68</td><td>关闭</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- 图表视图 -->
+                                <div id="chartView" style="display: none;">
+                                    <div style="background: #f5f5f7; padding: 40px; border-radius: 12px; text-align: center; min-height: 400px;">
+                                        <div style="font-size: 48px; margin-bottom: 20px;">📈</div>
+                                        <div style="font-size: 16px; color: #1d1d1f; margin-bottom: 12px;"><strong>温湿度趋势图</strong></div>
+                                        <div style="font-size: 14px; color: #86868b; line-height: 1.8;">
+                                            📊 图表区域<br>
+                                            正式版将使用 ECharts 渲染折线图<br>
+                                            显示温度和湿度的时间趋势曲线<br><br>
+                                            <strong>功能特性：</strong><br>
+                                            • 多条曲线叠加（温度、湿度等）<br>
+                                            • 支持缩放和拖动<br>
+                                            • 鼠标悬停显示具体数值<br>
+                                            • 可切换显示/隐藏某条曲线<br>
+                                            • 支持导出图片
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="prototype-note" style="margin-top: 12px;">
+                                    💡 历史数据支持表格和图表两种展示方式，可按时间范围查询和导出Excel
+                                </div>
+                            </div>
+
+                            <!-- 命令控制 -->
+                            <div class="tab-pane" id="commandPane">
+                                <div style="margin-bottom: 16px;">
+                                    <strong>可用命令</strong>
+                                    <span style="color: #86868b; font-size: 13px; margin-left: 12px;">点击按钮下发命令到设备</span>
+                                </div>
+                                <div class="cmd-grid" id="commandList">
+                                    <!-- 动态生成 -->
+                                </div>
+                                <div class="prototype-note" style="margin-top: 20px;">
+                                    💡 命令会通过 MQTT 下发到设备，格式: ssc/{deviceCode}/command
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧备注 -->
+                <div class="content-sidebar">
+                    <div class="prototype-note">
+                        <strong>📌 页面说明</strong><br><br>
+                        这是设备的详情页，展示完整的设备信息和数据<br>
+                        <br>
+                        <strong>✅ 可操作功能：</strong><br>
+                        • 实时数据：查看设备最新上报的数据<br>
+                        • 历史数据：表格和图表两种展示方式<br>
+                        • 命令控制：下发控制指令到设备<br>
+                        • 时间查询：按时间范围查询历史数据<br>
+                        • 数据导出：导出历史数据为Excel<br>
+                        <br>
+                        <strong>💡 说明：</strong><br>
+                        • 实时数据来自设备最新上报<br>
+                        • 历史数据支持表格/图表切换<br>
+                        • 图表使用ECharts渲染曲线图<br>
+                        • 命令通过MQTT下发到设备<br>
+                        • 在线状态每分钟自动更新
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDevice = null;
+        let currentProduct = null;
+
+        // 页面加载时获取设备ID并加载数据
+        window.onload = function() {
+            const params = new URLSearchParams(window.location.search);
+            const deviceId = parseInt(params.get('id'));
+            
+            if (!deviceId) {
+                alert('❌ 设备ID不存在');
+                window.location.href = 'device-list.html';
+                return;
+            }
+            
+            loadDevice(deviceId);
+        };
+
+        // 加载设备数据
+        function loadDevice(id) {
+            const devicesData = localStorage.getItem('iot_devices');
+            if (!devicesData) {
+                alert('❌ 未找到设备数据');
+                window.location.href = 'device-list.html';
+                return;
+            }
+            
+            const devices = JSON.parse(devicesData);
+            currentDevice = devices.find(d => d.id === id);
+            
+            if (!currentDevice) {
+                alert('❌ 设备不存在');
+                window.location.href = 'device-list.html';
+                return;
+            }
+            
+            // 加载对应的产品信息
+            loadProductInfo();
+            
+            renderDevice();
+        }
+
+        // 加载产品信息（获取属性和命令）
+        function loadProductInfo() {
+            const productsData = localStorage.getItem('iot_products');
+            if (productsData) {
+                const products = JSON.parse(productsData);
+                currentProduct = products.find(p => p.name === currentDevice.product);
+            }
+        }
+
+        // 渲染设备信息
+        function renderDevice() {
+            // 更新页面标题和面包屑
+            document.getElementById('deviceName').textContent = currentDevice.name;
+            document.getElementById('pageTitle').textContent = currentDevice.name;
+            
+            // 基本信息
+            document.getElementById('info_name').textContent = currentDevice.name;
+            document.getElementById('info_code').textContent = currentDevice.code;
+            document.getElementById('info_product').textContent = currentDevice.product;
+            document.getElementById('info_group').textContent = currentDevice.group;
+            
+            const statusHtml = currentDevice.status === 'online' ? 
+                '<span class="badge badge-success">在线</span>' : 
+                '<span class="badge badge-danger">离线</span>';
+            document.getElementById('info_status').innerHTML = statusHtml;
+            document.getElementById('info_lastOnline').textContent = currentDevice.lastOnline;
+            
+            // 渲染实时数据
+            renderRealtimeData();
+            
+            // 渲染命令列表
+            renderCommands();
+        }
+
+        // 渲染实时数据
+        function renderRealtimeData() {
+            const container = document.getElementById('realtimeData');
+            document.getElementById('updateTime').textContent = new Date().toLocaleString('zh-CN');
+            
+            if (!currentProduct || !currentProduct.attrs || currentProduct.attrs.length === 0) {
+                container.innerHTML = '<div class="empty-state">该设备产品暂无属性定义</div>';
+                return;
+            }
+            
+            // 模拟实时数据（实际应从服务器获取）
+            const mockData = {
+                'tem': 22.5,
+                'hum': 65,
+                'window': 0,
+                'battery': 85,
+                'lock_status': 1
+            };
+            
+            container.innerHTML = currentProduct.attrs.map(attr => {
+                const value = mockData[attr.identifier] !== undefined ? mockData[attr.identifier] : '-';
+                let displayValue = value;
+                
+                // 处理布尔值显示
+                if (attr.type === 'bool' || attr.type === 'int') {
+                    if (attr.identifier.includes('window')) {
+                        displayValue = value == 1 ? '打开' : '关闭';
+                    } else if (attr.identifier.includes('lock')) {
+                        displayValue = value == 1 ? '已锁定' : '已解锁';
+                    }
+                }
+                
+                return `
+                    <div class="data-card">
+                        <div class="data-card-label">${attr.name}</div>
+                        <div class="data-card-value">
+                            ${displayValue}
+                            ${attr.unit ? `<span class="data-card-unit">${attr.unit}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 渲染命令列表
+        function renderCommands() {
+            const container = document.getElementById('commandList');
+            
+            if (!currentProduct || !currentProduct.cmds || currentProduct.cmds.length === 0) {
+                container.innerHTML = '<div class="empty-state">该设备产品暂无可用命令</div>';
+                return;
+            }
+            
+            container.innerHTML = currentProduct.cmds.map(cmd => `
+                <button class="cmd-btn" onclick="sendCommand('${cmd.name}', '${cmd.attr}', '${cmd.value}')">
+                    ${cmd.name}
+                </button>
+            `).join('');
+        }
+
+        // Tab切换
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            
+            const panes = {
+                'realtime': 'realtimePane',
+                'history': 'historyPane',
+                'command': 'commandPane'
+            };
+            
+            document.getElementById(panes[tab]).classList.add('active');
+        }
+
+        // 切换历史数据视图模式
+        function switchViewMode(mode) {
+            const tableView = document.getElementById('tableView');
+            const chartView = document.getElementById('chartView');
+            
+            if (mode === 'table') {
+                tableView.style.display = 'block';
+                chartView.style.display = 'none';
+            } else {
+                tableView.style.display = 'none';
+                chartView.style.display = 'block';
+            }
+        }
+
+        // 发送命令
+        function sendCommand(cmdName, attr, value) {
+            if (currentDevice.status !== 'online') {
+                alert('⚠️ 设备离线，无法下发命令');
+                return;
+            }
+            
+            if (confirm(`确定要执行命令"${cmdName}"吗？\n\n将设置 ${attr} = ${value}`)) {
+                // 模拟MQTT命令下发
+                const mqttTopic = `ssc/${currentDevice.code}/command`;
+                const mqttPayload = {
+                    cmd: attr,
+                    value: value,
+                    timestamp: new Date().getTime()
+                };
+                
+                console.log('MQTT下发命令:', mqttTopic, mqttPayload);
+                alert(`✅ 命令已下发\n\nTopic: ${mqttTopic}\nPayload: ${JSON.stringify(mqttPayload, null, 2)}`);
+                
+                // 刷新实时数据
+                setTimeout(() => {
+                    renderRealtimeData();
+                }, 1000);
+            }
+        }
+
+        // 查询历史数据
+        function queryHistory() {
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            
+            if (!startTime || !endTime) {
+                alert('请选择查询时间范围');
+                return;
+            }
+            
+            alert(`🔍 查询历史数据
+
+时间范围: ${startTime} ~ ${endTime}
+
+正式版将从数据库查询`);
+        }
+
+        // 导出历史数据
+        function exportHistory() {
+            alert('📊 导出历史数据\n\n正式版将导出为Excel文件');
+        }
+
+        // 返回列表
+        function goBack() {
+            window.location.href = 'device-list.html';
+        }
+    </script>
+</body>
+</html>

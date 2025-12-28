@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备管理 - 物联网平台</title>
+    <link rel="stylesheet" href="common-style.css">
+    <style>
+        .content-wrapper { display: grid; grid-template-columns: 1fr 320px; gap: 24px; }
+        .content-main { min-width: 0; }
+        .content-sidebar { position: sticky; top: 76px; height: fit-content; }
+        .toolbar { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
+        .filter-group { display: flex; gap: 12px; }
+        .filter-group select { padding: 8px 12px; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; }
+        
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        .modal-overlay.show { display: flex; }
+        .modal-content { background: white; border-radius: 16px; width: 500px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s; }
+        .modal-header { padding: 20px 24px; border-bottom: 0.5px solid rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-size: 20px; font-weight: 600; color: #1d1d1f; }
+        .modal-close { width: 28px; height: 28px; border-radius: 50%; border: none; background: #f5f5f7; cursor: pointer; font-size: 18px; color: #86868b; }
+        .modal-close:hover { background: #e5e5e7; color: #1d1d1f; }
+        .modal-body { padding: 24px; }
+        .modal-footer { padding: 16px 24px; border-top: 0.5px solid rgba(0,0,0,0.08); display: flex; justify-content: flex-end; gap: 12px; background: #f5f5f7; }
+        .input-hint { font-size: 12px; color: #86868b; margin-top: 4px; }
+        .required { color: #ff3b30; }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">物联网平台</div>
+        <div class="user-info"><span>👤 admin</span><a href="login.html">退出</a></div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <a href="dashboard.html" class="menu-item"><span class="icon">📊</span> 数据监控</a>
+            <a href="device-group.html" class="menu-item"><span class="icon">🗂️</span> 设备分组</a>
+            <a href="device-list.html" class="menu-item active"><span class="icon">📱</span> 设备管理</a>
+            <a href="product-manage.html" class="menu-item"><span class="icon">📦</span> 产品管理</a>
+            <!-- <a href="data-query.html" class="menu-item"><span class="icon">🔍</span> 数据查询</a> -->
+            <div class="menu-divider"></div>
+            <a href="user-manage.html" class="menu-item"><span class="icon">👥</span> 用户管理</a>
+            <a href="role-manage.html" class="menu-item"><span class="icon">🎭</span> 角色管理</a>
+            <div class="menu-divider"></div>
+            <a href="index.html" class="menu-item"><span class="icon">🏠</span> 返回导航</a>
+        </div>
+
+        <div class="main-content">
+            <h1 class="page-title">设备管理</h1>
+
+            <div class="content-wrapper">
+                <div class="content-main">
+                    <div class="toolbar">
+                        <div class="filter-group">
+                            <input type="text" class="search-box" id="searchInput" placeholder="🔍 搜索设备名称或编码..." onkeyup="searchDevices()" style="padding: 8px 12px; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; width: 240px;">
+                            <select id="filterGroup" onchange="filterDevices()">
+                                <option value="">全部分组</option>
+                                <option>办公区域</option>
+                                <option>生产区域</option>
+                            </select>
+                            <select id="filterProduct" onchange="filterDevices()">
+                                <option value="">全部产品</option>
+                                <option>温湿度传感器</option>
+                                <option>智能门锁</option>
+                            </select>
+                            <select id="filterStatus" onchange="filterDevices()">
+                                <option value="">全部状态</option>
+                                <option value="online">在线</option>
+                                <option value="offline">离线</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="openDeviceModal()">+ 创建设备</button>
+                    </div>
+
+                    <table id="deviceTable">
+                        <thead>
+                            <tr>
+                                <th>设备名称</th>
+                                <th>设备编码</th>
+                                <th>产品名称</th>
+                                <th>所属分组</th>
+                                <th>在线状态</th>
+                                <th>最后上线时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deviceList">
+                            <!-- 动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="content-sidebar">
+                    <div class="prototype-note">
+                        <strong>📌 高保真原型说明</strong><br><br>
+                        设备管理用于查看和操作平台中的所有物联网设备<br>
+                        <br>
+                        <strong>✅ 已实现功能：</strong><br>
+                        • 搜索设备：按名称或编码实时搜索<br>
+                        • 创建设备：弹窗注册设备到平台<br>
+                        • 编辑设备：修改设备信息<br>
+                        • 删除设备：从平台移除设备<br>
+                        • 查看详情：跳转到设备详情页<br>
+                        • 筛选功能：按分组/产品/状态筛选<br>
+                        • 数据持久化：localStorage 存储<br>
+                        <br>
+                        <strong>💡 操作提示：</strong><br>
+                        • 搜索框支持按设备名称或编码搜索<br>
+                        • 搜索和筛选可以组合使用<br>
+                        • 创建设备时需选择产品名称<br>
+                        • 设备编码是唯一标识，不可重复<br>
+                        • 设备必须挂在某个分组下<br>
+                        • 在线状态由系统自动维护
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑设备弹窗 -->
+    <div class="modal-overlay" id="deviceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">创建设备</div>
+                <button class="modal-close" onclick="closeDeviceModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>设备名称 <span class="required">*</span></label>
+                    <input type="text" id="deviceName" placeholder="如：温湿度传感器-01、智能门锁-会议室">
+                    <div class="input-hint">💡 给设备起一个有辨识度的名称，方便快速定位</div>
+                </div>
+                <div class="form-group">
+                    <label>设备编码 <span class="required">*</span></label>
+                    <input type="text" id="deviceCode" placeholder="如：TEM1111、LOCK2001">
+                    <div class="input-hint">💡 设备的唯一标识符，与硬件端一致，创建后不可修改</div>
+                </div>
+                <div class="form-group">
+                    <label>产品名称 <span class="required">*</span></label>
+                    <select id="deviceProduct">
+                        <option value="">请选择产品</option>
+                    </select>
+                    <div class="input-hint">💡 选择该设备对应的产品，决定了设备的属性和命令</div>
+                </div>
+                <div class="form-group">
+                    <label>所属分组 <span class="required">*</span></label>
+                    <select id="deviceGroup">
+                        <option value="">请选择分组</option>
+                    </select>
+                    <div class="input-hint">💡 分组显示完整路径（如“办公区域/A栋1楼”），不同父分组下可以有同名子分组</div>
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <textarea id="deviceRemark" rows="2" placeholder="备注信息..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="closeDeviceModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveDevice()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let devices = [];
+        let editingDeviceId = null;
+
+        window.onload = function() {
+            loadDevices();
+            renderDevices();
+        };
+
+        function loadDevices() {
+            const data = localStorage.getItem('iot_devices');
+            if (data) {
+                devices = JSON.parse(data);
+            } else {
+                devices = [
+                    { id: 1, name: '温湿度传感器-01', code: 'TEM1111', product: '温湿度传感器', group: 'A栋1楼', status: 'online', lastOnline: '2025-12-25 22:30' },
+                    { id: 2, name: '智能门锁-会议室', code: 'LOCK2001', product: '智能门锁', group: 'A栋1楼', status: 'online', lastOnline: '2025-12-25 22:28' },
+                    { id: 3, name: '温湿度传感器-02', code: 'TEM1112', product: '温湿度传感器', group: 'A栋2楼', status: 'offline', lastOnline: '2025-12-24 10:15' }
+                ];
+                saveDevices();
+            }
+        }
+
+        function saveDevices() {
+            localStorage.setItem('iot_devices', JSON.stringify(devices));
+        }
+
+        function renderDevices(filteredDevices = null) {
+            const list = filteredDevices || devices;
+            const tbody = document.getElementById('deviceList');
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 60px; color: #86868b;">📦 暂无设备，点击右上角"创建设备"开始添加</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = list.map(d => `
+                <tr>
+                    <td>${d.name}</td>
+                    <td>${d.code}</td>
+                    <td>${d.product}</td>
+                    <td>${d.group}</td>
+                    <td><span class="badge badge-${d.status === 'online' ? 'success' : 'danger'}">${d.status === 'online' ? '在线' : '离线'}</span></td>
+                    <td>${d.lastOnline}</td>
+                    <td>
+                        <button class="btn btn-default" onclick="viewDevice(${d.id})" style="font-size: 12px; padding: 4px 8px;">详情</button>
+                        <button class="btn btn-default" onclick="editDevice(${d.id})" style="font-size: 12px; padding: 4px 8px;">编辑</button>
+                        <button class="btn btn-danger" onclick="deleteDevice(${d.id})" style="font-size: 12px; padding: 4px 8px;">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 搜索设备（按名称或编码）
+        function searchDevices() {
+            filterDevices();
+        }
+
+        // 筛选设备
+        function filterDevices() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+            const filterGroup = document.getElementById('filterGroup').value;
+            const filterProduct = document.getElementById('filterProduct').value;
+            const filterStatus = document.getElementById('filterStatus').value;
+            
+            let filtered = devices;
+            
+            // 按关键词搜索（名称或编码）
+            if (keyword) {
+                filtered = filtered.filter(d => 
+                    d.name.toLowerCase().includes(keyword) || 
+                    d.code.toLowerCase().includes(keyword)
+                );
+            }
+            
+            // 按分组筛选
+            if (filterGroup) {
+                filtered = filtered.filter(d => d.group === filterGroup);
+            }
+            
+            // 按产品筛选
+            if (filterProduct) {
+                filtered = filtered.filter(d => d.product === filterProduct);
+            }
+            
+            // 按状态筛选
+            if (filterStatus) {
+                filtered = filtered.filter(d => d.status === filterStatus);
+            }
+            
+            renderDevices(filtered);
+        }
+
+        function openDeviceModal() {
+            editingDeviceId = null;
+            document.getElementById('modalTitle').textContent = '创建设备';
+            document.getElementById('deviceName').value = '';
+            document.getElementById('deviceCode').value = '';
+            document.getElementById('deviceCode').disabled = false;
+            document.getElementById('deviceProduct').value = '';
+            document.getElementById('deviceGroup').value = '';
+            document.getElementById('deviceRemark').value = '';
+            
+            // 加载产品列表
+            const products = JSON.parse(localStorage.getItem('iot_products') || '[]');
+            const productSelect = document.getElementById('deviceProduct');
+            productSelect.innerHTML = '<option value="">请选择产品类型</option>' +
+                products.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+            
+            // 加载分组列表（显示完整路径）
+            const groups = JSON.parse(localStorage.getItem('iot_groups') || '[]');
+            const groupSelect = document.getElementById('deviceGroup');
+            groupSelect.innerHTML = '<option value="">请选择分组</option>' +
+                groups.map(g => `<option value="${g.name}">${g.icon} ${g.path || g.name}</option>`).join('');
+            
+            document.getElementById('deviceModal').classList.add('show');
+        }
+
+        function closeDeviceModal() {
+            document.getElementById('deviceModal').classList.remove('show');
+        }
+
+        function saveDevice() {
+            const name = document.getElementById('deviceName').value.trim();
+            const code = document.getElementById('deviceCode').value.trim();
+            const product = document.getElementById('deviceProduct').value;
+            const group = document.getElementById('deviceGroup').value;
+            const remark = document.getElementById('deviceRemark').value.trim();
+            
+            if (!name) { alert('❌ 请输入设备名称'); return; }
+            if (!code) { alert('❌ 请输入设备编码'); return; }
+            if (!product) { alert('❌ 请选择产品类型'); return; }
+            if (!group) { alert('❌ 请选择所属分组'); return; }
+            
+            if (editingDeviceId) {
+                const device = devices.find(d => d.id === editingDeviceId);
+                if (device) {
+                    device.name = name;
+                    device.product = product;
+                    device.group = group;
+                    device.remark = remark;
+                }
+                alert('✅ 设备信息已更新');
+            } else {
+                if (devices.some(d => d.code === code)) {
+                    alert('❌ 设备编码已存在');
+                    return;
+                }
+                const newDevice = {
+                    id: devices.length > 0 ? Math.max(...devices.map(d => d.id)) + 1 : 1,
+                    name, code, product, group, remark,
+                    status: 'offline',
+                    lastOnline: '-'
+                };
+                devices.push(newDevice);
+                alert('✅ 设备创建成功');
+            }
+            
+            saveDevices();
+            closeDeviceModal();
+            renderDevices();
+        }
+
+        function editDevice(id) {
+            const device = devices.find(d => d.id === id);
+            if (!device) return;
+            
+            editingDeviceId = id;
+            document.getElementById('modalTitle').textContent = '编辑设备';
+            document.getElementById('deviceName').value = device.name;
+            document.getElementById('deviceCode').value = device.code;
+            document.getElementById('deviceCode').disabled = true;
+            document.getElementById('deviceProduct').value = device.product;
+            document.getElementById('deviceGroup').value = device.group;
+            document.getElementById('deviceRemark').value = device.remark || '';
+            
+            openDeviceModal();
+        }
+
+        function deleteDevice(id) {
+            const device = devices.find(d => d.id === id);
+            if (!confirm(`确定要删除设备"${device.name}"吗？`)) return;
+            
+            devices = devices.filter(d => d.id !== id);
+            saveDevices();
+            renderDevices();
+            alert('✅ 设备已删除');
+        }
+
+        function viewDevice(id) {
+            window.location.href = `device-detail.html?id=${id}`;
+        }
+    </script>
+</body>
+</html>

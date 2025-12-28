@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>仪表盘 - ThingsLink</title>
+  <link rel="stylesheet" href="/src/styles/common.css">
+  <style>
+    body {
+      background: #f5f5f7;
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* 侧边栏 - 深色优雅风格 */
+    .sidebar {
+      width: 260px;
+      background: #1d1d1f;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .sidebar-header {
+      padding: 28px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+      z-index: 1;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 19px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-logo-icon {
+      font-size: 32px;
+      filter: drop-shadow(0 2px 8px rgba(0, 122, 255, 0.4));
+    }
+
+    .sidebar-menu {
+      flex: 1;
+      padding: 20px 0;
+      overflow-y: auto;
+    }
+
+    .menu-item {
+      padding: 12px 20px;
+      margin: 4px 12px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      cursor: pointer;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      position: relative;
+    }
+
+    .menu-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      transform: translateX(2px);
+    }
+
+    .menu-item.active {
+      background: #007aff;
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0, 122, 255, 0.4);
+    }
+
+    .menu-item.active::before {
+      display: none;
+    }
+
+    .menu-icon {
+      font-size: 22px;
+      transition: transform 0.3s;
+    }
+
+    .menu-item:hover .menu-icon {
+      transform: scale(1.1);
+    }
+
+    .sidebar-footer {
+      padding: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .user-info-sidebar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      color: white;
+    }
+
+    .user-avatar-sidebar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #007aff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    /* 主内容区 - 浅色 */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #f5f5f7;
+    }
+
+    .topbar {
+      height: 64px;
+      background: white;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      padding: 0 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      z-index: 10;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1d1d1f;
+      letter-spacing: -0.02em;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: #f5f5f7;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .user-info:hover {
+      background: #e5e5e7;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #007aff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: white;
+    }
+
+    .user-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1d1d1f;
+    }
+
+    .btn-logout {
+      padding: 8px 20px;
+      background: #007aff;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-logout:hover {
+      background: #0051d5;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+    }
+
+    .btn-logout:active {
+      transform: translateY(0);
+    }
+
+    .content {
+      flex: 1;
+      padding: 40px;
+      overflow-y: auto;
+      background: #f5f5f7;
+    }
+
+    /* 统计卡片 - Apple风格 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 16px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      border-color: rgba(0, 0, 0, 0.12);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 140px;
+      height: 140px;
+      opacity: 0.03;
+      font-size: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: rotate(-15deg);
+      transition: all 0.4s;
+    }
+
+    .stat-card:hover::before {
+      transform: rotate(0deg) scale(1.1);
+      opacity: 0.05;
+    }
+
+    .stat-card.devices::before { content: '📱'; }
+    .stat-card.online::before { content: '✅'; }
+    .stat-card.products::before { content: '📦'; }
+    .stat-card.alerts::before { content: '⚠️'; }
+
+    .stat-label {
+      font-size: 14px;
+      color: #86868b;
+      margin-bottom: 14px;
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: #1d1d1f;
+      margin-bottom: 12px;
+      letter-spacing: -0.03em;
+    }
+
+    .stat-card.devices .stat-value { color: #007aff; }
+    .stat-card.online .stat-value { color: #34c759; }
+    .stat-card.offline .stat-value { color: #ff9500; }
+    .stat-card.alerts .stat-value { color: #ff3b30; }
+
+    .stat-trend {
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+      color: #86868b;
+    }
+
+    .stat-trend.up {
+      color: #34c759;
+    }
+
+    .stat-trend.down {
+      color: #ff3b30;
+    }
+
+    /* 设备列表 */
+    .device-list-section {
+      margin-top: 40px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1d1d1f;
+      letter-spacing: -0.02em;
+    }
+
+    .device-table {
+      background: white;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .empty-state {
+      padding: 80px;
+      text-align: center;
+      color: #86868b;
+    }
+
+    .empty-icon {
+      font-size: 72px;
+      margin-bottom: 20px;
+      opacity: 0.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <span class="sidebar-logo-icon">🔗</span>
+          <span>ThingsLink</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="/dashboard.html" class="menu-item active">
+          <span class="menu-icon">📊</span>
+          <span>仪表盘</span>
+        </a>
+        <a href="/devices.html" class="menu-item">
+          <span class="menu-icon">📱</span>
+          <span>设备管理</span>
+        </a>
+        <a href="/products.html" class="menu-item">
+          <span class="menu-icon">📦</span>
+          <span>产品管理</span>
+        </a>
+        <a href="/groups.html" class="menu-item">
+          <span class="menu-icon">📁</span>
+          <span>分组管理</span>
+        </a>
+        <a href="/data-query.html" class="menu-item">
+          <span class="menu-icon">📈</span>
+          <span>数据查询</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info-sidebar">
+          <div class="user-avatar-sidebar">👤</div>
+          <div>
+            <div style="font-size: 13px; font-weight: 600;" id="userName">管理员</div>
+            <div style="font-size: 11px; opacity: 0.7;">在线</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+      <div class="topbar">
+        <h1 class="page-title">仪表盘</h1>
+        <div class="topbar-right">
+          <div class="user-info">
+            <div class="user-avatar">👤</div>
+            <div class="user-name" id="userNameTop">管理员</div>
+          </div>
+          <button class="btn-logout" onclick="logout()">
+            <span>🚪</span>
+            <span>退出</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+          <div class="stat-card devices">
+            <div class="stat-label">设备总数</div>
+            <div class="stat-value" id="totalDevices">-</div>
+            <div class="stat-trend">
+              <span>📊 实时统计</span>
+            </div>
+          </div>
+
+          <div class="stat-card online">
+            <div class="stat-label">在线设备</div>
+            <div class="stat-value" id="onlineDevices">-</div>
+            <div class="stat-trend up">
+              <span>↗</span>
+              <span id="onlineRate">-</span>
+            </div>
+          </div>
+
+          <div class="stat-card products">
+            <div class="stat-label">产品类型</div>
+            <div class="stat-value" id="totalProducts">-</div>
+            <div class="stat-trend">
+              <span>📦 产品种类</span>
+            </div>
+          </div>
+
+          <div class="stat-card alerts">
+            <div class="stat-label">离线设备</div>
+            <div class="stat-value" id="offlineDevices">-</div>
+            <div class="stat-trend down" id="offlineRate">
+              <span>↘</span>
+              <span>-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 最近设备 -->
+        <div class="device-list-section">
+          <div class="section-header">
+            <h2 class="section-title">最近设备</h2>
+            <a href="/devices.html" class="btn btn-sm btn-primary">查看全部</a>
+          </div>
+
+          <div class="device-table">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>设备名称</th>
+                  <th>设备编码</th>
+                  <th>产品</th>
+                  <th>分组</th>
+                  <th>状态</th>
+                  <th>最后在线</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="deviceList">
+                <tr>
+                  <td colspan="7" class="empty-state">
+                    <div class="empty-icon">📭</div>
+                    <div>加载中...</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { deviceApi, productApi, authApi } from '/src/utils/api.js';
+
+    // 检查登录
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login.html';
+    }
+
+    // 显示用户信息
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    if (userInfo.username) {
+      const userName = userInfo.username;
+      document.getElementById('userName').textContent = userName;
+      if (document.getElementById('userNameTop')) {
+        document.getElementById('userNameTop').textContent = userName;
+      }
+    }
+
+    // 退出登录
+    window.logout = () => {
+      // 显示确认对话框
+      const confirmLogout = confirm('确定要退出登录吗？');
+      if (confirmLogout) {
+        // 清除本地存储
+        localStorage.removeItem('token');
+        localStorage.removeItem('userInfo');
+        
+        // 跳转到登录页
+        window.location.href = '/login.html';
+      }
+    };
+
+    // 更新时间
+    function updateTime() {
+      const now = new Date();
+      const timeStr = now.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      document.getElementById('currentTime').textContent = timeStr;
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+
+    // 加载统计数据
+    async function loadStatistics() {
+      try {
+        // 加载设备列表
+        const deviceResult = await deviceApi.list({ page: 1, pageSize: 100 });
+        if (deviceResult.code === 200) {
+          const devices = deviceResult.data.list || [];
+          const total = deviceResult.data.total || 0;
+          const online = devices.filter(d => d.status === 1).length;
+          const offline = total - online;
+          const onlineRate = total > 0 ? ((online / total) * 100).toFixed(1) : 0;
+
+          document.getElementById('totalDevices').textContent = total;
+          document.getElementById('onlineDevices').textContent = online;
+          document.getElementById('offlineDevices').textContent = offline;
+          document.getElementById('onlineRate').textContent = `${onlineRate}%`;
+        }
+
+        // 加载产品数量
+        const productResult = await productApi.list({ page: 1, pageSize: 100 });
+        if (productResult.code === 200) {
+          document.getElementById('totalProducts').textContent = productResult.data.total || 0;
+        }
+      } catch (error) {
+        console.error('加载统计数据失败:', error);
+      }
+    }
+
+    // 加载最近设备
+    async function loadRecentDevices() {
+      try {
+        const result = await deviceApi.list({ page: 1, pageSize: 10 });
+        if (result.code === 200) {
+          const devices = result.data.list || [];
+          renderDeviceList(devices);
+        }
+      } catch (error) {
+        console.error('加载设备列表失败:', error);
+        document.getElementById('deviceList').innerHTML = `
+          <tr>
+            <td colspan="7" class="empty-state">
+              <div class="empty-icon">❌</div>
+              <div>加载失败，请刷新重试</div>
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // 渲染设备列表
+    function renderDeviceList(devices) {
+      const tbody = document.getElementById('deviceList');
+      
+      if (devices.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="empty-state">
+              <div class="empty-icon">📭</div>
+              <div>暂无设备</div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = devices.map(device => `
+        <tr>
+          <td>${device.deviceName || '-'}</td>
+          <td><code>${device.deviceCode || '-'}</code></td>
+          <td>${device.productName || '-'}</td>
+          <td>${device.groupPath || device.groupName || '-'}</td>
+          <td>
+            ${device.status === 1 
+              ? '<span class="badge badge-online">在线</span>' 
+              : '<span class="badge badge-offline">离线</span>'}
+          </td>
+          <td>${device.lastOnlineTime || '-'}</td>
+          <td>
+            <a href="/device-detail.html?code=${device.deviceCode}" class="btn btn-sm">查看</a>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // 初始化
+    loadStatistics();
+    loadRecentDevices();
+
+    // 定时刷新
+    setInterval(() => {
+      loadStatistics();
+      loadRecentDevices();
+    }, 30000); // 30秒刷新一次
+  </script>
+</body>
+</html>

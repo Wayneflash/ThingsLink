@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色管理 - 物联网平台</title>
+    <link rel="stylesheet" href="common-style.css">
+    <style>
+        .role-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .permission-tree { background: #f5f5f7; padding: 16px; border-radius: 8px; max-height: 400px; overflow-y: auto; }
+        .tree-node { padding: 8px; margin: 4px 0; }
+        .tree-node input { margin-right: 8px; }
+        .tree-child { margin-left: 24px; }
+        
+        /* 角色列表选中效果 */
+        .role-row { cursor: pointer; transition: background-color 0.2s; }
+        .role-row:hover { background-color: #f5f5f7; }
+        .role-row.selected { background-color: #007aff; color: white; }
+        .role-row.selected .btn { background: white; color: #007aff; }
+        .role-row.selected .badge { background: rgba(255,255,255,0.3); color: white; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🚀 物联网平台</div>
+        <div class="user-info"><span>👤 admin</span><a href="login.html">退出</a></div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <a href="dashboard.html" class="menu-item"><span class="icon">📊</span> 数据监控</a>
+            <a href="device-group.html" class="menu-item"><span class="icon">🗂️</span> 设备分组</a>
+            <a href="device-list.html" class="menu-item"><span class="icon">📱</span> 设备管理</a>
+            <a href="product-manage.html" class="menu-item"><span class="icon">📦</span> 产品管理</a>
+            <!-- <a href="data-query.html" class="menu-item"><span class="icon">🔍</span> 数据查询</a> -->
+            <div class="menu-divider"></div>
+            <a href="user-manage.html" class="menu-item"><span class="icon">👥</span> 用户管理</a>
+            <a href="role-manage.html" class="menu-item active" id="roleMenuItem"><span class="icon">🎭</span> 角色管理</a>
+            <div class="menu-divider"></div>
+            <a href="index.html" class="menu-item"><span class="icon">🏠</span> 返回导航</a>
+        </div>
+
+        <div class="main-content">
+            <h1 class="page-title">角色管理</h1>
+
+            <div class="prototype-note">
+                <strong>📋 原型说明</strong><br>
+                角色管理用于配置不同角色的菜单权限<br>
+                • 角色是权限的集合，用户通过角色获得权限<br>
+                • 勾选菜单权限后，该角色的用户登录后只能看到勾选的菜单<br>
+                • 支持创建任意自定义角色（如：运维、客服、只读用户等）<br>
+                <br>
+                <strong>🔒 权限说明：</strong><br>
+                <span style="color: #ff3b30;">• 只有超级管理员才能创建/编辑/删除角色</span><br>
+                • 其他角色可以查看角色列表，但无法修改（只读模式）
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+                <button class="btn btn-primary" id="createRoleBtn" onclick="alert('打开创建角色弹窗')">+ 创建角色</button>
+            </div>
+
+            <div class="role-container">
+                <div class="card">
+                    <div class="card-title">角色列表</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>角色名称</th>
+                                <th>用户数</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="role-row" onclick="selectRole(1, 'admin', this)">
+                                <td>超级管理员</td>
+                                <td>1</td>
+                                <td>
+                                    <span class="badge badge-info">系统预设</span>
+                                </td>
+                            </tr>
+                            <tr class="role-row" onclick="selectRole(2, 'device', this)">
+                                <td>设备管理员</td>
+                                <td>3</td>
+                                <td>
+                                    <button class="btn btn-danger role-delete-btn" onclick="event.stopPropagation(); alert('删除角色')">删除</button>
+                                </td>
+                            </tr>
+                            <tr class="role-row" onclick="selectRole(3, 'viewer', this)">
+                                <td>数据查看员</td>
+                                <td>5</td>
+                                <td>
+                                    <button class="btn btn-danger role-delete-btn" onclick="event.stopPropagation(); alert('删除角色')">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">权限配置</div>
+                    
+                    <!-- 未选择角色时的提示 -->
+                    <div id="noRoleSelected" style="text-align: center; padding: 60px 20px; color: #86868b;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">🎭</div>
+                        <div style="font-size: 16px; margin-bottom: 8px;">请先选择一个角色</div>
+                        <div style="font-size: 14px;">点击左侧角色列表的"编辑权限"按钮</div>
+                    </div>
+                    
+                    <!-- 选择角色后显示的权限配置区域 -->
+                    <div id="permissionConfig" style="display: none;">
+                        <div style="padding: 12px; background: #f5f5f7; border-radius: 6px; margin-bottom: 16px;">
+                            <strong>当前配置角色：</strong><span id="currentRoleName" style="color: #007aff;">设备管理员</span>
+                        </div>
+                        
+                        <div class="permission-tree" id="permissionTree">
+                            <div class="tree-node">
+                                <input type="checkbox" checked> <strong>数据监控</strong>
+                            </div>
+                            
+                            <div class="tree-node">
+                                <input type="checkbox" checked> <strong>设备分组</strong>
+                            </div>
+                            <div class="tree-node tree-child">
+                                <input type="checkbox" checked> 查看分组
+                            </div>
+                            <div class="tree-node tree-child">
+                                <input type="checkbox" checked> 创建分组
+                            </div>
+                            <div class="tree-node tree-child">
+                                <input type="checkbox"> 删除分组
+                            </div>
+                            
+                            <div class="tree-node">
+                                <input type="checkbox" checked> <strong>设备管理</strong>
+                            </div>
+                            <div class="tree-node tree-child">
+                                <input type="checkbox" checked> 查看设备
+                            </div>
+                            <div class="tree-node tree-child">
+                                <input type="checkbox" checked> 创建设备
+                            </div>
+                            <div class="tree-node tree-child">
+                                <input type="checkbox" checked> 下发命令
+                            </div>
+                            <div class="tree-node tree-child">
+                                <input type="checkbox"> 删除设备
+                            </div>
+                            
+                            <div class="tree-node">
+                                <input type="checkbox"> <strong>产品管理</strong>
+                            </div>
+                            
+                            <div class="tree-node">
+                                <input type="checkbox" checked> <strong>数据查询</strong>
+                            </div>
+                            
+                            <div class="tree-node">
+                                <input type="checkbox"> <strong>用户管理</strong>
+                            </div>
+                            
+                            <div class="tree-node">
+                                <input type="checkbox"> <strong>角色管理</strong>
+                            </div>
+                        </div>
+                        
+                        <div class="prototype-note" style="margin-top: 16px;">
+                            <strong>💡 权限说明</strong><br>
+                            • 勾选父菜单：该角色可以看到这个菜单<br>
+                            • 勾选子权限：控制具体的增删改查操作<br>
+                            • 修改后需点击"保存"按钮
+                        </div>
+                        
+                        <button class="btn btn-primary" id="savePermissionBtn" style="margin-top: 16px;" onclick="savePermissions()">保存权限配置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 当前登录用户（模拟）
+        let currentUser = { id: 1, username: 'admin', roleIds: [1] }; // 默认超级管理员
+        
+        const availableRoles = [
+            { id: 1, name: '超级管理员', isSuperAdmin: true },
+            { id: 2, name: '设备管理员', isSuperAdmin: false },
+            { id: 3, name: '数据查看员', isSuperAdmin: false },
+            { id: 4, name: '运维人员', isSuperAdmin: false }
+        ];
+        
+        // 页面加载时检查权限
+        window.onload = function() {
+            checkPagePermission();
+        };
+        
+        // 检查当前用户是否有权限编辑角色
+        function checkPagePermission() {
+            const isSuperAdmin = currentUser.roleIds.some(roleId => {
+                const role = availableRoles.find(r => r.id === roleId);
+                return role && role.isSuperAdmin;
+            });
+            
+            if (!isSuperAdmin) {
+                // 非超级管理员，进入只读模式
+                setReadOnlyMode();
+            }
+        }
+        
+        // 设置只读模式
+        function setReadOnlyMode() {
+            // 隐藏“创建角色”按钮
+            const createBtn = document.getElementById('createRoleBtn');
+            if (createBtn) createBtn.style.display = 'none';
+            
+            // 隐藏“编辑权限”和“删除”按钮
+            document.querySelectorAll('.role-edit-btn, .role-delete-btn').forEach(btn => {
+                btn.style.display = 'none';
+            });
+            
+            // 隐藏“保存权限配置”按钮
+            const saveBtn = document.getElementById('savePermissionBtn');
+            if (saveBtn) saveBtn.style.display = 'none';
+            
+            // 禁用所有复选框
+            document.querySelectorAll('.permission-tree input[type="checkbox"]').forEach(cb => {
+                cb.disabled = true;
+            });
+            
+            // 显示只读模式提示
+            const pageTitle = document.querySelector('.page-title');
+            if (pageTitle) {
+                pageTitle.innerHTML = '角色管理 <span class="badge badge-warning" style="font-size: 14px; vertical-align: middle;">只读模式</span>';
+            }
+        }
+        
+        // 当前选中的角色
+        let currentSelectedRole = null;
+        let currentSelectedRow = null;
+        
+        // 选择角色
+        function selectRole(roleId, roleCode, rowElement) {
+            // 移除乊前的选中效果
+            if (currentSelectedRow) {
+                currentSelectedRow.classList.remove('selected');
+            }
+            
+            // 添加新的选中效果
+            rowElement.classList.add('selected');
+            currentSelectedRow = rowElement;
+            
+            // 显示权限配置
+            showPermissions(roleId, roleCode);
+        }
+        
+        function showPermissions(roleId, roleCode) {
+            // 模拟：根据角色code获取角色详情和权限配置
+            const roleNames = {
+                'admin': '超级管理员',
+                'device': '设备管理员',
+                'viewer': '数据查看员'
+            };
+            
+            currentSelectedRole = roleCode;
+            
+            // 隐藏"未选择角色"提示
+            document.getElementById('noRoleSelected').style.display = 'none';
+            
+            // 显示权限配置区域
+            document.getElementById('permissionConfig').style.display = 'block';
+            
+            // 更新当前角色名称
+            document.getElementById('currentRoleName').textContent = roleNames[roleCode] || roleCode;
+            
+            // 模拟：根据角色加载不同的权限配置
+            loadRolePermissions(roleCode);
+        }
+        
+        function loadRolePermissions(roleCode) {
+            // 这里模拟调用接口：POST /roles/detail { id: roleId }
+            // 根据返回的 permissions 和 menuPermissions 来勾选复选框
+            
+            const checkboxes = document.querySelectorAll('#permissionTree input[type="checkbox"]');
+            
+            // 先全部取消勾选
+            checkboxes.forEach(cb => cb.checked = false);
+            
+            // 根据不同角色勾选不同的权限（模拟）
+            if (roleCode === 'admin') {
+                // 超级管理员：全部勾选
+                checkboxes.forEach(cb => cb.checked = true);
+            } else if (roleCode === 'device') {
+                // 设备管理员：部分权限
+                checkboxes[0].checked = true; // 数据监控
+                checkboxes[1].checked = true; // 设备分组
+                checkboxes[2].checked = true; // 查看分组
+                checkboxes[3].checked = true; // 创建分组
+                checkboxes[5].checked = true; // 设备管理
+                checkboxes[6].checked = true; // 查看设备
+                checkboxes[7].checked = true; // 创建设备
+                checkboxes[8].checked = true; // 下发命令
+                checkboxes[11].checked = true; // 数据查询
+            } else if (roleCode === 'viewer') {
+                // 数据查看员：只读权限
+                checkboxes[0].checked = true; // 数据监控
+                checkboxes[1].checked = true; // 设备分组
+                checkboxes[2].checked = true; // 查看分组
+                checkboxes[5].checked = true; // 设备管理
+                checkboxes[6].checked = true; // 查看设备
+                checkboxes[11].checked = true; // 数据查询
+            }
+        }
+        
+        function savePermissions() {
+            if (!currentSelectedRole) {
+                alert('⚠️ 请先选择一个角色');
+                return;
+            }
+            
+            // 收集勾选的权限
+            const checkedPermissions = [];
+            document.querySelectorAll('#permissionTree input[type="checkbox"]:checked').forEach(cb => {
+                checkedPermissions.push(cb.parentElement.textContent.trim());
+            });
+            
+            // 模拟调用接口：POST /roles/update
+            alert('✅ 权限配置已保存！\n\n角色：' + currentSelectedRole + '\n勾选的权限：\n' + checkedPermissions.join('\n'));
+        }
+    </script>
+</body>
+</html>

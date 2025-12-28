@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备分组 - 物联网平台</title>
+    <link rel="stylesheet" href="common-style.css">
+    <style>
+        .content-wrapper { display: grid; grid-template-columns: 1fr 320px; gap: 24px; }
+        .content-main { min-width: 0; }
+        .content-sidebar { position: sticky; top: 76px; height: fit-content; }
+        
+        .group-container { display: grid; grid-template-columns: 300px 1fr; gap: 20px; }
+        .tree-panel { background: white; border-radius: 12px; padding: 16px; border: 0.5px solid rgba(0,0,0,0.08); }
+        .tree-item { padding: 8px 12px; margin: 2px 0; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; }
+        .tree-item:hover { background: #f5f5f7; }
+        .tree-item.active { background: #0071e3; color: white; }
+        .tree-item.child { margin-left: 24px; }
+        .device-panel { background: white; border-radius: 12px; padding: 20px; border: 0.5px solid rgba(0,0,0,0.08); }
+        
+        /* 弹窗样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 500px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s;
+        }
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 0.5px solid rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title { font-size: 20px; font-weight: 600; color: #1d1d1f; }
+        .modal-close {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            border: none;
+            background: #f5f5f7;
+            cursor: pointer;
+            font-size: 18px;
+            color: #86868b;
+        }
+        .modal-close:hover { background: #e5e5e7; color: #1d1d1f; }
+        .modal-body { padding: 24px; }
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 0.5px solid rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            background: #f5f5f7;
+        }
+        .input-hint { font-size: 12px; color: #86868b; margin-top: 4px; }
+        .required { color: #ff3b30; }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">物联网平台</div>
+        <div class="user-info"><span>👤 admin</span><a href="login.html">退出</a></div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <a href="dashboard.html" class="menu-item"><span class="icon">📊</span> 数据监控</a>
+            <a href="device-group.html" class="menu-item active"><span class="icon">🗂️</span> 设备分组</a>
+            <a href="device-list.html" class="menu-item"><span class="icon">📱</span> 设备管理</a>
+            <a href="product-manage.html" class="menu-item"><span class="icon">📦</span> 产品管理</a>
+            <!-- <a href="data-query.html" class="menu-item"><span class="icon">🔍</span> 数据查询</a> -->
+            <div class="menu-divider"></div>
+            <a href="user-manage.html" class="menu-item"><span class="icon">👥</span> 用户管理</a>
+            <a href="role-manage.html" class="menu-item"><span class="icon">🎭</span> 角色管理</a>
+            <div class="menu-divider"></div>
+            <a href="index.html" class="menu-item"><span class="icon">🏠</span> 返回导航</a>
+        </div>
+
+        <div class="main-content">
+            <h1 class="page-title">设备分组</h1>
+
+            <div class="content-wrapper">
+                <div class="content-main">
+                    <div class="group-container">
+                <div class="tree-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <strong>分组树</strong>
+                        <button class="btn btn-primary" style="font-size: 12px; padding: 4px 12px;" onclick="openGroupModal()">+ 新建</button>
+                    </div>
+                    
+                    <div id="groupTree">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+
+                    <div class="device-panel">
+                        <h3 style="margin-bottom: 16px;" id="groupTitle">📁 全部设备</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>设备名称</th>
+                                    <th>设备编码</th>
+                                    <th>产品类型</th>
+                                    <th>所属分组</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deviceList">
+                                <!-- 动态生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 右侧备注栏 -->
+                <div class="content-sidebar">
+                    <div class="prototype-note">
+                        <strong>📌 高保真原型说明</strong><br><br>
+                        设备分组用于组织和管理设备的层级结构<br>
+                        <br>
+                        <strong>✅ 已实现功能：</strong><br>
+                        • 创建分组：弹窗形式创建，支持父子级关系<br>
+                        • 编辑分组：右侧按钮点击编辑<br>
+                        • 删除分组：删除时检查是否有子分组<br>
+                        • 查看设备：点击分组查看该组下的设备<br>
+                        • 数据持久化：使用 localStorage 存储<br>
+                        <br>
+                        <strong>💡 操作提示：</strong><br>
+                        • 点击分组名称查看设备列表<br>
+                        • 支持最多5级分组嵌套<br>
+                        • 可按地域、业务、楼层等维度分组<br>
+                        • 同一父分组下名称必须唯一，但不同父分组下可以同名<br>
+                        • 删除父分组会同时删除所有子分组
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑分组弹窗 -->
+    <div class="modal-overlay" id="groupModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">创建分组</div>
+                <button class="modal-close" onclick="closeGroupModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>分组名称 <span class="required">*</span></label>
+                    <input type="text" id="groupName" placeholder="如：办公区域、生产车间、A栋1楼">
+                    <div class="input-hint">💡 同一父分组下名称必须唯一，但不同父分组下可以有同名子分组（如“办公区域/A栋1楼”和“生产区域/A栋1楼”）</div>
+                </div>
+                <div class="form-group">
+                    <label>父级分组</label>
+                    <select id="parentGroup">
+                        <option value="0">无（顶级分组）</option>
+                    </select>
+                    <div class="input-hint">💡 选择父级分组可建立层级关系，不选则为顶级分组</div>
+                </div>
+                <div class="form-group">
+                    <label>分组图标</label>
+                    <select id="groupIcon">
+                        <option value="📁">📁 文件夹</option>
+                        <option value="🏢">🏢 办公楼</option>
+                        <option value="🏭">🏭 工厂</option>
+                        <option value="🏗️">🏗️ 楼层</option>
+                        <option value="⚙️">⚙️ 车间</option>
+                        <option value="🌍">🌍 区域</option>
+                    </select>
+                    <div class="input-hint">💡 选择合适的图标让分组树更直观</div>
+                </div>
+                <div class="form-group">
+                    <label>分组描述</label>
+                    <textarea id="groupDesc" rows="3" placeholder="描述该分组的用途、范围等..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="closeGroupModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveGroup()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let groups = [];
+        let currentGroupId = 'all';
+        let editingGroupId = null;
+
+        window.onload = function() {
+            loadGroups();
+            renderGroupTree();
+            renderDevices();
+        };
+
+        // 加载分组数据
+        function loadGroups() {
+            const data = localStorage.getItem('iot_groups');
+            if (data) {
+                groups = JSON.parse(data);
+            } else {
+                // 初始化示例数据
+                groups = [
+                    { id: 1, name: '办公区域', parentId: 0, icon: '🏢', desc: '公司办公楼区域', deviceCount: 89 },
+                    { id: 2, name: 'A栋1楼', parentId: 1, icon: '🏗️', desc: '', deviceCount: 45 },
+                    { id: 3, name: 'A栋2楼', parentId: 1, icon: '🏗️', desc: '', deviceCount: 44 },
+                    { id: 4, name: '生产区域', parentId: 0, icon: '🏭', desc: '生产车间区域', deviceCount: 67 },
+                    { id: 5, name: '车间1', parentId: 4, icon: '⚙️', desc: '', deviceCount: 32 },
+                    { id: 6, name: '车间2', parentId: 4, icon: '⚙️', desc: '', deviceCount: 35 }
+                ];
+                saveGroups();
+            }
+        }
+
+        // 保存分组数据
+        function saveGroups() {
+            localStorage.setItem('iot_groups', JSON.stringify(groups));
+        }
+
+        // 渲染分组树
+        function renderGroupTree() {
+            const container = document.getElementById('groupTree');
+            const totalDevices = groups.reduce((sum, g) => sum + (g.deviceCount || 0), 0);
+            
+            let html = `
+                <div class="tree-item ${currentGroupId === 'all' ? 'active' : ''}" onclick="selectGroup('all')">
+                    <span>📁 全部设备</span>
+                    <span style="font-size: 12px; opacity: 0.7;">${totalDevices}</span>
+                </div>
+            `;
+            
+            // 渲染顶级分组
+            const topGroups = groups.filter(g => g.parentId === 0);
+            topGroups.forEach(group => {
+                html += renderGroupItem(group, 0);
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // 渲染分组项
+        function renderGroupItem(group, level) {
+            const childClass = level > 0 ? 'child' : '';
+            const activeClass = currentGroupId === group.id ? 'active' : '';
+            let html = `
+                <div class="tree-item ${childClass} ${activeClass}" onclick="selectGroup(${group.id})">
+                    <span>${group.icon} ${group.name}</span>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <span style="font-size: 12px; opacity: 0.7;">${group.deviceCount || 0}</span>
+                        <button class="btn btn-default" style="font-size: 11px; padding: 2px 6px;" onclick="event.stopPropagation(); editGroup(${group.id})">编辑</button>
+                        <button class="btn btn-danger" style="font-size: 11px; padding: 2px 6px;" onclick="event.stopPropagation(); deleteGroup(${group.id})">删除</button>
+                    </div>
+                </div>
+            `;
+            
+            // 递归渲染子分组
+            const children = groups.filter(g => g.parentId === group.id);
+            children.forEach(child => {
+                html += renderGroupItem(child, level + 1);
+            });
+            
+            return html;
+        }
+
+        // 选择分组
+        function selectGroup(id) {
+            currentGroupId = id;
+            renderGroupTree();
+            renderDevices();
+        }
+
+        // 渲染设备列表
+        function renderDevices() {
+            const titleEle = document.getElementById('groupTitle');
+            const listEle = document.getElementById('deviceList');
+            
+            if (currentGroupId === 'all') {
+                const totalDevices = groups.reduce((sum, g) => sum + (g.deviceCount || 0), 0);
+                titleEle.textContent = `📁 全部设备 (${totalDevices}台)`;
+            } else {
+                const group = groups.find(g => g.id === currentGroupId);
+                if (group) {
+                    titleEle.textContent = `${group.icon} ${group.name} (${group.deviceCount || 0}台)`;
+                }
+            }
+            
+            // 示例设备数据
+            listEle.innerHTML = `
+                <tr>
+                    <td>温湿度传感器-01</td>
+                    <td>TEM1111</td>
+                    <td>温湿度传感器</td>
+                    <td>A栋1楼</td>
+                    <td><span class="badge badge-success">在线</span></td>
+                </tr>
+                <tr>
+                    <td>智能门锁-会议室</td>
+                    <td>LOCK2001</td>
+                    <td>智能门锁</td>
+                    <td>A栋1楼</td>
+                    <td><span class="badge badge-success">在线</span></td>
+                </tr>
+                <tr>
+                    <td>温湿度传感器-02</td>
+                    <td>TEM1112</td>
+                    <td>温湿度传感器</td>
+                    <td>A栋2楼</td>
+                    <td><span class="badge badge-danger">离线</span></td>
+                </tr>
+            `;
+        }
+
+        // 打开创建分组弹窗
+        function openGroupModal() {
+            editingGroupId = null;
+            document.getElementById('modalTitle').textContent = '创建分组';
+            document.getElementById('groupName').value = '';
+            document.getElementById('groupIcon').value = '📁';
+            document.getElementById('groupDesc').value = '';
+            
+            // 填充父级分组选项
+            const parentSelect = document.getElementById('parentGroup');
+            parentSelect.innerHTML = '<option value="0">无（顶级分组）</option>';
+            groups.forEach(g => {
+                parentSelect.innerHTML += `<option value="${g.id}">${g.icon} ${g.name}</option>`;
+            });
+            
+            document.getElementById('groupModal').classList.add('show');
+        }
+
+        // 关闭弹窗
+        function closeGroupModal() {
+            document.getElementById('groupModal').classList.remove('show');
+        }
+
+        // 保存分组
+        function saveGroup() {
+            const name = document.getElementById('groupName').value.trim();
+            const parentId = parseInt(document.getElementById('parentGroup').value);
+            const icon = document.getElementById('groupIcon').value;
+            const desc = document.getElementById('groupDesc').value.trim();
+            
+            if (!name) {
+                alert('❌ 请输入分组名称');
+                return;
+            }
+            
+            if (editingGroupId) {
+                // 编辑模式
+                const group = groups.find(g => g.id === editingGroupId);
+                if (group) {
+                    group.name = name;
+                    group.icon = icon;
+                    group.desc = desc;
+                    // 注意：编辑时不允许修改父级，避免循环引用
+                }
+                alert('✅ 分组修改成功');
+            } else {
+                // 创建模式
+                const newGroup = {
+                    id: groups.length > 0 ? Math.max(...groups.map(g => g.id)) + 1 : 1,
+                    name,
+                    parentId,
+                    icon,
+                    desc,
+                    deviceCount: 0
+                };
+                groups.push(newGroup);
+                alert('✅ 分组创建成功');
+            }
+            
+            saveGroups();
+            closeGroupModal();
+            renderGroupTree();
+        }
+
+        // 编辑分组
+        function editGroup(id) {
+            const group = groups.find(g => g.id === id);
+            if (!group) return;
+            
+            editingGroupId = id;
+            document.getElementById('modalTitle').textContent = '编辑分组';
+            document.getElementById('groupName').value = group.name;
+            document.getElementById('groupIcon').value = group.icon;
+            document.getElementById('groupDesc').value = group.desc || '';
+            document.getElementById('parentGroup').value = group.parentId;
+            document.getElementById('parentGroup').disabled = true; // 编辑时禁止修改父级
+            
+            document.getElementById('groupModal').classList.add('show');
+        }
+
+        // 删除分组
+        function deleteGroup(id) {
+            const group = groups.find(g => g.id === id);
+            if (!group) return;
+            
+            // 检查是否有子分组
+            const hasChildren = groups.some(g => g.parentId === id);
+            if (hasChildren) {
+                if (!confirm(`分组"${group.name}"下还有子分组，删除后所有子分组也将被删除，确定继续吗？`)) {
+                    return;
+                }
+                // 递归删除所有子分组
+                deleteGroupRecursive(id);
+            } else {
+                if (!confirm(`确定要删除分组"${group.name}"吗？`)) {
+                    return;
+                }
+                groups = groups.filter(g => g.id !== id);
+            }
+            
+            saveGroups();
+            renderGroupTree();
+            alert('✅ 分组已删除');
+        }
+
+        // 递归删除分组
+        function deleteGroupRecursive(id) {
+            const children = groups.filter(g => g.parentId === id);
+            children.forEach(child => deleteGroupRecursive(child.id));
+            groups = groups.filter(g => g.id !== id);
+        }
+    </script>
+</body>
+</html>

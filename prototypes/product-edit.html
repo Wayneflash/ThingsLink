@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑产品 - 物联网平台</title>
+    <link rel="stylesheet" href="common-style.css">
+    <style>
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #86868b;
+        }
+        .breadcrumb a {
+            color: #0071e3;
+            text-decoration: none;
+        }
+        .breadcrumb-separator {
+            color: #d2d2d7;
+        }
+        
+        .form-container {
+            background: white;
+            border-radius: 12px;
+            border: 0.5px solid rgba(0,0,0,0.08);
+            padding: 32px;
+            max-width: 800px;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 0.5px solid rgba(0,0,0,0.08);
+        }
+        
+        .input-hint {
+            font-size: 12px;
+            color: #86868b;
+            margin-top: 4px;
+        }
+        
+        .required { color: #ff3b30; }
+        
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 24px;
+        }
+        .content-sidebar {
+            position: sticky;
+            top: 76px;
+            height: fit-content;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">物联网平台</div>
+        <div class="user-info"><span>👤 admin</span><a href="login.html">退出</a></div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <a href="dashboard.html" class="menu-item"><span class="icon">📊</span> 数据监控</a>
+            <a href="device-group.html" class="menu-item"><span class="icon">🗂️</span> 设备分组</a>
+            <a href="device-list.html" class="menu-item"><span class="icon">📱</span> 设备管理</a>
+            <a href="product-manage.html" class="menu-item active"><span class="icon">📦</span> 产品管理</a>
+            <a href="data-query.html" class="menu-item"><span class="icon">🔍</span> 数据查询</a>
+            <div class="menu-divider"></div>
+            <a href="user-manage.html" class="menu-item"><span class="icon">👥</span> 用户管理</a>
+            <a href="role-manage.html" class="menu-item"><span class="icon">🎭</span> 角色管理</a>
+            <div class="menu-divider"></div>
+            <a href="index.html" class="menu-item"><span class="icon">🏠</span> 返回导航</a>
+        </div>
+
+        <div class="main-content">
+            <div class="breadcrumb">
+                <a href="product-manage.html">产品管理</a>
+                <span class="breadcrumb-separator">›</span>
+                <a href="#" onclick="goBack(); return false;" id="productLink">产品详情</a>
+                <span class="breadcrumb-separator">›</span>
+                <span>编辑产品</span>
+            </div>
+
+            <div class="content-wrapper">
+                <div>
+                    <h1 class="page-title">编辑产品</h1>
+
+                    <div class="form-container">
+                        <div class="form-group">
+                            <label>产品名称 <span class="required">*</span></label>
+                            <input type="text" id="productName" placeholder="如：智能水表、空气监测仪">
+                            <div class="input-hint">💡 修改后的产品名称</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>产品型号 <span class="required">*</span></label>
+                            <input type="text" id="productModel" disabled style="background: #f5f5f7; cursor: not-allowed;">
+                            <div class="input-hint">💡 产品型号创建后不可修改</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>协议类型 <span class="required">*</span></label>
+                            <select id="productProtocol">
+                                <option value="MQTT">MQTT（推荐，轻量级物联网协议）</option>
+                                <option value="HTTP">HTTP（适合请求-响应场景）</option>
+                                <option value="CoAP">CoAP（适合资源受限设备）</option>
+                                <option value="Modbus">Modbus（工业设备常用）</option>
+                            </select>
+                            <div class="input-hint">💡 修改协议类型可能影响已接入设备</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>产品描述</label>
+                            <textarea id="productDesc" rows="4" placeholder="描述产品的功能、用途、适用场景等..."></textarea>
+                            <div class="input-hint">💡 详细描述有助于团队成员理解产品定位</div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-default" onclick="goBack()">取消</button>
+                            <button class="btn btn-primary" onclick="saveProduct()">保存修改</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-sidebar">
+                    <div class="prototype-note">
+                        <strong>📌 编辑说明</strong><br><br>
+                        修改产品基本信息，保存后立即生效<br>
+                        <br>
+                        <strong>⚠️ 注意事项：</strong><br>
+                        • 产品型号创建后不可修改<br>
+                        • 修改协议类型会影响已接入设备<br>
+                        • 属性和命令在详情页单独管理<br>
+                        <br>
+                        <strong>💡 操作提示：</strong><br>
+                        • 点击"保存修改"提交表单<br>
+                        • 点击"取消"放弃修改<br>
+                        • 保存后自动返回详情页
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentProduct = null;
+
+        window.onload = function() {
+            const params = new URLSearchParams(window.location.search);
+            const productId = parseInt(params.get('id'));
+            
+            if (!productId) {
+                alert('❌ 产品ID不存在');
+                window.location.href = 'product-manage.html';
+                return;
+            }
+            
+            loadProduct(productId);
+        };
+
+        function loadProduct(id) {
+            const data = localStorage.getItem('iot_products');
+            if (!data) {
+                alert('❌ 未找到产品数据');
+                window.location.href = 'product-manage.html';
+                return;
+            }
+            
+            const products = JSON.parse(data);
+            currentProduct = products.find(p => p.id === id);
+            
+            if (!currentProduct) {
+                alert('❌ 产品不存在');
+                window.location.href = 'product-manage.html';
+                return;
+            }
+            
+            renderForm();
+        }
+
+        function renderForm() {
+            document.getElementById('productName').value = currentProduct.name;
+            document.getElementById('productModel').value = currentProduct.model;
+            document.getElementById('productProtocol').value = currentProduct.protocol;
+            document.getElementById('productDesc').value = currentProduct.desc || '';
+            document.getElementById('productLink').textContent = currentProduct.name;
+        }
+
+        function saveProduct() {
+            const name = document.getElementById('productName').value.trim();
+            const protocol = document.getElementById('productProtocol').value;
+            const desc = document.getElementById('productDesc').value.trim();
+
+            if (!name) {
+                alert('❌ 请输入产品名称');
+                return;
+            }
+
+            if (!protocol) {
+                alert('❌ 请选择协议类型');
+                return;
+            }
+
+            currentProduct.name = name;
+            currentProduct.protocol = protocol;
+            currentProduct.desc = desc;
+
+            const data = localStorage.getItem('iot_products');
+            const products = JSON.parse(data);
+            const index = products.findIndex(p => p.id === currentProduct.id);
+            products[index] = currentProduct;
+            localStorage.setItem('iot_products', JSON.stringify(products));
+
+            alert('✅ 产品信息已更新');
+            window.location.href = `product-detail.html?id=${currentProduct.id}`;
+        }
+
+        function goBack() {
+            if (currentProduct) {
+                window.location.href = `product-detail.html?id=${currentProduct.id}`;
+            } else {
+                window.location.href = 'product-manage.html';
+            }
+        }
+    </script>
+</body>
+</html>
