@@ -29,7 +29,7 @@ services:
     container_name: iot-redis
     restart: always
     ports:
-      - "6379:6379"
+      - "16379:6379"
     command: redis-server --requirepass redis123456
     networks:
       - iot-network

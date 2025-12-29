@@ -219,13 +219,16 @@ INSERT INTO `tb_command` (`product_id`, `addr`, `command_name`, `command_value`,
 (1, 'window', '打开窗户', '1', '将窗户设置为打开状态'),
 (1, 'window', '关闭窗户', '0', '将窗户设置为关闭状态');
 
--- 初始化超级管理员账户：admin / admin123456
+-- 初始化超级管理员账户：admin / admin123456 （归属总分组）
 INSERT INTO `tb_user` (`id`, `username`, `password`, `real_name`, `group_id`, `status`, `role_id`) VALUES
-(1, 'admin', 'admin123456', '超级管理员', 0, 1, 1);
+(1, 'admin', 'admin123456', '超级管理员', 1, 1, 1);
 
 -- 初始化角色：超级管理员
 INSERT INTO `tb_role` (`id`, `role_name`, `role_code`, `description`, `menu_ids`, `data_scope`) VALUES
-(1, '超级管理员', 'super_admin', '拥有所有权限', 'dashboard,device,group,product,user,role,menu,log', 0);
+(1, '超级管理员', 'super_admin', '拥有所有权限', 'dashboard,device,group,product,user,role,menu,log', 0),
+(2, '设备管理员', 'device_admin', '管理设备和产品', 'dashboard,device,group,product', 1),
+(3, '数据查看员', 'data_viewer', '仅查看数据和设备', 'dashboard,device', 2),
+(4, '运维人员', 'operator', '运维和监控权限', 'dashboard,device,log', 1);
 
 -- 初始化菜单权限
 INSERT INTO `tb_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `path`, `component`, `permission`, `icon`, `sort`) VALUES
@@ -240,15 +243,8 @@ INSERT INTO `tb_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `path`, `com
 (9, 6, '菜单管理', 2, '/system/menu', 'MenuList', 'menu:list', '', 3),
 (10, 6, '操作日志', 2, '/system/log', 'LogList', 'log:list', '', 4);
 
--- 初始化设备分组
+-- 初始化设备分组（只保留总分组）
 INSERT INTO `tb_device_group` (`id`, `parent_id`, `group_name`, `description`) VALUES
-(1, 0, '默认分组', '系统默认分组'),
-(2, 0, '办公区域', '办公楼设备'),
-(3, 2, 'A栋1楼', '办公A栋1楼'),
-(4, 2, 'A栋2楼', '办公A栋2楼');
-
--- 示例设备（挂载到分组）
-INSERT INTO `tb_device` (`device_code`, `device_name`, `product_id`, `group_id`, `location`) 
-VALUES ('TEM1111', '1号温湿度传感器', 1, 3, '办公室A区');
+(1, 0, '总分组', '系统默认总分组，所有设备和用户的根分组');
 
 SET FOREIGN_KEY_CHECKS = 1;

@@ -118,4 +118,22 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
              .orderByAsc(Command::getId);
         return commandMapper.selectList(query);
     }
+    
+    /**
+     * 删除产品属性
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteAttribute(Long id) {
+        attributeMapper.deleteById(id);
+        log.info("删除产品属性成功: {}", id);
+    }
+    
+    /**
+     * 删除产品命令
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteCommand(Long id) {
+        commandMapper.deleteById(id);
+        log.info("删除产品命令成功: {}", id);
+    }
 }

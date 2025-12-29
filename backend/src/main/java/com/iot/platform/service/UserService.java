@@ -39,13 +39,18 @@ public class UserService extends ServiceImpl<UserMapper, User> {
      * 用户登录
      */
     public Map<String, Object> login(String username, String password) {
-        // 查询用户
+        // 查询用户（注意：MySQL默认不区分大小写）
         LambdaQueryWrapper<User> query = new LambdaQueryWrapper<>();
         query.eq(User::getUsername, username);
         User user = this.getOne(query);
         
         if (user == null) {
             throw new RuntimeException("用户不存在");
+        }
+        
+        // 严格校验用户名大小写（防止MySQL不区分大小写的问题）
+        if (!user.getUsername().equals(username)) {
+            throw new RuntimeException("用户名或密码错误");
         }
         
         // 验证密码（明文比对）
@@ -109,34 +114,63 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         }
         
         Role role = roleMapper.selectById(user.getRoleId());
-        if (role == null || role.getMenuIds() == null || role.getMenuIds().isEmpty()) {
-            return menus; // 角色无权限返回空菜单
+        if (role == null) {
+            return menus; // 角色不存在返回空菜单
         }
         
-        // 解析角色权限
-        Set<String> permissions = new HashSet<>(Arrays.asList(role.getMenuIds().split(",")));
-        
-        // 超级管理员拥有所有权限
+        // 判断是否为超级管理员
         boolean isSuperAdmin = "super_admin".equals(role.getRoleCode());
         
-        // 构建菜单树（根据原型设计，只显示5个主菜单）
+        // 解析角色权限
+        Set<String> permissions = new HashSet<>();
+        if (role.getMenuIds() != null && !role.getMenuIds().isEmpty()) {
+            String[] menuArr = role.getMenuIds().split(",");
+            for (String menu : menuArr) {
+                permissions.add(menu.trim());
+            }
+        }
         
-        // 1. 数据监控
-        menus.add(createMenu("overview", "数据监控", "/overview", "DataAnalysis", null, 1));
+        // 根据权限构建菜单树
+        int sort = 1;
+        
+        // 1. 设备概览
+        if (isSuperAdmin || permissions.contains("overview")) {
+            menus.add(createMenu("overview", "设备概览", "/overview", "DataAnalysis", null, sort++));
+        }
         
         // 2. 设备分组
-        menus.add(createMenu("groups", "设备分组", "/groups", "FolderOpened", null, 2));
+        if (isSuperAdmin || permissions.contains("groups")) {
+            menus.add(createMenu("groups", "设备分组", "/groups", "FolderOpened", null, sort++));
+        }
         
         // 3. 设备管理
-        menus.add(createMenu("devices", "设备管理", "/devices", "Monitor", null, 3));
+        if (isSuperAdmin || permissions.contains("devices")) {
+            menus.add(createMenu("devices", "设备管理", "/devices", "Monitor", null, sort++));
+        }
         
         // 4. 产品管理
-        menus.add(createMenu("products", "产品管理", "/products", "Box", null, 4));
+        if (isSuperAdmin || permissions.contains("products")) {
+            menus.add(createMenu("products", "产品管理", "/products", "Box", null, sort++));
+        }
         
-        // 5. 用户管理、角色管理（仅超级管理员可见）
-        if (isSuperAdmin) {
-            menus.add(createMenu("users", "用户管理", "/users", "User", null, 5));
-            menus.add(createMenu("roles", "角色管理", "/roles", "Setting", null, 6));
+        // 5. 报警日志
+        if (isSuperAdmin || permissions.contains("alarms")) {
+            menus.add(createMenu("alarms", "报警日志", "/alarms", "BellFilled", null, sort++));
+        }
+        
+        // 6. 数据查询
+        if (isSuperAdmin || permissions.contains("data-query")) {
+            menus.add(createMenu("data-query", "数据查询", "/data-query", "Search", null, sort++));
+        }
+        
+        // 7. 用户管理（仅超级管理员或有权限的角色）
+        if (isSuperAdmin || permissions.contains("users")) {
+            menus.add(createMenu("users", "用户管理", "/users", "User", null, sort++));
+        }
+        
+        // 8. 角色管理（仅超级管理员或有权限的角色）
+        if (isSuperAdmin || permissions.contains("roles")) {
+            menus.add(createMenu("roles", "角色管理", "/roles", "Setting", null, sort++));
         }
         
         return menus;

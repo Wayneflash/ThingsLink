@@ -130,9 +130,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="所属分组" prop="groupId">
-          <el-select v-model="deviceForm.groupId" placeholder="请选择所属分组" style="width: 100%">
-            <el-option v-for="group in groupList" :key="group.id" :label="group.name" :value="group.id" />
-          </el-select>
+          <GroupSelector v-model="deviceForm.groupId" />
         </el-form-item>
         <el-form-item label="备注">
           <el-input
@@ -156,9 +154,10 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus, Refresh } from '@element-plus/icons-vue'
-import { getDeviceList, createDevice, updateDevice, deleteDevice } from '@/api/device'
-import { getGroupList } from '@/api/group'
+import { getDeviceList, createDevice, updateDevice, deleteDevice as deleteDeviceAPI } from '@/api/device'
+import { getGroupTree } from '@/api/group'
 import { getProductList } from '@/api/product'
+import GroupSelector from '@/components/GroupSelector.vue'
 
 const router = useRouter()
 const loading = ref(false)
@@ -245,13 +244,33 @@ const loadProducts = async () => {
 // 加载分组列表
 const loadGroups = async () => {
   try {
-    const result = await getGroupList()
-    if (result.code === 200 && result.data) {
-      groupList.value = result.data.list || []
+    const result = await getGroupTree()
+    if (result.tree) {
+      groupList.value = flattenTree(result.tree)
     }
   } catch (error) {
     console.error('加载分组列表失败:', error)
   }
+}
+
+// 扁平化树形数据
+const flattenTree = (tree) => {
+  const result = []
+  const flatten = (nodes) => {
+    if (!Array.isArray(nodes)) return
+    nodes.forEach(node => {
+      result.push({
+        id: node.id,
+        name: node.name,
+        parentId: node.parentId || 0
+      })
+      if (node.children && node.children.length > 0) {
+        flatten(node.children)
+      }
+    })
+  }
+  flatten(tree)
+  return result
 }
 
 // 搜索处理
@@ -299,7 +318,7 @@ const deleteDevice = (device) => {
     }
   ).then(async () => {
     try {
-      const result = await deleteDevice(device.deviceCode)
+      const result = await deleteDeviceAPI(device.deviceCode)
       if (result.code === 200) {
         ElMessage.success('设备删除成功')
         loadDevices()

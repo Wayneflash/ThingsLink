@@ -19,7 +19,8 @@
 
     <!-- 产品列表表格 -->
     <el-card>
-      <el-table :data="products" border>
+      <div style="margin-bottom: 10px; color: #999;">Debug: 产品数量 = {{ products.length }}</div>
+      <el-table :data="products" border stripe>
         <el-table-column prop="id" label="产品ID" width="80" />
         <el-table-column prop="productName" label="产品名称" />
         <el-table-column prop="productModel" label="产品型号" />
@@ -149,13 +150,43 @@ const formRules = {
 // 加载产品列表
 const loadProducts = async () => {
   try {
+    console.log('开始加载产品列表...')
     const res = await productApi.list()
-    if (res.code === 200 && res.data) {
-      products.value = res.data
+    console.log('产品列表响应:', JSON.stringify(res, null, 2))
+    
+    if (!res) {
+      console.error('响应为空')
+      ElMessage.error('服务器无响应')
+      return
+    }
+    
+    if (res.code === 200) {
+      console.log('res.data:', res.data)
+      if (res.data) {
+        if (res.data.list && Array.isArray(res.data.list)) {
+          console.log('使用 res.data.list，长度:', res.data.list.length)
+          products.value = res.data.list
+        } else if (Array.isArray(res.data)) {
+          console.log('使用 res.data，长度:', res.data.length)
+          products.value = res.data
+        } else {
+          console.warn('数据格式不正确:', typeof res.data)
+          products.value = []
+        }
+      } else {
+        console.warn('res.data 为空')
+        products.value = []
+      }
+      console.log('最终 products.value:', products.value)
+      console.log('产品数量:', products.value.length)
+    } else {
+      console.error('响应码错误:', res.code, res.message)
+      ElMessage.error(res.message || '加载失败')
     }
   } catch (error) {
     console.error('加载产品列表失败:', error)
-    ElMessage.error('加载产品列表失败')
+    console.error('错误堆栈:', error.stack)
+    ElMessage.error('加载产品列表失败: ' + error.message)
   }
 }
 

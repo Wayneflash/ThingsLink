@@ -35,15 +35,14 @@ request.interceptors.response.use(
     
     // 统一处理响应结构 {code, data, message}
     if (res.code !== 200) {
-      // code 不等于 200，使用 Element Plus 的 ElMessage 报错
-      ElMessage.error(res.message || '请求失败')
-      
       // 如果是 401，跳转到登录页
       if (res.code === 401) {
+        ElMessage.error(res.message || '未授权，请重新登录')
         localStorage.removeItem('token')
         router.push('/login')
       }
       
+      // 返回Promise.reject，让调用方处理错误提示
       return Promise.reject(new Error(res.message || 'Error'))
     }
     

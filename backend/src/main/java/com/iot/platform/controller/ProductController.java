@@ -265,4 +265,40 @@ public class ProductController {
             return Result.error(e.getMessage());
         }
     }
+    
+    /**
+     * 删除产品属性
+     */
+    @PostMapping("/attribute/delete")
+    public Result<Void> deleteAttribute(@RequestBody Map<String, Object> params) {
+        try {
+            Long id = params.get("id") != null ? Long.valueOf(params.get("id").toString()) : null;
+            if (id == null) {
+                return Result.error("属性ID不能为空");
+            }
+            productService.deleteAttribute(id);
+            return Result.success("删除成功");
+        } catch (Exception e) {
+            log.error("删除产品属性失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    /**
+     * 删除产品命令
+     */
+    @PostMapping("/command/delete")
+    public Result<Void> deleteCommand(@RequestBody Map<String, Object> params) {
+        try {
+            Long id = params.get("id") != null ? Long.valueOf(params.get("id").toString()) : null;
+            if (id == null) {
+                return Result.error("命令ID不能为空");
+            }
+            productService.deleteCommand(id);
+            return Result.success("删除成功");
+        } catch (Exception e) {
+            log.error("删除产品命令失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
 }

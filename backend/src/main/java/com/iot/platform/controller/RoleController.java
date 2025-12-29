@@ -178,104 +178,90 @@ public class RoleController {
     
     /**
      * 构建所有可用权限树，并标记已授权状态
+     * 注意：这里的权限code必须与登录接口返回的菜单code完全一致
      */
     private java.util.List<Map<String, Object>> buildAllPermissions(java.util.Set<String> grantedSet) {
         java.util.List<Map<String, Object>> permissions = new java.util.ArrayList<>();
         
-        // 数据监控
-        Map<String, Object> dashboard = new java.util.LinkedHashMap<>();
-        dashboard.put("code", "dashboard");
-        dashboard.put("name", "数据监控");
-        dashboard.put("icon", "📊");
-        dashboard.put("sort", 1);
-        dashboard.put("granted", grantedSet.contains("dashboard"));
-        dashboard.put("children", null);
-        permissions.add(dashboard);
+        // 1. 设备概览
+        Map<String, Object> overview = new java.util.LinkedHashMap<>();
+        overview.put("code", "overview");
+        overview.put("name", "设备概览");
+        overview.put("icon", "📊");
+        overview.put("sort", 1);
+        overview.put("granted", grantedSet.contains("overview"));
+        overview.put("children", null);
+        permissions.add(overview);
         
-        // 设备分组
-        Map<String, Object> deviceGroup = new java.util.LinkedHashMap<>();
-        deviceGroup.put("code", "device_group");
-        deviceGroup.put("name", "设备分组");
-        deviceGroup.put("icon", "📋");
-        deviceGroup.put("sort", 2);
-        deviceGroup.put("granted", grantedSet.contains("device_group"));
-        java.util.List<Map<String, Object>> groupChildren = new java.util.ArrayList<>();
-        groupChildren.add(createAction("view", "查看分组", grantedSet.contains("device_group:view")));
-        groupChildren.add(createAction("create", "创建分组", grantedSet.contains("device_group:create")));
-        groupChildren.add(createAction("edit", "编辑分组", grantedSet.contains("device_group:edit")));
-        groupChildren.add(createAction("delete", "删除分组", grantedSet.contains("device_group:delete")));
-        deviceGroup.put("children", groupChildren);
-        permissions.add(deviceGroup);
+        // 2. 设备分组
+        Map<String, Object> groups = new java.util.LinkedHashMap<>();
+        groups.put("code", "groups");
+        groups.put("name", "设备分组");
+        groups.put("icon", "📋");
+        groups.put("sort", 2);
+        groups.put("granted", grantedSet.contains("groups"));
+        groups.put("children", null);
+        permissions.add(groups);
         
-        // 设备管理
-        Map<String, Object> device = new java.util.LinkedHashMap<>();
-        device.put("code", "device");
-        device.put("name", "设备管理");
-        device.put("icon", "📡");
-        device.put("sort", 3);
-        device.put("granted", grantedSet.contains("device"));
-        java.util.List<Map<String, Object>> deviceChildren = new java.util.ArrayList<>();
-        deviceChildren.add(createAction("view", "查看设备", grantedSet.contains("device:view")));
-        deviceChildren.add(createAction("create", "添加设备", grantedSet.contains("device:create")));
-        deviceChildren.add(createAction("edit", "编辑设备", grantedSet.contains("device:edit")));
-        deviceChildren.add(createAction("delete", "删除设备", grantedSet.contains("device:delete")));
-        device.put("children", deviceChildren);
-        permissions.add(device);
+        // 3. 设备管理
+        Map<String, Object> devices = new java.util.LinkedHashMap<>();
+        devices.put("code", "devices");
+        devices.put("name", "设备管理");
+        devices.put("icon", "📱");
+        devices.put("sort", 3);
+        devices.put("granted", grantedSet.contains("devices"));
+        devices.put("children", null);
+        permissions.add(devices);
         
-        // 产品管理
-        Map<String, Object> product = new java.util.LinkedHashMap<>();
-        product.put("code", "product");
-        product.put("name", "产品管理");
-        product.put("icon", "📦");
-        product.put("sort", 4);
-        product.put("granted", grantedSet.contains("product"));
-        product.put("children", null);
-        permissions.add(product);
+        // 4. 产品管理
+        Map<String, Object> products = new java.util.LinkedHashMap<>();
+        products.put("code", "products");
+        products.put("name", "产品管理");
+        products.put("icon", "📦");
+        products.put("sort", 4);
+        products.put("granted", grantedSet.contains("products"));
+        products.put("children", null);
+        permissions.add(products);
         
-        // 用户管理
-        Map<String, Object> user = new java.util.LinkedHashMap<>();
-        user.put("code", "user");
-        user.put("name", "用户管理");
-        user.put("icon", "👥");
-        user.put("sort", 5);
-        user.put("granted", grantedSet.contains("user"));
-        user.put("children", null);
-        permissions.add(user);
+        // 5. 报警日志
+        Map<String, Object> alarms = new java.util.LinkedHashMap<>();
+        alarms.put("code", "alarms");
+        alarms.put("name", "报警日志");
+        alarms.put("icon", "⚠️");
+        alarms.put("sort", 5);
+        alarms.put("granted", grantedSet.contains("alarms"));
+        alarms.put("children", null);
+        permissions.add(alarms);
         
-        // 角色管理
-        Map<String, Object> role = new java.util.LinkedHashMap<>();
-        role.put("code", "role");
-        role.put("name", "角色管理");
-        role.put("icon", "🎭");
-        role.put("sort", 6);
-        role.put("granted", grantedSet.contains("role"));
-        java.util.List<Map<String, Object>> roleChildren = new java.util.ArrayList<>();
-        roleChildren.add(createAction("view", "查看角色", grantedSet.contains("role:view")));
-        roleChildren.add(createAction("create", "创建角色", grantedSet.contains("role:create")));
-        roleChildren.add(createAction("edit", "编辑角色", grantedSet.contains("role:edit")));
-        roleChildren.add(createAction("delete", "删除角色", grantedSet.contains("role:delete")));
-        role.put("children", roleChildren);
-        permissions.add(role);
+        // 6. 数据查询
+        Map<String, Object> dataQuery = new java.util.LinkedHashMap<>();
+        dataQuery.put("code", "data-query");
+        dataQuery.put("name", "数据查询");
+        dataQuery.put("icon", "🔍");
+        dataQuery.put("sort", 6);
+        dataQuery.put("granted", grantedSet.contains("data-query"));
+        dataQuery.put("children", null);
+        permissions.add(dataQuery);
         
-        // 菜单管理
-        Map<String, Object> menu = new java.util.LinkedHashMap<>();
-        menu.put("code", "menu");
-        menu.put("name", "菜单管理");
-        menu.put("icon", "📝");
-        menu.put("sort", 7);
-        menu.put("granted", grantedSet.contains("menu"));
-        menu.put("children", null);
-        permissions.add(menu);
+        // 7. 用户管理（仅超级管理员）
+        Map<String, Object> users = new java.util.LinkedHashMap<>();
+        users.put("code", "users");
+        users.put("name", "用户管理");
+        users.put("icon", "👥");
+        users.put("sort", 7);
+        users.put("granted", grantedSet.contains("users"));
+        users.put("children", null);
+        permissions.add(users);
         
-        // 操作日志
-        Map<String, Object> log = new java.util.LinkedHashMap<>();
-        log.put("code", "log");
-        log.put("name", "操作日志");
-        log.put("icon", "📊");
-        log.put("sort", 8);
-        log.put("granted", grantedSet.contains("log"));
-        log.put("children", null);
-        permissions.add(log);
+        // 8. 角色管理（仅超级管理员）
+        Map<String, Object> roles = new java.util.LinkedHashMap<>();
+        roles.put("code", "roles");
+        roles.put("name", "角色管理");
+        roles.put("icon", "🎭");
+        roles.put("sort", 8);
+        roles.put("granted", grantedSet.contains("roles"));
+        roles.put("children", null);
+        permissions.add(roles);
         
         return permissions;
     }
@@ -397,8 +383,13 @@ public class RoleController {
                 role.setDescription(request.getDescription());
             }
             
-            // 处理权限更新
-            if (request.getPermissions() != null && !request.getPermissions().isEmpty()) {
+            // 处理权限更新（支持两种方式）
+            // 方式1：直接传menuIds字符串
+            if (request.getMenuIds() != null) {
+                role.setMenuIds(request.getMenuIds());
+            }
+            // 方式2：传permissions数组
+            else if (request.getPermissions() != null && !request.getPermissions().isEmpty()) {
                 java.util.List<String> allPermissions = new java.util.ArrayList<>();
                 for (PermissionItem item : request.getPermissions()) {
                     if (item.getGranted() != null && item.getGranted()) {
@@ -483,6 +474,7 @@ public class RoleController {
         private Long id;
         private String name;
         private String description;
-        private List<PermissionItem> permissions;
+        private String menuIds;  // 直接支持menuIds字符串
+        private List<PermissionItem> permissions;  // 也支持permissions数组
     }
 }

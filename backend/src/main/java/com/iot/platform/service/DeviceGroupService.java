@@ -58,6 +58,11 @@ public class DeviceGroupService extends ServiceImpl<DeviceGroupMapper, DeviceGro
      */
     @Transactional(rollbackFor = Exception.class)
     public DeviceGroup updateGroup(DeviceGroup group) {
+        // 总分组（ID=1）不允许编辑
+        if (group.getId() != null && group.getId() == 1L) {
+            throw new RuntimeException("总分组不允许编辑");
+        }
+        
         DeviceGroup existGroup = this.getById(group.getId());
         if (existGroup == null) {
             throw new RuntimeException("分组不存在: " + group.getId());
@@ -74,6 +79,11 @@ public class DeviceGroupService extends ServiceImpl<DeviceGroupMapper, DeviceGro
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteGroup(Long groupId) {
+        // 总分组（ID=1）不允许删除
+        if (groupId != null && groupId == 1L) {
+            throw new RuntimeException("总分组不允许删除");
+        }
+        
         DeviceGroup group = this.getById(groupId);
         if (group == null) {
             throw new RuntimeException("分组不存在: " + groupId);

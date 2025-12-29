@@ -3,12 +3,15 @@ com\iot\platform\mapper\CommandMapper.class
 com\iot\platform\mqtt\MqttConfig$1.class
 com\iot\platform\dto\DeviceReportDTO$ReportContent.class
 com\iot\platform\entity\Product.class
+com\iot\platform\controller\UserController.class
 com\iot\platform\entity\Device.class
+com\iot\platform\controller\UserController$UserQueryRequest.class
 com\iot\platform\dto\DeviceReportDTO.class
 com\iot\platform\common\Result.class
 com\iot\platform\entity\Role.class
 com\iot\platform\service\ProductService.class
 com\iot\platform\mqtt\MqttMessageHandler.class
+com\iot\platform\controller\UserController$CreateUserRequest.class
 com\iot\platform\controller\RoleController$PermissionItem.class
 com\iot\platform\controller\StatisticsController.class
 com\iot\platform\controller\DeviceDataController.class
@@ -48,4 +51,6 @@ com\iot\platform\mapper\AttributeMapper.class
 com\iot\platform\config\MybatisPlusConfig.class
 com\iot\platform\mapper\DeviceMapper.class
 com\iot\platform\controller\RoleController$CreateRoleRequest.class
+com\iot\platform\controller\UserController$UpdateUserRequest.class
+com\iot\platform\controller\UserController$UpdateStatusRequest.class
 com\iot\platform\service\DeviceGroupService.class

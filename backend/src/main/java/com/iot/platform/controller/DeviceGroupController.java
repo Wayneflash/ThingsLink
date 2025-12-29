@@ -2,7 +2,12 @@ package com.iot.platform.controller;
 
 import com.iot.platform.common.Result;
 import com.iot.platform.entity.DeviceGroup;
+import com.iot.platform.entity.User;
+import com.iot.platform.entity.Role;
 import com.iot.platform.service.DeviceGroupService;
+import com.iot.platform.service.UserService;
+import com.iot.platform.mapper.UserMapper;
+import com.iot.platform.mapper.RoleMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +26,15 @@ public class DeviceGroupController {
     
     @Resource
     private DeviceGroupService deviceGroupService;
+    
+    @Resource
+    private UserService userService;
+    
+    @Resource
+    private UserMapper userMapper;
+    
+    @Resource
+    private RoleMapper roleMapper;
     
     /**
      * 创建分组
@@ -75,15 +89,46 @@ public class DeviceGroupController {
     }
     
     /**
-     * 获取分组树形列表
+     * 获取分组树形列表（根据用户权限过滤）
      */
     @PostMapping("/tree")  // 修改为tree接口以符合API文档
-    public Result<Map<String, Object>> getGroupTree() {
+    public Result<Map<String, Object>> getGroupTree(
+            @RequestHeader(value = "Authorization", required = false) String token) {
         try {
-            List<DeviceGroup> groups = deviceGroupService.getTreeList();
+            // 获取所有分组
+            List<DeviceGroup> allGroups = deviceGroupService.getTreeList();
             
-            // 按照API文档规约构造树形结构
-            java.util.List<Map<String, Object>> tree = buildTree(groups, 0L);
+            // 默认返回所有分组（无token或超级管理员）
+            Long userGroupId = null;
+            boolean isSuperAdmin = false;
+            
+            // 验证token并获取用户信息
+            if (token != null && token.startsWith("Bearer ")) {
+                String tokenValue = token.substring(7);
+                Long userId = userService.validateToken(tokenValue);
+                if (userId != null) {
+                    User user = userMapper.selectById(userId);
+                    if (user != null) {
+                        userGroupId = user.getGroupId();
+                        
+                        // 判断是否为超级管理员
+                        if (user.getRoleId() != null) {
+                            Role role = roleMapper.selectById(user.getRoleId());
+                            isSuperAdmin = role != null && "super_admin".equals(role.getRoleCode());
+                        }
+                    }
+                }
+            }
+            
+            // 构建树形结构
+            java.util.List<Map<String, Object>> tree;
+            if (isSuperAdmin || userGroupId == null || userGroupId == 0) {
+                // 超级管理员或无分组：返回所有分组
+                tree = buildTree(allGroups, 0L);
+            } else {
+                // 普通用户：只返回当前用户所属分组及其子分组
+                tree = buildUserGroupTree(allGroups, userGroupId);
+            }
             
             Map<String, Object> result = new java.util.LinkedHashMap<>();
             result.put("tree", tree);
@@ -93,6 +138,37 @@ public class DeviceGroupController {
             log.error("获取分组树失败", e);
             return Result.error(e.getMessage());
         }
+    }
+    
+    /**
+     * 构建用户权限内的分组树（只返回用户所属分组及其子分组）
+     */
+    private java.util.List<Map<String, Object>> buildUserGroupTree(List<DeviceGroup> allGroups, Long userGroupId) {
+        java.util.List<Map<String, Object>> tree = new java.util.ArrayList<>();
+        
+        // 找到用户所属分组
+        DeviceGroup userGroup = allGroups.stream()
+            .filter(g -> g.getId().equals(userGroupId))
+            .findFirst()
+            .orElse(null);
+        
+        if (userGroup != null) {
+            Map<String, Object> node = new java.util.LinkedHashMap<>();
+            node.put("id", userGroup.getId());
+            node.put("name", userGroup.getGroupName());
+            node.put("icon", null);
+            node.put("parentId", userGroup.getParentId());
+            node.put("path", buildGroupPath(userGroup.getId(), allGroups));
+            node.put("deviceCount", 0);
+            node.put("level", calculateLevel(userGroup.getId(), allGroups));
+            node.put("sort", userGroup.getSort());
+            node.put("description", userGroup.getDescription());
+            // 递归构建子分组
+            node.put("children", buildTree(allGroups, userGroup.getId()));
+            tree.add(node);
+        }
+        
+        return tree;
     }
     
     /**

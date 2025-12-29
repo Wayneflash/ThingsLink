@@ -7,58 +7,33 @@
         <template #header>
           <div class="flex items-center justify-between">
             <span class="font-semibold">分组树</span>
-            <el-button type="primary" size="small" @click="openGroupDialog">
+            <el-button 
+              v-if="isCurrentUserSuperAdmin" 
+              type="primary" 
+              size="small" 
+              @click="openGroupDialog"
+            >
               <el-icon><Plus /></el-icon>
               新建
             </el-button>
+            <el-tooltip v-else content="只有超级管理员才能创建分组" placement="top">
+              <el-button type="primary" size="small" disabled>
+                <el-icon><Plus /></el-icon>
+                新建
+              </el-button>
+            </el-tooltip>
           </div>
         </template>
         
-        <!-- 默认根分组 -->
-        <div
-          class="tree-item root-group"
-          :class="{ active: currentGroupId === 0 }"
-          @click="toggleRootGroup"
-        >
-          <div class="tree-item-content-root">
-            <el-icon class="expand-icon" :class="{ expanded: rootExpanded }">
-              <ArrowRight />
-            </el-icon>
-            <span>默认分组</span>
-          </div>
-        </div>
-        
         <!-- 分组树 -->
-        <div v-show="rootExpanded" class="group-children">
-        <div v-for="group in topLevelGroups" :key="group.id" class="tree-section">
-          <div
-            class="tree-item"
-            :class="{ active: currentGroupId === group.id }"
-            @click="selectGroup(group.id)"
-          >
-            <span class="group-name">{{ group.name }}</span>
-            <div class="tree-item-actions">
-              <el-button size="small" text @click.stop="editGroup(group)">编辑</el-button>
-              <el-button size="small" text type="danger" @click.stop="deleteGroup(group)">删除</el-button>
-            </div>
-          </div>
-          
-          <!-- 子分组 -->
-          <div v-for="child in getChildren(group.id)" :key="child.id" class="tree-item child">
-            <div
-              class="tree-item-content"
-              :class="{ active: currentGroupId === child.id }"
-              @click="selectGroup(child.id)"
-            >
-              <span class="group-name">{{ child.name }}</span>
-              <div class="tree-item-actions">
-                <el-button size="small" text @click.stop="editGroup(child)">编辑</el-button>
-                <el-button size="small" text type="danger" @click.stop="deleteGroup(child)">删除</el-button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+        <GroupTree 
+          :groups="groups" 
+          :current-group-id="currentGroupId"
+          :show-actions="isCurrentUserSuperAdmin"
+          @select="selectGroup"
+          @edit="editGroup"
+          @delete="deleteGroup"
+        />
       </el-card>
       
       <!-- 右侧：设备列表 -->
@@ -103,9 +78,9 @@
           <div class="form-hint">💡 同一父分组下名称必须唯一，但不同父分组下可以有同名子分组</div>
         </el-form-item>
         
-        <el-form-item label="父级分组">
-          <el-input value="默认分组" disabled />
-          <div class="form-hint">💡 所有分组都属于默认分组</div>
+       <el-form-item label="父级分组">
+          <el-input value="总分组" disabled />
+          <div class="form-hint">💡 所有分组都属于总分组，暂不支持多级嵌套</div>
         </el-form-item>
         
         <el-form-item label="分组描述">
@@ -129,9 +104,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, ArrowRight } from '@element-plus/icons-vue'
-import { getGroupList, createGroup, updateGroup, deleteGroup as apiDeleteGroup } from '@/api/group'
+import { Plus } from '@element-plus/icons-vue'
+import { getGroupTree, createGroup, updateGroup, deleteGroup as apiDeleteGroup } from '@/api/group'
 import { getDeviceList } from '@/api/device'
+import GroupTree from '@/components/GroupTree.vue'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -139,7 +115,16 @@ const dialogTitle = ref('创建分组')
 const isEditMode = ref(false)
 const groupFormRef = ref(null)
 const currentGroupId = ref(null)
-const rootExpanded = ref(true) // 根分组展开状态
+
+// 当前登录用户信息
+const currentUser = ref(null)
+
+// 判断当前用户是否为超级管理员
+const isCurrentUserSuperAdmin = computed(() => {
+  if (!currentUser.value) return false
+  // 根据 roleId 判断，roleId=1 为超级管理员
+  return currentUser.value.roleId === 1
+})
 
 // 分组数据
 const groups = ref([])
@@ -160,7 +145,7 @@ const rules = {
   name: [{ required: true, message: '请输入分组名称', trigger: 'blur' }]
 }
 
-// 顶级分组
+// 顶级分组（包括总分组和其他顶级分组）
 const topLevelGroups = computed(() => {
   return groups.value.filter(g => g.parentId === 0)
 })
@@ -191,10 +176,7 @@ const getChildren = (parentId) => {
   return groups.value.filter(g => g.parentId === parentId)
 }
 
-// 切换根分组展开/收起
-const toggleRootGroup = () => {
-  rootExpanded.value = !rootExpanded.value
-}
+
 
 // 选择分组
 const selectGroup = (id) => {
@@ -203,6 +185,12 @@ const selectGroup = (id) => {
 
 // 打开对话框
 const openGroupDialog = () => {
+  // 检查权限
+  if (!isCurrentUserSuperAdmin.value) {
+    ElMessage.warning('只有超级管理员才能创建分组')
+    return
+  }
+  
   dialogTitle.value = '创建分组'
   isEditMode.value = false
   dialogVisible.value = true
@@ -210,6 +198,18 @@ const openGroupDialog = () => {
 
 // 编辑分组
 const editGroup = (group) => {
+  // 检查权限
+  if (!isCurrentUserSuperAdmin.value) {
+    ElMessage.warning('只有超级管理员才能编辑分组')
+    return
+  }
+  
+  // 总分组（ID=1）不允许编辑
+  if (group.id === 1) {
+    ElMessage.warning('总分组不允许编辑')
+    return
+  }
+  
   dialogTitle.value = '编辑分组'
   isEditMode.value = true
   Object.assign(groupForm, group)
@@ -218,6 +218,18 @@ const editGroup = (group) => {
 
 // 删除分组
 const deleteGroup = async (group) => {
+  // 检查权限
+  if (!isCurrentUserSuperAdmin.value) {
+    ElMessage.warning('只有超级管理员才能删除分组')
+    return
+  }
+  
+  // 总分组（ID=1）不允许删除
+  if (group.id === 1) {
+    ElMessage.warning('总分组不允许删除')
+    return
+  }
+  
   // 检查是否有子分组
   const hasChildren = groups.value.some(g => g.parentId === group.id)
   
@@ -291,17 +303,13 @@ const saveGroup = async () => {
 const loadGroups = async () => {
   try {
     loading.value = true
-    const res = await getGroupList()
-    // 后端返回的数据结构是 {list: [...]}
-    groups.value = (res.list || []).map(item => ({
-      id: item.id,
-      name: item.name,
-      parentId: item.parentId || 0,
-      path: item.path,
-      level: item.level,
-      deviceCount: item.deviceCount || 0,
-      desc: item.description || ''
-    }))
+    const res = await getGroupTree()
+    // 后端返回的是树形结构 {tree: [...]}
+    // 需要扁平化树形数据为列表
+    groups.value = flattenTree(res.tree || [])
+    
+    console.log('=== 分组数据加载 ===', groups.value)
+    console.log('顶级分组 (parentId=0):', groups.value.filter(g => g.parentId === 0))
     
     // 如果有分组且没有选中，默认选中第一个顶级分组
     if (groups.value.length > 0 && !currentGroupId.value) {
@@ -316,6 +324,30 @@ const loadGroups = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 扁平化树形数据
+const flattenTree = (tree) => {
+  const result = []
+  const flatten = (nodes) => {
+    if (!Array.isArray(nodes)) return
+    nodes.forEach(node => {
+      result.push({
+        id: node.id,
+        name: node.name,
+        parentId: node.parentId || 0,
+        path: node.path,
+        level: node.level,
+        deviceCount: node.deviceCount || 0,
+        desc: node.description || ''
+      })
+      if (node.children && node.children.length > 0) {
+        flatten(node.children)
+      }
+    })
+  }
+  flatten(tree)
+  return result
 }
 
 // 加载设备列表
@@ -342,13 +374,19 @@ const resetForm = () => {
   Object.assign(groupForm, {
     id: null,
     name: '',
-    parentId: 0,
+    parentId: 1, // 默认父级为总分组（ID=1）
     desc: ''
   })
   groupFormRef.value?.clearValidate()
 }
 
 onMounted(() => {
+  // 加载当前用户信息
+  const userInfoData = localStorage.getItem('userInfo')
+  if (userInfoData) {
+    currentUser.value = JSON.parse(userInfoData)
+  }
+  
   // 加载分组和设备数据
   loadGroups()
   loadDevices()
@@ -415,8 +453,10 @@ onMounted(() => {
   transform: rotate(90deg);
 }
 
-.group-children {
+.tree-children {
   margin-left: 16px;
+  padding-left: 12px;
+  border-left: 2px solid #e5e7eb;
 }
 
 .tree-item:hover {

@@ -43,6 +43,12 @@ const routes = [
         meta: { title: '产品列表' }
       },
       {
+        path: 'products/:id',
+        name: 'ProductDetail',
+        component: () => import('../views/ProductDetail.vue'),
+        meta: { title: '产品详情' }
+      },
+      {
         path: 'products/attributes',
         name: 'ProductAttributes',
         component: () => import('../views/ProductAttributes.vue'),
