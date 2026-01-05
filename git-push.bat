@@ -78,20 +78,24 @@ if not errorlevel 1 (
     REM Use current directory and create backups folder
     set "BACKUP_DIR=backups"
     if not exist "%BACKUP_DIR%" (
-        echo [INFO] Creating backup directory: %CD%\%BACKUP_DIR%
+        echo [INFO] Creating backup directory...
         mkdir "%BACKUP_DIR%" 2>nul
         if errorlevel 1 (
-            echo [WARNING] Failed to create backup directory
+            echo [WARNING] Failed to create backup directory: %CD%\%BACKUP_DIR%
             echo [WARNING] Skipping database backup, continuing with code push
             goto :skip_backup
+        ) else (
+            echo [OK] Backup directory created: %CD%\%BACKUP_DIR%
         )
+    ) else (
+        echo [INFO] Backup directory already exists
     )
     set "BACKUP_FILE=%BACKUP_DIR%\iot_platform_latest.sql"
     
-    echo [INFO] Backing up database to: %CD%\%BACKUP_FILE%
+    echo [INFO] Backing up database...
     docker exec iot-mysql mysqldump -uroot -proot123456 iot_platform > "%BACKUP_FILE%" 2>&1
     if not errorlevel 1 (
-        echo [OK] Database backup completed
+        echo [OK] Database backup completed: %BACKUP_FILE%
     ) else (
         echo [WARNING] Database backup failed, continuing with code push
     )
