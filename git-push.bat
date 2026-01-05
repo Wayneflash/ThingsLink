@@ -1,46 +1,78 @@
 @echo off
-chcp 65001 >nul
 echo ========================================
-echo   ThingsLink Git 提交脚本
+echo   Git Push Script
 echo ========================================
 echo.
 
-REM 检查是否有未提交的更改
-git status --short
-if errorlevel 1 (
-    echo [错误] Git 仓库初始化失败
+REM Check if current directory is a Git repository
+if exist ".git" (
+    echo [INFO] Found Git repository in: %CD%
+    goto :found_git
+)
+
+REM Check subdirectories for Git repository (ThingsLink, etc.)
+echo [INFO] Checking subdirectories for Git repository...
+for /d %%d in (*) do (
+    if exist "%%d\.git" (
+        echo [INFO] Found Git repository in: %CD%\%%d
+        cd /d "%CD%\%%d"
+        goto :found_git
+    )
+)
+
+REM If not found, ask user for project path
+echo [INFO] Git repository not found in current directory or subdirectories
+echo Current directory: %CD%
+echo.
+set /p project_path=Enter your project path (or press Enter to exit): 
+
+if "%project_path%"=="" (
+    echo [ERROR] Please navigate to your project directory first
+    echo Example: cd /d "E:\IOT"
     pause
     exit /b 1
 )
 
+REM Check if the entered path is valid
+if not exist "%project_path%\.git" (
+    echo [ERROR] Not a valid Git repository: %project_path%
+    echo Please make sure the path contains a .git folder
+    pause
+    exit /b 1
+)
+
+cd /d "%project_path%"
+echo [INFO] Changed to: %CD%
+
+:found_git
 echo.
-set /p commit_msg=请输入提交信息 (直接回车使用默认信息): 
+set /p commit_msg=Enter commit message (press Enter for default): 
 
 if "%commit_msg%"=="" (
-    set commit_msg=Update: 更新代码
+    set commit_msg=Update code
 )
 
 echo.
-echo [1/3] 添加所有更改...
+echo [1/3] Adding changes...
 git add .
 
-echo [2/3] 提交代码...
+echo [2/3] Committing...
 git commit -m "%commit_msg%"
 
-echo [3/3] 推送到 GitHub...
+echo [3/3] Pushing to GitHub...
 git push origin main
 
 if errorlevel 1 (
     echo.
-    echo [警告] 推送失败，尝试强制推送...
+    echo [WARNING] Push failed, trying force push...
     git push origin main --force
 )
 
 echo.
 echo ========================================
-echo   提交完成！
+echo   Done!
 echo ========================================
 echo.
-echo 仓库地址: https://github.com/Wayneflash/ThingsLink
+echo Repository: https://github.com/Wayneflash/ThingsLink
 echo.
 pause
