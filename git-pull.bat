@@ -1,8 +1,17 @@
 @echo off
 echo ========================================
-echo   Git Pull Script
+echo   Git Pull Script (Pull Code+Backup)
 echo ========================================
 echo.
+
+REM Check if Git is installed
+where git >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Git not installed, please install Git first
+    echo Download: https://git-scm.com/download/win
+    pause
+    exit /b 1
+)
 
 REM Check if current directory is a Git repository
 if exist ".git" (
@@ -10,7 +19,7 @@ if exist ".git" (
     goto :found_git
 )
 
-REM Check subdirectories for Git repository (ThingsLink, etc.)
+REM Check subdirectories for Git repository
 echo [INFO] Checking subdirectories for Git repository...
 for /d %%d in (*) do (
     if exist "%%d\.git" (
@@ -64,5 +73,8 @@ echo.
 echo ========================================
 echo   Done!
 echo ========================================
+echo.
+echo Latest code pulled (including database backup file)
+echo To start services, run: start-all-services.bat
 echo.
 pause

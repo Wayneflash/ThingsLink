@@ -1,8 +1,17 @@
 @echo off
 echo ========================================
-echo   Git Push Script
+echo   Git Push Script (Backup+Commit+Push)
 echo ========================================
 echo.
+
+REM Check if Git is installed
+where git >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Git not installed, please install Git first
+    echo Download: https://git-scm.com/download/win
+    pause
+    exit /b 1
+)
 
 REM Check if current directory is a Git repository
 if exist ".git" (
@@ -10,7 +19,7 @@ if exist ".git" (
     goto :found_git
 )
 
-REM Check subdirectories for Git repository (ThingsLink, etc.)
+REM Check subdirectories for Git repository
 echo [INFO] Checking subdirectories for Git repository...
 for /d %%d in (*) do (
     if exist "%%d\.git" (
@@ -52,21 +61,75 @@ if "%commit_msg%"=="" (
     set commit_msg=Update code
 )
 
+REM Auto backup database (if Docker is running)
 echo.
-echo [1/3] Adding changes...
+echo [0/4] Checking if database backup is needed...
+REM Check if Docker is available
+where docker >nul 2>&1
+if errorlevel 1 (
+    echo [INFO] Docker not installed or not in PATH, skipping database backup
+    goto :skip_backup
+)
+
+docker ps --filter "name=iot-mysql" --format "{{.Names}}" 2>nul | findstr /i "iot-mysql" >nul 2>&1
+if not errorlevel 1 (
+    echo [INFO] MySQL container is running, backing up database...
+    set "BACKUP_DIR=%CD%\backups"
+    if not exist "%BACKUP_DIR%" (
+        mkdir "%BACKUP_DIR%" 2>nul
+    )
+    set "BACKUP_FILE=%BACKUP_DIR%\iot_platform_latest.sql"
+    
+    docker exec iot-mysql mysqldump -uroot -proot123456 iot_platform > "%BACKUP_FILE%" 2>nul
+    if not errorlevel 1 (
+        echo [OK] Database backup completed
+    ) else (
+        echo [WARNING] Database backup failed, continuing with code push
+    )
+) else (
+    echo [INFO] MySQL container is not running, skipping database backup
+)
+:skip_backup
+
+echo.
+echo [1/4] Adding changes...
 git add .
+if errorlevel 1 (
+    echo [ERROR] Git add failed
+    pause
+    exit /b 1
+)
 
-echo [2/3] Committing...
+echo [2/4] Committing...
 git commit -m "%commit_msg%"
+if errorlevel 1 (
+    echo [WARNING] Commit failed, may be no changes to commit
+    echo Continuing with push...
+)
 
-echo [3/3] Pushing to GitHub...
+echo [3/4] Pushing to GitHub...
 git push origin main
 
 if errorlevel 1 (
     echo.
     echo [WARNING] Push failed, trying force push...
-    git push origin main --force
+    set /p force_confirm=Force push? (y/n): 
+    if /i "%force_confirm%"=="y" (
+        git push origin main --force
+        if errorlevel 1 (
+            echo [ERROR] Force push also failed
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo Push cancelled
+        pause
+        exit /b 1
+    )
 )
+
+echo.
+echo [4/4] Push completed!
 
 echo.
 echo ========================================
