@@ -75,20 +75,23 @@ if errorlevel 1 (
 docker ps --filter "name=iot-mysql" --format "{{.Names}}" 2>nul | findstr /i "iot-mysql" >nul 2>&1
 if not errorlevel 1 (
     echo [INFO] MySQL container is running, backing up database...
-    set "BACKUP_DIR=%CD%\backups"
+    REM Use current directory and create backups folder
+    set "BACKUP_DIR=backups"
     if not exist "%BACKUP_DIR%" (
-        mkdir "%BACKUP_DIR%"
+        echo [INFO] Creating backup directory: %CD%\%BACKUP_DIR%
+        mkdir "%BACKUP_DIR%" 2>nul
         if errorlevel 1 (
-            echo [WARNING] Failed to create backup directory: %BACKUP_DIR%
+            echo [WARNING] Failed to create backup directory
             echo [WARNING] Skipping database backup, continuing with code push
             goto :skip_backup
         )
     )
     set "BACKUP_FILE=%BACKUP_DIR%\iot_platform_latest.sql"
     
+    echo [INFO] Backing up database to: %CD%\%BACKUP_FILE%
     docker exec iot-mysql mysqldump -uroot -proot123456 iot_platform > "%BACKUP_FILE%" 2>&1
     if not errorlevel 1 (
-        echo [OK] Database backup completed: %BACKUP_FILE%
+        echo [OK] Database backup completed
     ) else (
         echo [WARNING] Database backup failed, continuing with code push
     )
