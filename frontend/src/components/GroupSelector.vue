@@ -127,10 +127,13 @@ const selectedValue = computed({
 const loadGroups = async () => {
   try {
     loading.value = true
+    console.log('=== GroupSelector 开始加载分组 ===')
     const res = await getGroupTree()
+    console.log('=== GroupSelector 接口返回 ===', JSON.stringify(res, null, 2))
     // 直接使用后端返回的树形数据
     groupsData.value = res.tree || []
-    console.log('GroupSelector - 加载的分组数据:', groupsData.value)
+    console.log('=== GroupSelector 树形数据 ===', JSON.stringify(groupsData.value, null, 2))
+    console.log('=== GroupSelector 分组数量 ===', groupsData.value.length)
     emit('loaded', groupsData.value)
   } catch (error) {
     console.error('加载分组数据失败:', error)

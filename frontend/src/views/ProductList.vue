@@ -151,7 +151,7 @@ const formRules = {
 const loadProducts = async () => {
   try {
     console.log('开始加载产品列表...')
-    const res = await productApi.list()
+    const res = await productApi.getProductList()
     console.log('产品列表响应:', JSON.stringify(res, null, 2))
     
     if (!res) {
@@ -160,29 +160,20 @@ const loadProducts = async () => {
       return
     }
     
-    if (res.code === 200) {
-      console.log('res.data:', res.data)
-      if (res.data) {
-        if (res.data.list && Array.isArray(res.data.list)) {
-          console.log('使用 res.data.list，长度:', res.data.list.length)
-          products.value = res.data.list
-        } else if (Array.isArray(res.data)) {
-          console.log('使用 res.data，长度:', res.data.length)
-          products.value = res.data
-        } else {
-          console.warn('数据格式不正确:', typeof res.data)
-          products.value = []
-        }
-      } else {
-        console.warn('res.data 为空')
-        products.value = []
-      }
-      console.log('最终 products.value:', products.value)
-      console.log('产品数量:', products.value.length)
+    // res 是后端返回的 data 字段，包含 {list, total, page, pageSize, totalPages}
+    if (res.list && Array.isArray(res.list)) {
+      console.log('使用 res.list，长度:', res.list.length)
+      products.value = res.list
+    } else if (Array.isArray(res)) {
+      console.log('使用 res，长度:', res.length)
+      products.value = res
     } else {
-      console.error('响应码错误:', res.code, res.message)
-      ElMessage.error(res.message || '加载失败')
+      console.warn('数据格式不正确:', typeof res)
+      products.value = []
     }
+    
+    console.log('最终 products.value:', products.value)
+    console.log('产品数量:', products.value.length)
   } catch (error) {
     console.error('加载产品列表失败:', error)
     console.error('错误堆栈:', error.stack)
@@ -239,7 +230,7 @@ const submitProduct = async () => {
     
     if (isEditMode.value) {
       // 编辑模式
-      const res = await productApi.update({
+      const res = await productApi.updateProduct({
         id: productForm.value.id,
         productName: productForm.value.productName,
         productModel: productForm.value.productModel,
@@ -247,29 +238,25 @@ const submitProduct = async () => {
         description: productForm.value.description
       })
       
-      if (res.code === 200) {
-        ElMessage.success('产品信息已更新')
-        productDialogVisible.value = false
-        loadProducts()
-      }
+      ElMessage.success('产品信息已更新')
+      productDialogVisible.value = false
+      loadProducts()
     } else {
       // 创建模式
-      const res = await productApi.create({
+      const res = await productApi.createProduct({
         name: productForm.value.productName,
         code: productForm.value.productModel,
         protocol: productForm.value.protocol,
         description: productForm.value.description
       })
       
-      if (res.code === 200) {
-        ElMessage.success('✅ 产品创建成功！')
-        productDialogVisible.value = false
-        // 创建成功后跳转到详情页
-        if (res.data && res.data.id) {
-          router.push(`/products/${res.data.id}`)
-        } else {
-          loadProducts()
-        }
+      ElMessage.success('✅ 产品创建成功！')
+      productDialogVisible.value = false
+      // 创建成功后跳转到详情页
+      if (res && res.id) {
+        router.push(`/products/${res.id}`)
+      } else {
+        loadProducts()
       }
     }
   } catch (error) {
@@ -298,11 +285,9 @@ const deleteProduct = async (row) => {
       }
     )
     
-    const res = await productApi.delete(row.id)
-    if (res.code === 200) {
-      ElMessage.success('产品已删除')
-      loadProducts()
-    }
+    await productApi.deleteProduct(row.id)
+    ElMessage.success('产品已删除')
+    loadProducts()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除产品失败:', error)

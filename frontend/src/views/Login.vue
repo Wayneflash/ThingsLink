@@ -7,8 +7,8 @@
           <div class="logo-icon">
             <el-icon :size="48"><Connection /></el-icon>
           </div>
-          <h1 class="logo-title">物联网平台</h1>
-          <p class="logo-subtitle">IoT Platform</p>
+          <h1 class="logo-title">ThingsLink</h1>
+          <p class="logo-subtitle">物联网平台</p>
         </div>
         <div class="feature-list">
           <div class="feature-item">
@@ -83,21 +83,7 @@
           </el-form-item>
         </el-form>
 
-        <div class="login-tips">
-          <el-alert
-            title="测试账号"
-            type="info"
-            :closable="false"
-            show-icon
-          >
-            <template #default>
-              <div class="tips-content">
-                <div>用户名：<strong>admin</strong></div>
-                <div>密码：<strong>admin123456</strong></div>
-              </div>
-            </template>
-          </el-alert>
-        </div>
+
       </div>
     </div>
   </div>
@@ -117,8 +103,8 @@ const loading = ref(false)
 
 // 登录表单
 const loginForm = reactive({
-  username: 'admin',
-  password: 'admin123456'
+  username: '',
+  password: ''
 })
 
 // 表单验证规则

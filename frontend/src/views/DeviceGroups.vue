@@ -29,7 +29,7 @@
         <GroupTree 
           :groups="groups" 
           :current-group-id="currentGroupId"
-          :show-actions="isCurrentUserSuperAdmin"
+          :show-actions="true"
           @select="selectGroup"
           @edit="editGroup"
           @delete="deleteGroup"
@@ -45,14 +45,14 @@
         </template>
         
         <el-table :data="deviceList" stripe v-loading="loading">
-          <el-table-column prop="name" label="设备名称" min-width="150" />
-          <el-table-column prop="code" label="设备编码" min-width="150" />
-          <el-table-column prop="product" label="产品类型" min-width="120" />
-          <el-table-column prop="group" label="所属分组" min-width="120" />
+          <el-table-column prop="deviceName" label="设备名称" min-width="150" />
+          <el-table-column prop="deviceCode" label="设备编码" min-width="150" />
+          <el-table-column prop="productName" label="产品类型" min-width="120" />
+          <el-table-column prop="groupName" label="所属分组" min-width="120" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.status === 'online' ? 'success' : 'info'" size="small">
-                {{ row.status === 'online' ? '在线' : '离线' }}
+              <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
+                {{ row.status === 1 ? '在线' : '离线' }}
               </el-tag>
             </template>
           </el-table-column>
@@ -166,9 +166,18 @@ const currentGroupTitle = computed(() => {
 
 // 设备列表
 const deviceList = computed(() => {
-  if (!currentGroupId.value) return []
-  // 根据 currentGroupId 过滤设备
-  return mockDevices.value.filter(d => d.groupId === currentGroupId.value)
+  console.log('deviceList computed, mockDevices:', mockDevices.value)
+  console.log('currentGroupId:', currentGroupId.value)
+  
+  if (!currentGroupId.value) {
+    console.log('没有选中分组，返回空列表')
+    return []
+  }
+  
+  // 直接返回 mockDevices，不进行过滤
+  // 因为 loadDevices 已经根据 groupId 过滤过了
+  console.log('返回设备列表，数量:', mockDevices.value.length)
+  return mockDevices.value
 })
 
 // 获取子分组
@@ -179,8 +188,11 @@ const getChildren = (parentId) => {
 
 
 // 选择分组
-const selectGroup = (id) => {
+const selectGroup = async (id) => {
+  console.log('选中分组:', id)
   currentGroupId.value = id
+  // 立即加载该分组下的设备
+  await loadDevices()
 }
 
 // 打开对话框
@@ -204,8 +216,8 @@ const editGroup = (group) => {
     return
   }
   
-  // 总分组（ID=1）不允许编辑
-  if (group.id === 1) {
+  // 总分组（parentId=0或null）不允许编辑
+  if (group.parentId === 0 || group.parentId === null) {
     ElMessage.warning('总分组不允许编辑')
     return
   }
@@ -224,8 +236,8 @@ const deleteGroup = async (group) => {
     return
   }
   
-  // 总分组（ID=1）不允许删除
-  if (group.id === 1) {
+  // 总分组（parentId=0或null）不允许删除
+  if (group.parentId === 0 || group.parentId === null) {
     ElMessage.warning('总分组不允许删除')
     return
   }
@@ -280,10 +292,16 @@ const saveGroup = async () => {
           })
           ElMessage.success('分组修改成功')
         } else {
-          // 调用创建接口
+          // 调用创建接口，使用 groupName 字段
+          const rootGroup = groups.value.find(g => g.parentId === 0 || g.parentId === null)
           await createGroup({
-            name: groupForm.name,
-            parentId: groupForm.parentId,
+            groupName: groupForm.name,  // 后端期望 groupName
+            parentId: rootGroup ? rootGroup.id : 0,  // 确保 parentId 是总分组ID
+            description: groupForm.desc
+          })
+          console.log('创建分组参数:', {
+            groupName: groupForm.name,
+            parentId: rootGroup ? rootGroup.id : 0,
             description: groupForm.desc
           })
           ElMessage.success('分组创建成功')
@@ -293,6 +311,7 @@ const saveGroup = async () => {
         await loadGroups()
         dialogVisible.value = false
       } catch (error) {
+        console.error('保存分组失败:', error)
         ElMessage.error(error.message || '操作失败')
       }
     }
@@ -352,29 +371,41 @@ const flattenTree = (tree) => {
 
 // 加载设备列表
 const loadDevices = async () => {
+  console.log('loadDevices 被调用, currentGroupId:', currentGroupId.value)
+  
   if (!currentGroupId.value) {
+    console.log('没有选中分组，清空设备列表')
     mockDevices.value = []
     return
   }
   
   try {
+    loading.value = true
+    console.log('开始加载设备，groupId:', currentGroupId.value)
     const res = await getDeviceList({
       page: 1,
       pageSize: 100,
       groupId: currentGroupId.value
     })
+    console.log('设备列表加载成功:', res)
     mockDevices.value = res.list || []
+    console.log('设备数量:', mockDevices.value.length)
   } catch (error) {
     console.error('加载设备失败:', error)
+    mockDevices.value = []
+  } finally {
+    loading.value = false
   }
 }
 
 // 重置表单
 const resetForm = () => {
+  // 动态获取总分组ID
+  const rootGroup = groups.value.find(g => g.parentId === 0 || g.parentId === null)
   Object.assign(groupForm, {
     id: null,
     name: '',
-    parentId: 1, // 默认父级为总分组（ID=1）
+    parentId: rootGroup ? rootGroup.id : 0, // 默认父级为总分组（动态获取）
     desc: ''
   })
   groupFormRef.value?.clearValidate()
@@ -496,7 +527,7 @@ onMounted(() => {
 .tree-item-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 16px;
 }
 
 .device-count {

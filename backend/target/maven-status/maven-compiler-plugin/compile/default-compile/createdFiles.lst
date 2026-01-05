@@ -15,8 +15,10 @@ com\iot\platform\controller\UserController$CreateUserRequest.class
 com\iot\platform\controller\RoleController$PermissionItem.class
 com\iot\platform\controller\StatisticsController.class
 com\iot\platform\controller\DeviceDataController.class
+com\iot\platform\controller\SystemController.class
 com\iot\platform\controller\CommandController$CommandItem.class
 com\iot\platform\controller\ProductController.class
+com\iot\platform\task\DeviceStatusCheckTask.class
 com\iot\platform\mapper\UserMapper.class
 com\iot\platform\controller\AuthController$LoginRequest.class
 com\iot\platform\entity\DeviceGroup.class

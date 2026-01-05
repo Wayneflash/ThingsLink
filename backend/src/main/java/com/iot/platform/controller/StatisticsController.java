@@ -41,11 +41,11 @@ public class StatisticsController {
         try {
             Map<String, Object> result = new HashMap<>();
             
-            // 设备统计
-            Map<String, Long> deviceStats = deviceService.getDeviceStatistics();
-            result.put("deviceTotal", deviceStats.get("total"));
-            result.put("deviceOnline", deviceStats.get("online"));
-            result.put("deviceOffline", deviceStats.get("offline"));
+            // 设备统计（不限制分组，返回所有设备）
+            Map<String, Object> deviceStats = deviceService.getDeviceStatistics(null);
+            result.put("deviceTotal", deviceStats.get("totalDevices"));
+            result.put("deviceOnline", deviceStats.get("onlineDevices"));
+            result.put("deviceOffline", deviceStats.get("offlineDevices"));
             
             // 其他统计信息
             result.put("alarmCount", 0); // 暂时设为0，后续可实现告警统计

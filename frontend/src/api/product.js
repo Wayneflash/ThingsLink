@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 /**
  * 产品管理 API
- * 所有接口使用 POST 方法，响应结构统一为 {code, data, message}
+ * 所有接口使用 POST 方法（除部分 GET 接口外），响应结构统一为 {code, data, message}
  */
 
 /**
@@ -25,11 +25,11 @@ export const getProductList = (params) => {
 /**
  * 创建产品
  * @param {Object} data - 产品信息
- * @param {string} data.name - 产品名称
- * @param {string} data.code - 产品型号/编码
+ * @param {string} data.name - 产品名称（或 productName）
+ * @param {string} data.code - 产品型号/编码（或 productModel）
  * @param {string} data.protocol - 协议类型 (MQTT/HTTP等）
  * @param {string} data.description - 产品描述
- * @param {number} data.status - 状态 (1:启用, 0:禁用）
+ * @param {number} data.status - 状态 (1:启用, 0:禁用)
  * @returns {Promise} 返回创建的产品信息
  */
 export const createProduct = (data) => {
@@ -117,6 +117,19 @@ export const getProductAttributes = (productId) => {
 }
 
 /**
+ * 删除产品属性
+ * @param {number} id - 属性ID
+ * @returns {Promise} 返回删除结果
+ */
+export const deleteProductAttribute = (id) => {
+  return request({
+    url: '/products/attribute/delete',
+    method: 'post',
+    data: { id }
+  })
+}
+
+/**
  * 添加产品命令
  * @param {Object} data - 命令信息
  * @param {number} data.productId - 产品ID
@@ -145,6 +158,19 @@ export const getProductCommands = (productId) => {
   })
 }
 
+/**
+ * 删除产品命令
+ * @param {number} id - 命令ID
+ * @returns {Promise} 返回删除结果
+ */
+export const deleteProductCommand = (id) => {
+  return request({
+    url: '/products/command/delete',
+    method: 'post',
+    data: { id }
+  })
+}
+
 export default {
   getProductList,
   createProduct,
@@ -153,6 +179,8 @@ export default {
   deleteProduct,
   addProductAttribute,
   getProductAttributes,
+  deleteProductAttribute,
   addProductCommand,
-  getProductCommands
+  getProductCommands,
+  deleteProductCommand
 }

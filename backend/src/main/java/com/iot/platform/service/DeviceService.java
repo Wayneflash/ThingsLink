@@ -16,10 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * 设备管理服务
@@ -30,6 +29,9 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
     
     @Resource
     private ProductService productService;
+    
+    @Resource
+    private DeviceGroupService deviceGroupService;
     
     @Resource
     private StringRedisTemplate stringRedisTemplate;
@@ -73,12 +75,44 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
     }
     
     /**
+     * 获取指定分组及其所有下级分组ID列表
+     */
+    public List<Long> getAllSubGroupIds(Long groupId) {
+        List<Long> result = new ArrayList<>();
+        result.add(groupId); // 包含当前分组
+        
+        // 递归查找所有下级分组
+        List<com.iot.platform.entity.DeviceGroup> allGroups = deviceGroupService.getTreeList();
+        collectSubGroupIds(groupId, allGroups, result);
+        
+        return result;
+    }
+    
+    /**
+     * 递归收集下级分组ID
+     */
+    private void collectSubGroupIds(Long parentId, List<com.iot.platform.entity.DeviceGroup> allGroups, List<Long> result) {
+        for (com.iot.platform.entity.DeviceGroup group : allGroups) {
+            if (parentId.equals(group.getParentId())) {
+                result.add(group.getId());
+                // 递归查找下级
+                collectSubGroupIds(group.getId(), allGroups, result);
+            }
+        }
+    }
+    
+    /**
      * 分页查询设备列表
      */
     public IPage<Device> getDevicePage(int page, int pageSize, String keyword, 
-                                       Long productId, Long groupId, Integer status) {
+                                       Long productId, Long groupId, Integer status, List<Long> allowedGroupIds) {
         Page<Device> pageParam = new Page<>(page, pageSize);
         LambdaQueryWrapper<Device> query = new LambdaQueryWrapper<>();
+        
+        // 数据权限过滤：限制分组范围
+        if (allowedGroupIds != null && !allowedGroupIds.isEmpty()) {
+            query.in(Device::getGroupId, allowedGroupIds);
+        }
         
         // 关键词搜索
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -123,6 +157,12 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
         // 获取产品信息
         Product product = productService.getById(device.getProductId());
         
+        // 获取分组信息
+        com.iot.platform.entity.DeviceGroup group = null;
+        if (device.getGroupId() != null) {
+            group = deviceGroupService.getById(device.getGroupId());
+        }
+        
         // 获取产品属性定义
         List<Attribute> productAttrs = productService.getProductAttributes(device.getProductId());
         
@@ -138,8 +178,10 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
         result.put("productId", device.getProductId());
         result.put("productName", product != null ? product.getProductName() : "");
         result.put("groupId", device.getGroupId());
+        result.put("groupName", group != null ? group.getGroupName() : ""); // 添加分组名称
         result.put("status", device.getStatus());
         result.put("lastOnlineTime", device.getLastOnlineTime());
+        result.put("createTime", device.getCreateTime()); // 添加创建时间
         result.put("productAttrs", productAttrs);
         result.put("latestData", latestDataMap);
         
@@ -205,11 +247,10 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
         device.setLastOnlineTime(LocalDateTime.now());
         this.updateById(device);
         
-        // 更新 Redis 缓存
+        // 更新 Redis 缓存，固定3分钟超时
         String key = DEVICE_ONLINE_KEY + deviceCode;
         if (online) {
-            stringRedisTemplate.opsForValue().set(key, "1", 
-                device.getOfflineTimeout(), TimeUnit.SECONDS);
+            stringRedisTemplate.opsForValue().set(key, "1", 180, TimeUnit.SECONDS);
         } else {
             stringRedisTemplate.delete(key);
         }
@@ -223,9 +264,9 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
     public void refreshHeartbeat(String deviceCode) {
         Device device = getByDeviceCode(deviceCode);
         if (device != null) {
+            // 设备心跳，3分钟超时
             String key = DEVICE_ONLINE_KEY + deviceCode;
-            stringRedisTemplate.opsForValue().set(key, "1", 
-                device.getOfflineTimeout(), TimeUnit.SECONDS);
+            stringRedisTemplate.opsForValue().set(key, "1", 180, TimeUnit.SECONDS);
             
             // 如果设备状态是离线，更新为在线
             if (device.getStatus() == 0) {
@@ -235,25 +276,89 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
     }
     
     /**
-     * 统计设备数量
+     * 统计设备数据
      */
-    public Map<String, Long> getDeviceStatistics() {
-        Map<String, Long> stats = new HashMap<>();
+    public Map<String, Object> getDeviceStatistics(List<Long> allowedGroupIds) {
+        Map<String, Object> stats = new HashMap<>();
+        
+        // 构建基础查询条件
+        LambdaQueryWrapper<Device> baseQuery = new LambdaQueryWrapper<>();
+        if (allowedGroupIds != null && !allowedGroupIds.isEmpty()) {
+            baseQuery.in(Device::getGroupId, allowedGroupIds);
+        }
         
         // 设备总数
-        long total = this.count();
+        long total = this.count(baseQuery);
         
         // 在线设备数
         LambdaQueryWrapper<Device> onlineQuery = new LambdaQueryWrapper<>();
+        if (allowedGroupIds != null && !allowedGroupIds.isEmpty()) {
+            onlineQuery.in(Device::getGroupId, allowedGroupIds);
+        }
         onlineQuery.eq(Device::getStatus, 1);
         long online = this.count(onlineQuery);
         
         // 离线设备数
         long offline = total - online;
         
-        stats.put("total", total);
-        stats.put("online", online);
-        stats.put("offline", offline);
+        stats.put("totalDevices", total);
+        stats.put("onlineDevices", online);
+        stats.put("offlineDevices", offline);
+        
+        // 今日数据量（由 Controller 层补充）
+        stats.put("todayDataCount", 0L);
+        
+        // 产品分布
+        try {
+            List<Map<String, Object>> productDistribution = new ArrayList<>();
+            List<Device> devices = this.list(baseQuery);
+            Map<Long, Long> productCountMap = devices.stream()
+                .collect(Collectors.groupingBy(Device::getProductId, Collectors.counting()));
+            
+            for (Map.Entry<Long, Long> entry : productCountMap.entrySet()) {
+                Product product = productService.getById(entry.getKey());
+                if (product != null) {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("productName", product.getProductName());
+                    item.put("count", entry.getValue());
+                    productDistribution.add(item);
+                }
+            }
+            stats.put("productDistribution", productDistribution);
+            
+            // 产品总数：统计产品表的总数，而不是设备使用的产品数
+            long totalProductCount = productService.count();
+            stats.put("productCount", totalProductCount);
+        } catch (Exception e) {
+            log.error("统计产品分布失败", e);
+            stats.put("productDistribution", new ArrayList<>());
+            stats.put("productCount", 0);
+        }
+        
+        // 最近更新的设备（最夒5个）
+        try {
+            LambdaQueryWrapper<Device> recentQuery = new LambdaQueryWrapper<>();
+            if (allowedGroupIds != null && !allowedGroupIds.isEmpty()) {
+                recentQuery.in(Device::getGroupId, allowedGroupIds);
+            }
+            recentQuery.orderByDesc(Device::getLastOnlineTime)
+                       .last("LIMIT 5");
+            List<Device> recentDevices = this.list(recentQuery);
+            
+            List<Map<String, Object>> recentList = recentDevices.stream().map(device -> {
+                Map<String, Object> item = new HashMap<>();
+                item.put("deviceCode", device.getDeviceCode());
+                item.put("deviceName", device.getDeviceName());
+                item.put("lastOnlineTime", device.getLastOnlineTime());
+                item.put("status", device.getStatus()); // 添加设备状态
+                return item;
+            }).collect(Collectors.toList());
+            
+            stats.put("recentDevices", recentList);
+        } catch (Exception e) {
+            log.error("统计最近更新设备失败", e);
+            stats.put("recentDevices", new ArrayList<>());
+        }
         
         return stats;
     }

@@ -141,7 +141,7 @@ public class DeviceGroupController {
     }
     
     /**
-     * 构建用户权限内的分组树（只返回用户所属分组及其子分组）
+     * 构建用户权限内的分组树（只返回用户所属分组及其子孙分组）
      */
     private java.util.List<Map<String, Object>> buildUserGroupTree(List<DeviceGroup> allGroups, Long userGroupId) {
         java.util.List<Map<String, Object>> tree = new java.util.ArrayList<>();
@@ -153,14 +153,15 @@ public class DeviceGroupController {
             .orElse(null);
         
         if (userGroup != null) {
+            // 以用户所属分组为根，构建子树
             Map<String, Object> node = new java.util.LinkedHashMap<>();
             node.put("id", userGroup.getId());
             node.put("name", userGroup.getGroupName());
             node.put("icon", null);
-            node.put("parentId", userGroup.getParentId());
-            node.put("path", buildGroupPath(userGroup.getId(), allGroups));
+            node.put("parentId", 0L);  // 将用户分组设为根节点，parentId设为0
+            node.put("path", userGroup.getGroupName());  // 路径从当前分组开始
             node.put("deviceCount", 0);
-            node.put("level", calculateLevel(userGroup.getId(), allGroups));
+            node.put("level", 1);  // 层级设为1（作为根节点）
             node.put("sort", userGroup.getSort());
             node.put("description", userGroup.getDescription());
             // 递归构建子分组

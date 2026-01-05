@@ -102,15 +102,37 @@ public class ProductController {
             String keyword = request.get("keyword") != null ? (String) request.get("keyword") : null;
             String category = request.get("category") != null ? (String) request.get("category") : null;
             
-            List<Product> list = productService.list(); // 暂时返回所有产品，后续可添加分页和筛选逻辑
+            List<Product> productList = productService.list(); // 暂时返回所有产品，后续可添加分页和筛选逻辑
+            
+            // 为每个产品添加属性和命令数量
+            List<Map<String, Object>> enrichedList = new java.util.ArrayList<>();
+            for (Product product : productList) {
+                Map<String, Object> productMap = new java.util.LinkedHashMap<>();
+                productMap.put("id", product.getId());
+                productMap.put("productName", product.getProductName());
+                productMap.put("productModel", product.getProductModel());
+                productMap.put("protocol", product.getProtocol());
+                productMap.put("description", product.getDescription());
+                productMap.put("status", product.getStatus());
+                productMap.put("createTime", product.getCreateTime());
+                productMap.put("updateTime", product.getUpdateTime());
+                
+                // 统计属性和命令数量
+                List<Attribute> attributes = productService.getProductAttributes(product.getId());
+                List<Command> commands = productService.getProductCommands(product.getId());
+                productMap.put("attrCount", attributes != null ? attributes.size() : 0);
+                productMap.put("cmdCount", commands != null ? commands.size() : 0);
+                
+                enrichedList.add(productMap);
+            }
             
             // 构建返回结果
             Map<String, Object> result = new HashMap<>();
-            result.put("total", list.size());
+            result.put("total", enrichedList.size());
             result.put("page", page);
             result.put("pageSize", pageSize);
-            result.put("totalPages", (int) Math.ceil((double) list.size() / pageSize));
-            result.put("list", list);
+            result.put("totalPages", (int) Math.ceil((double) enrichedList.size() / pageSize));
+            result.put("list", enrichedList);
             
             return Result.success(result);
         } catch (Exception e) {

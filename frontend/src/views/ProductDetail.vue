@@ -83,8 +83,8 @@
           <div v-else class="attr-list">
             <div v-for="attr in attributes" :key="attr.id" class="list-card">
               <div class="list-card-main">
-                <div class="list-card-title">{{ attr.identifier }} - {{ attr.name }}</div>
-                <div class="list-card-desc">类型：{{ attr.type }} | 单位：{{ attr.unit || '无' }}</div>
+                <div class="list-card-title">{{ attr.addr }} - {{ attr.attrName }}</div>
+                <div class="list-card-desc">类型：{{ attr.dataType }} | 单位：{{ attr.unit || '无' }}</div>
               </div>
               <div class="list-card-actions">
                 <el-button size="small" type="danger" @click="deleteAttribute(attr)">删除</el-button>
@@ -106,8 +106,8 @@
           <div v-else class="cmd-list">
             <div v-for="cmd in commands" :key="cmd.id" class="list-card">
               <div class="list-card-main">
-                <div class="list-card-title">{{ cmd.name }}</div>
-                <div class="list-card-desc">控制属性：{{ cmd.attr }} | 下发值：{{ cmd.value }}</div>
+                <div class="list-card-title">{{ cmd.commandName }}</div>
+                <div class="list-card-desc">控制属性：{{ cmd.addr }} | 下发值：{{ cmd.commandValue }}</div>
               </div>
               <div class="list-card-actions">
                 <el-button size="small" type="danger" @click="deleteCommand(cmd)">删除</el-button>
@@ -157,20 +157,21 @@
       width="600px"
     >
       <el-form :model="attrForm" label-width="120px" :rules="attrRules" ref="attrFormRef">
-        <el-form-item label="属性标识符" prop="identifier">
-          <el-input v-model="attrForm.identifier" placeholder="如：tem、hum、battery" />
+        <el-form-item label="属性标识符" prop="addr">
+          <el-input v-model="attrForm.addr" placeholder="如：tem、hum、battery" />
           <div class="input-hint">💡 英文标识符，用于数据上报的字段名，建议使用小写字母+下划线</div>
         </el-form-item>
-        <el-form-item label="属性名称" prop="name">
-          <el-input v-model="attrForm.name" placeholder="如：温度、湿度、电池电量" />
+        <el-form-item label="属性名称" prop="attrName">
+          <el-input v-model="attrForm.attrName" placeholder="如：温度、湿度、电池电量" />
           <div class="input-hint">💡 中文显示名称，方便理解属性含义</div>
         </el-form-item>
-        <el-form-item label="数据类型" prop="type">
-          <el-select v-model="attrForm.type" placeholder="请选择数据类型" style="width: 100%;">
+        <el-form-item label="数据类型" prop="dataType">
+          <el-select v-model="attrForm.dataType" placeholder="请选择数据类型" style="width: 100%;">
             <el-option label="整数 (int) - 如状态、计数" value="int" />
             <el-option label="浮点数 (float) - 如温度、湿度" value="float" />
-            <el-option label="字符串 (string) - 如文本、描述" value="string" />
-            <el-option label="布尔 (bool) - 如开关状态" value="bool" />
+            <!-- 暂时隐藏未使用的类型 -->
+            <!-- <el-option label="字符串 (string) - 如文本、描述" value="string" /> -->
+            <!-- <el-option label="布尔 (bool) - 如开关状态" value="bool" /> -->
           </el-select>
           <div class="input-hint">💡 选择合适的数据类型，影响数据存储和处理方式</div>
         </el-form-item>
@@ -192,23 +193,23 @@
       width="600px"
     >
       <el-form :model="cmdForm" label-width="120px" :rules="cmdRules" ref="cmdFormRef">
-        <el-form-item label="命令名称" prop="name">
-          <el-input v-model="cmdForm.name" placeholder="如：打开窗户、关闭灯光、设置模式" />
+        <el-form-item label="命令名称" prop="commandName">
+          <el-input v-model="cmdForm.commandName" placeholder="如：打开窗户、关闭灯光、设置模式" />
           <div class="input-hint">💡 命令的显示名称，让用户知道这是什么操作</div>
         </el-form-item>
-        <el-form-item label="控制属性" prop="attr">
-          <el-select v-model="cmdForm.attr" placeholder="请选择要控制的属性" style="width: 100%;">
-            <el-option 
-              v-for="attr in attributes" 
-              :key="attr.identifier" 
-              :label="`${attr.name} (${attr.identifier})`" 
-              :value="attr.identifier" 
+        <el-form-item label="控制属性" prop="addr">
+          <el-select v-model="cmdForm.addr" placeholder="请选择要控制的属性" style="width: 100%;">
+            <el-option
+              v-for="attr in attributes"
+              :key="attr.addr"
+              :label="`${attr.attrName} (${attr.addr})`"
+              :value="attr.addr"
             />
           </el-select>
           <div class="input-hint">💡 选择要控制的属性，命令会修改该属性的值</div>
         </el-form-item>
-        <el-form-item label="下发值" prop="value">
-          <el-input v-model="cmdForm.value" placeholder="如：1、0、ON、OFF" />
+        <el-form-item label="下发值" prop="commandValue">
+          <el-input v-model="cmdForm.commandValue" placeholder="如：1、0、ON、OFF" />
           <div class="input-hint">💡 命令执行时会将该值下发给设备，设备根据该值进行操作</div>
         </el-form-item>
         <el-alert 
@@ -261,17 +262,17 @@ const editForm = ref({
 
 // 属性表单
 const attrForm = ref({
-  identifier: '',
-  name: '',
-  type: '',
+  addr: '',
+  attrName: '',
+  dataType: '',
   unit: ''
 })
 
 // 命令表单
 const cmdForm = ref({
-  name: '',
-  attr: '',
-  value: ''
+  commandName: '',
+  addr: '',
+  commandValue: ''
 })
 
 // 表单验证规则
@@ -281,32 +282,30 @@ const editRules = {
 }
 
 const attrRules = {
-  identifier: [{ required: true, message: '请输入属性标识符', trigger: 'blur' }],
-  name: [{ required: true, message: '请输入属性名称', trigger: 'blur' }],
-  type: [{ required: true, message: '请选择数据类型', trigger: 'change' }]
+  addr: [{ required: true, message: '请输入属性标识符', trigger: 'blur' }],
+  attrName: [{ required: true, message: '请输入属性名称', trigger: 'blur' }],
+  dataType: [{ required: true, message: '请选择数据类型', trigger: 'change' }]
 }
 
 const cmdRules = {
-  name: [{ required: true, message: '请输入命令名称', trigger: 'blur' }],
-  attr: [{ required: true, message: '请选择控制属性', trigger: 'change' }],
-  value: [{ required: true, message: '请输入下发值', trigger: 'blur' }]
+  commandName: [{ required: true, message: '请输入命令名称', trigger: 'blur' }],
+  addr: [{ required: true, message: '请选择控制属性', trigger: 'change' }],
+  commandValue: [{ required: true, message: '请输入下发值', trigger: 'blur' }]
 }
 
 // 加载产品详情
 const loadProduct = async () => {
   try {
     const productId = route.params.id
-    const res = await productApi.getById(productId)
-    if (res.code === 200) {
-      // 后端返回的数据结构已经包含了attrs和commands
-      product.value = res.data
-      // 如果后端返回的数据中有attrs和commands，就不需要单独加载了
-      if (res.data.attrs) {
-        attributes.value = res.data.attrs
-      }
-      if (res.data.commands) {
-        commands.value = res.data.commands
-      }
+    const res = await productApi.getProductDetail(productId)
+    // res 是后端返回的 data 字段，包含产品信息
+    product.value = res
+    // 如果后端返回的数据中有attrs和commands，就不需要单独加载了
+    if (res.attrs) {
+      attributes.value = res.attrs
+    }
+    if (res.commands) {
+      commands.value = res.commands
     }
   } catch (error) {
     console.error('加载产品详情失败:', error)
@@ -318,10 +317,9 @@ const loadProduct = async () => {
 const loadAttributes = async () => {
   try {
     const productId = route.params.id
-    const res = await productApi.getAttributes(productId)
-    if (res.code === 200) {
-      attributes.value = res.data || []
-    }
+    const res = await productApi.getProductAttributes(productId)
+    // res 是后端返回的 data 字段，直接是数组
+    attributes.value = res || []
   } catch (error) {
     console.error('加载属性列表失败:', error)
   }
@@ -331,10 +329,9 @@ const loadAttributes = async () => {
 const loadCommands = async () => {
   try {
     const productId = route.params.id
-    const res = await productApi.getCommands(productId)
-    if (res.code === 200) {
-      commands.value = res.data || []
-    }
+    const res = await productApi.getProductCommands(productId)
+    // res 是后端返回的 data 字段，直接是数组
+    commands.value = res || []
   } catch (error) {
     console.error('加载命令列表失败:', error)
   }
@@ -358,18 +355,17 @@ const updateProduct = async () => {
   try {
     await editFormRef.value.validate()
     
-    const res = await productApi.update({
+    await productApi.updateProduct({
       id: route.params.id,
       productName: editForm.value.productName,
+      productModel: editForm.value.productModel,
       protocol: editForm.value.protocol,
       description: editForm.value.description
     })
     
-    if (res.code === 200) {
-      ElMessage.success('产品信息已更新')
-      editDialogVisible.value = false
-      loadProduct()
-    }
+    ElMessage.success('产品信息已更新')
+    editDialogVisible.value = false
+    loadProduct()
   } catch (error) {
     if (error !== false) {
       console.error('更新产品失败:', error)
@@ -381,9 +377,9 @@ const updateProduct = async () => {
 // 显示添加属性对话框
 const showAddAttrDialog = () => {
   attrForm.value = {
-    identifier: '',
-    name: '',
-    type: '',
+    addr: '',
+    attrName: '',
+    dataType: '',
     unit: ''
   }
   attrDialogVisible.value = true
@@ -397,24 +393,22 @@ const addAttribute = async () => {
     await attrFormRef.value.validate()
     
     // 检查标识符是否重复
-    if (attributes.value.some(a => a.identifier === attrForm.value.identifier)) {
+    if (attributes.value.some(a => a.addr === attrForm.value.addr)) {
       ElMessage.error('属性标识符已存在')
       return
     }
     
-    const res = await productApi.addAttribute({
+    await productApi.addProductAttribute({
       productId: route.params.id,
-      identifier: attrForm.value.identifier,
-      name: attrForm.value.name,
-      type: attrForm.value.type,
+      addr: attrForm.value.addr,
+      attrName: attrForm.value.attrName,
+      dataType: attrForm.value.dataType,
       unit: attrForm.value.unit
     })
     
-    if (res.code === 200) {
-      ElMessage.success('属性添加成功')
-      attrDialogVisible.value = false
-      loadAttributes()
-    }
+    ElMessage.success('属性添加成功')
+    attrDialogVisible.value = false
+    loadAttributes()
   } catch (error) {
     if (error !== false) {
       console.error('添加属性失败:', error)
@@ -427,7 +421,7 @@ const addAttribute = async () => {
 const deleteAttribute = async (attr) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除属性"${attr.name}"吗？`,
+      `确定要删除属性"${attr.attrName}"吗？`,
       '删除确认',
       {
         confirmButtonText: '确定',
@@ -436,11 +430,9 @@ const deleteAttribute = async (attr) => {
       }
     )
     
-    const res = await productApi.deleteAttribute(attr.id)
-    if (res.code === 200) {
-      ElMessage.success('属性已删除')
-      loadAttributes()
-    }
+    await productApi.deleteProductAttribute(attr.id)
+    ElMessage.success('属性已删除')
+    loadAttributes()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除属性失败:', error)
@@ -457,9 +449,9 @@ const showAddCmdDialog = () => {
   }
   
   cmdForm.value = {
-    name: '',
-    attr: '',
-    value: ''
+    commandName: '',
+    addr: '',
+    commandValue: ''
   }
   cmdDialogVisible.value = true
 }
@@ -471,18 +463,17 @@ const addCommand = async () => {
   try {
     await cmdFormRef.value.validate()
     
-    const res = await productApi.addCommand({
+    await productApi.addProductCommand({
       productId: route.params.id,
-      name: cmdForm.value.name,
-      attr: cmdForm.value.attr,
-      value: cmdForm.value.value
+      addr: cmdForm.value.addr,
+      commandName: cmdForm.value.commandName,
+      commandValue: cmdForm.value.commandValue,
+      description: `控制属性 ${cmdForm.value.addr} 为 ${cmdForm.value.commandValue}`
     })
     
-    if (res.code === 200) {
-      ElMessage.success('命令添加成功')
-      cmdDialogVisible.value = false
-      loadCommands()
-    }
+    ElMessage.success('命令添加成功')
+    cmdDialogVisible.value = false
+    loadCommands()
   } catch (error) {
     if (error !== false) {
       console.error('添加命令失败:', error)
@@ -495,7 +486,7 @@ const addCommand = async () => {
 const deleteCommand = async (cmd) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除命令"${cmd.name}"吗？`,
+      `确定要删除命令"${cmd.commandName}"吗？`,
       '删除确认',
       {
         confirmButtonText: '确定',
@@ -504,11 +495,9 @@ const deleteCommand = async (cmd) => {
       }
     )
     
-    const res = await productApi.deleteCommand(cmd.id)
-    if (res.code === 200) {
-      ElMessage.success('命令已删除')
-      loadCommands()
-    }
+    await productApi.deleteProductCommand(cmd.id)
+    ElMessage.success('命令已删除')
+    loadCommands()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除命令失败:', error)

@@ -1,407 +1,175 @@
 <template>
-  <div class="overview-page">
-    <div class="page-header">
-      <h1 class="page-title">设备概览</h1>
-      <el-button type="primary" @click="refreshData" :loading="loading">
-        <el-icon><Refresh /></el-icon>
-        刷新数据
-      </el-button>
-    </div>
-
+  <div class="dashboard-container">
     <!-- 统计卡片 -->
-    <div class="stats-grid">
-      <el-card class="stat-card" shadow="hover">
-        <div class="stat-content">
-          <div class="stat-icon total">
-            <el-icon :size="28"><Monitor /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.totalDevices || 0 }}</div>
-            <div class="stat-label">设备总数</div>
+    <div class="stats-cards">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+          <span style="font-size: 32px;">📱</span>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">设备总数</div>
+          <div class="stat-value">{{ stats.totalDevices }}</div>
+          <div class="stat-detail">
+            <span class="online">在线 {{ stats.onlineDevices }}</span>
+            <span class="offline">离线 {{ stats.offlineDevices }}</span>
           </div>
         </div>
-      </el-card>
+      </div>
 
-      <el-card class="stat-card" shadow="hover">
-        <div class="stat-content">
-          <div class="stat-icon online">
-            <el-icon :size="28"><CircleCheck /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.onlineDevices || 0 }}</div>
-            <div class="stat-label">在线设备</div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+          <span style="font-size: 32px;">📊</span>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">今日数据量</div>
+          <div class="stat-value">{{ stats.todayDataCount }}</div>
+          <div class="stat-detail">
+            <span style="color: #999;">设备上报的数据条数</span>
           </div>
         </div>
-      </el-card>
+      </div>
 
-      <el-card class="stat-card" shadow="hover">
-        <div class="stat-content">
-          <div class="stat-icon offline">
-            <el-icon :size="28"><CircleClose /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ (stats.totalDevices || 0) - (stats.onlineDevices || 0) }}</div>
-            <div class="stat-label">离线设备</div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+          <span style="font-size: 32px;">🏭</span>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">产品类型</div>
+          <div class="stat-value">{{ productCount }}</div>
+          <div class="stat-detail">
+            <span v-if="stats.productDistribution.length > 0" style="color: #999;">
+              {{ stats.productDistribution.map(p => p.productName).join('、') }}
+            </span>
+            <span v-else style="color: #999;">暂无产品</span>
           </div>
         </div>
-      </el-card>
-
-      <el-card class="stat-card" shadow="hover">
-        <div class="stat-content">
-          <div class="stat-icon data">
-            <el-icon :size="28"><DataLine /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.todayDataPoints || 0 }}</div>
-            <div class="stat-label">今日数据量</div>
-          </div>
-        </div>
-      </el-card>
+      </div>
     </div>
 
-    <!-- 图表区域 -->
-    <el-row :gutter="20">
-      <el-col :span="16">
-        <el-card class="chart-card" shadow="hover">
-          <template #header>
-            <div class="chart-header">
-              <span class="chart-title">数据趋势（最近24小时）</span>
-            </div>
-          </template>
-          <div ref="lineChartRef" class="chart-container" v-loading="chartLoading"></div>
-        </el-card>
-      </el-col>
-
-      <el-col :span="8">
-        <el-card class="chart-card" shadow="hover">
-          <template #header>
-            <div class="chart-header">
-              <span class="chart-title">设备分组统计</span>
-            </div>
-          </template>
-          <div ref="pieChartRef" class="chart-container" v-loading="chartLoading"></div>
-        </el-card>
-      </el-col>
-    </el-row>
+    <!-- 最近更新设备列表 -->
+    <div class="recent-devices">
+      <div class="section-title">
+        <span>⏰ 最近活跃设备</span>
+      </div>
+      <div class="device-list">
+        <div v-for="device in stats.recentDevices" :key="device.deviceCode" class="device-item">
+          <div class="device-icon">
+            <span :class="device.status === 1 ? 'status-dot online' : 'status-dot offline'"></span>
+            📱
+          </div>
+          <div class="device-info">
+            <div class="device-name">{{ device.deviceName }}</div>
+            <div class="device-meta">{{ device.productName }} · {{ formatTime(device.lastOnlineTime) }}</div>
+          </div>
+          <div class="device-status">
+            <span :class="device.status === 1 ? 'badge online' : 'badge offline'">
+              {{ device.status === 1 ? '在线' : '离线' }}
+            </span>
+          </div>
+        </div>
+        <div v-if="stats.recentDevices.length === 0" class="empty-state">
+          <span style="font-size: 48px; opacity: 0.3;">📭</span>
+          <p>暂无设备数据</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import * as echarts from 'echarts'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Refresh, Monitor, CircleCheck, CircleClose, DataLine } from '@element-plus/icons-vue'
-import { getOverviewStats, getDeviceStats, getDataTrend } from '@/api/statistics'
+import axios from '@/utils/request'
 
-const lineChartRef = ref(null)
-const pieChartRef = ref(null)
-let lineChart = null
-let pieChart = null
-
-// 加载状态
-const loading = ref(false)
-const chartLoading = ref(false)
-
-// 统计数据
 const stats = ref({
   totalDevices: 0,
   onlineDevices: 0,
-  todayDataPoints: 0
+  offlineDevices: 0,
+  todayDataCount: 0,
+  productDistribution: [],
+  recentDevices: [],
+  productCount: 0 // 添加产品总数
 })
 
-// 初始化折线图
-const initLineChart = () => {
-  if (!lineChartRef.value) return
+const productCount = computed(() => stats.value.productCount)
 
-  lineChart = echarts.init(lineChartRef.value)
-
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e5e5e7',
-      borderWidth: 1,
-      textStyle: { color: '#1d1d1f' }
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '10%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: [],
-      axisLine: { lineStyle: { color: '#e5e5e7' } },
-      axisLabel: { color: '#86868b' }
-    },
-    yAxis: {
-      type: 'value',
-      axisLine: { lineStyle: { color: '#e5e5e7' } },
-      axisLabel: { color: '#86868b' },
-      splitLine: { lineStyle: { color: '#f5f5f7', type: 'dashed' } }
-    },
-    series: [{
-      name: '数据量',
-      type: 'line',
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 6,
-      data: [],
-      areaStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(102, 126, 234, 0.3)' },
-          { offset: 1, color: 'rgba(102, 126, 234, 0.05)' }
-        ])
-      },
-      lineStyle: { color: '#667eea', width: 2 },
-      itemStyle: { color: '#667eea' }
-    }]
-  }
-
-  lineChart.setOption(option)
-}
-
-// 更新折线图数据
-const updateLineChart = (trendData) => {
-  if (!lineChart) return
-
-  const timestamps = trendData.map(item => {
-    const date = new Date(item.timestamp)
-    return `${date.getHours()}:00`
-  })
-  const values = trendData.map(item => item.value)
-
-  lineChart.setOption({
-    xAxis: { data: timestamps },
-    series: [{ data: values }]
-  })
-}
-
-// 初始化饼图
-const initPieChart = () => {
-  if (!pieChartRef.value) return
-
-  pieChart = echarts.init(pieChartRef.value)
-
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e5e5e7',
-      borderWidth: 1,
-      textStyle: { color: '#1d1d1f' },
-      formatter: '{b}: {c}台 ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      right: '10%',
-      top: 'center',
-      textStyle: { color: '#1d1d1f' }
-    },
-    series: [{
-      name: '设备分组',
-      type: 'pie',
-      radius: ['40%', '70%'],
-      avoidLabelOverlap: false,
-      center: ['35%', '50%'],
-      itemStyle: {
-        borderRadius: 8,
-        borderColor: '#fff',
-        borderWidth: 2
-      },
-      label: {
-        show: false,
-        position: 'center'
-      },
-      emphasis: {
-        label: {
-          show: true,
-          fontSize: 18,
-          fontWeight: 'bold'
-        }
-      },
-      labelLine: {
-        show: false
-      },
-      data: []
-    }]
-  }
-
-  pieChart.setOption(option)
-}
-
-// 更新饼图数据
-const updatePieChart = (deviceStats) => {
-  if (!pieChart) return
-
-  // 颜色配置
-  const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe']
-
-  const data = deviceStats.map((item, index) => ({
-    value: item.total,
-    name: item.groupName || `分组${index + 1}`,
-    itemStyle: { color: colors[index % colors.length] }
-  }))
-
-  pieChart.setOption({
-    series: [{ data }]
-  })
-}
-
-// 加载统计数据
-const loadStats = async () => {
+const loadStatistics = async () => {
   try {
-    const result = await getOverviewStats()
-    if (result.code === 200 && result.data) {
+    // axios 拦截器已经解包了 response.data.data，直接使用即可
+    const data = await axios.get('/devices/statistics')
+    console.log('Dashboard 统计数据:', data)
+    
+    if (data) {
       stats.value = {
-        totalDevices: result.data.totalDevices || 0,
-        onlineDevices: result.data.onlineDevices || 0,
-        todayDataPoints: result.data.todayDataPoints || 0
+        totalDevices: data.totalDevices || 0,
+        onlineDevices: data.onlineDevices || 0,
+        offlineDevices: data.offlineDevices || 0,
+        todayDataCount: data.todayDataCount || 0,
+        productDistribution: data.productDistribution || [],
+        recentDevices: (data.recentDevices || []).slice(0, 5),
+        productCount: data.productCount || 0 // 从接口获取产品总数
       }
+      console.log('设置后的 stats:', stats.value)
     }
   } catch (error) {
     console.error('加载统计数据失败:', error)
+    ElMessage.error('加载统计数据失败')
   }
 }
 
-// 加载设备统计（饼图）
-const loadDeviceStats = async () => {
-  try {
-    const result = await getDeviceStats()
-    if (result.code === 200 && result.data && result.data.byGroup) {
-      updatePieChart(result.data.byGroup)
-    }
-  } catch (error) {
-    console.error('加载设备统计失败:', error)
-  }
+const formatTime = (time) => {
+  if (!time) return '-'
+  const now = new Date()
+  const target = new Date(time)
+  const diff = Math.floor((now - target) / 1000)
+  
+  if (diff < 60) return '刚刚'
+  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`
+  return `${Math.floor(diff / 86400)}天前`
 }
 
-// 加载数据趋势（折线图）
-const loadDataTrend = async () => {
-  try {
-    // 默认查询最近24小时的趋势
-    const now = new Date()
-    const startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-    const endTime = now
-
-    const result = await getDataTrend({
-      startTime: formatTime(startTime),
-      endTime: formatTime(endTime),
-      interval: 'hour'
-    })
-
-    if (result.code === 200 && result.data && result.data.trend) {
-      updateLineChart(result.data.trend)
-    }
-  } catch (error) {
-    console.error('加载数据趋势失败:', error)
-  }
-}
-
-// 格式化时间
-const formatTime = (date) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
-
-// 刷新所有数据
-const refreshData = async () => {
-  loading.value = true
-  chartLoading.value = true
-  try {
-    await Promise.all([
-      loadStats(),
-      loadDeviceStats(),
-      loadDataTrend()
-    ])
-    ElMessage.success('数据已刷新')
-  } catch (error) {
-    ElMessage.error('刷新失败，请稍后重试')
-  } finally {
-    loading.value = false
-    chartLoading.value = false
-  }
-}
-
-onMounted(async () => {
-  // 初始化图表
-  setTimeout(() => {
-    initLineChart()
-    initPieChart()
-  }, 100)
-
-  // 加载数据
-  await refreshData()
-
-  // 监听窗口大小变化
-  window.addEventListener('resize', () => {
-    lineChart?.resize()
-    pieChart?.resize()
-  })
-})
-
-onUnmounted(() => {
-  lineChart?.dispose()
-  pieChart?.dispose()
-  window.removeEventListener('resize', () => {})
+onMounted(() => {
+  loadStatistics()
+  // 每30秒刷新一次
+  setInterval(loadStatistics, 30000)
 })
 </script>
 
 <style scoped>
-.overview-page {
+.dashboard-container {
   padding: 24px;
+  background: #f5f7fa;
+  min-height: calc(100vh - 100px);
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1d1d1f;
-  margin: 0;
-}
-
-.stats-grid {
+/* 统计卡片 */
+.stats-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
   margin-bottom: 24px;
 }
 
 .stat-card {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  display: flex;
+  gap: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   transition: all 0.3s;
-  border-radius: 12px;
 }
 
 .stat-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .stat-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -409,97 +177,178 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.stat-icon.total {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.stat-icon.online {
-  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-}
-
-.stat-icon.offline {
-  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-}
-
-.stat-icon.data {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
 .stat-info {
   flex: 1;
-  min-width: 0;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #1d1d1f;
-  line-height: 1;
-  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #86868b;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #1d1d1f;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.stat-detail {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.stat-detail .online {
+  color: #67c23a;
   font-weight: 500;
 }
 
-.chart-card {
-  border-radius: 12px;
-  margin-bottom: 20px;
+.stat-detail .offline {
+  color: #e6a23c;
+  font-weight: 500;
 }
 
-.chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* 最近设备列表 */
+.recent-devices {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-.chart-title {
-  font-size: 16px;
+.section-title {
+  font-size: 18px;
   font-weight: 600;
   color: #1d1d1f;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
 }
 
-.chart-container {
-  width: 100%;
-  height: 320px;
+.device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* 响应式设计 */
+.device-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.device-item:hover {
+  background: #e9ecef;
+  transform: translateX(4px);
+}
+
+.device-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.status-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+.status-dot.online {
+  background: #67c23a;
+}
+
+.status-dot.offline {
+  background: #e6a23c;
+}
+
+.device-info {
+  flex: 1;
+}
+
+.device-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d1d1f;
+  margin-bottom: 4px;
+}
+
+.device-meta {
+  font-size: 13px;
+  color: #999;
+}
+
+.device-status {
+  flex-shrink: 0;
+}
+
+.badge {
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge.online {
+  background: #f0f9ff;
+  color: #67c23a;
+}
+
+.badge.offline {
+  background: #fef0f0;
+  color: #e6a23c;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.empty-state p {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+/* 响应式 */
 @media (max-width: 1200px) {
-  .stats-grid {
+  .stats-cards {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  .overview-page {
+  .dashboard-container {
     padding: 16px;
   }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-
-  .stats-grid {
+  
+  .stats-cards {
     grid-template-columns: 1fr;
   }
-
+  
   .stat-value {
-    font-size: 24px;
+    font-size: 28px;
   }
-}
-
-/* Element Plus 样式覆盖 */
-:deep(.el-card__header) {
-  padding: 20px 24px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-:deep(.el-card__body) {
-  padding: 24px;
 }
 </style>

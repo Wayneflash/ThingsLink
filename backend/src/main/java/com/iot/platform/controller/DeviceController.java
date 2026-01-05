@@ -42,6 +42,41 @@ public class DeviceController {
     @Resource
     private DeviceGroupService deviceGroupService;
     
+    @Resource
+    private com.iot.platform.service.UserService userService;
+    
+    @Resource
+    private com.iot.platform.mapper.RoleMapper roleMapper;
+    
+    @Resource
+    private com.iot.platform.mapper.UserMapper userMapper;
+    
+    /**
+     * 获取当前用户信息
+     */
+    private com.iot.platform.entity.User getCurrentUser(String token) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            return null;
+        }
+        String actualToken = token.substring(7);
+        Long userId = userService.validateToken(actualToken);
+        if (userId == null) {
+            return null;
+        }
+        return userMapper.selectById(userId);
+    }
+    
+    /**
+     * 判断用户是否为超级管理员
+     */
+    private boolean isSuperAdmin(com.iot.platform.entity.User user) {
+        if (user == null || user.getRoleId() == null) {
+            return false;
+        }
+        com.iot.platform.entity.Role role = roleMapper.selectById(user.getRoleId());
+        return role != null && "super_admin".equals(role.getRoleCode());
+    }
+    
     /**
      * 创建设备
      */
@@ -67,17 +102,29 @@ public class DeviceController {
             if (deviceCode == null || deviceCode.trim().isEmpty()) {
                 return Result.error("设备编码不能为空");
             }
-            if (params.get("productId") == null) {
+            // 验证必填字段
+            Object productIdObj = params.get("productId");
+            if (productIdObj == null) {
                 return Result.error("产品ID不能为空");
             }
-            if (params.get("groupId") == null) {
+            String productIdStr = productIdObj.toString();
+            if (productIdStr == null || productIdStr.trim().isEmpty()) {
+                return Result.error("产品ID不能为空");
+            }
+            
+            Object groupIdObj = params.get("groupId");
+            if (groupIdObj == null) {
+                return Result.error("分组ID不能为空");
+            }
+            String groupIdStr = groupIdObj.toString();
+            if (groupIdStr == null || groupIdStr.trim().isEmpty()) {
                 return Result.error("分组ID不能为空");
             }
             
             device.setDeviceName(deviceName);
             device.setDeviceCode(deviceCode);
-            device.setProductId(Long.valueOf(params.get("productId").toString()));
-            device.setGroupId(Long.valueOf(params.get("groupId").toString()));
+            device.setProductId(Long.valueOf(productIdStr));
+            device.setGroupId(Long.valueOf(groupIdStr));
             
             // 备注为可选字段
             if (params.get("remark") != null) {
@@ -100,23 +147,60 @@ public class DeviceController {
      * 分页查询设备列表
      */
     @PostMapping("/list")
-    public Result<Map<String, Object>> getDeviceList(@RequestBody(required = false) Map<String, Object> params) {
+    public Result<Map<String, Object>> getDeviceList(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @RequestBody(required = false) Map<String, Object> params) {
         try {
+            // 获取当前用户（可选）
+            com.iot.platform.entity.User currentUser = getCurrentUser(token);
+            
+            // 判断是否为超级管理员
+            boolean isSuper = currentUser != null && isSuperAdmin(currentUser);
+            
             // 如果params为null，初始化为空对象
             if (params == null) {
                 params = new HashMap<>();
             }
             
-            Integer page = params.get("page") != null ? 
-                Integer.valueOf(params.get("page").toString()) : 1;
-            Integer pageSize = params.get("pageSize") != null ? 
-                Integer.valueOf(params.get("pageSize").toString()) : 20;
-            String keyword = params.get("keyword") != null ? 
-                params.get("keyword").toString() : null;
-            Long productId = params.get("productId") != null ? 
-                Long.valueOf(params.get("productId").toString()) : null;
-            Long groupId = params.get("groupId") != null ? 
-                Long.valueOf(params.get("groupId").toString()) : null;
+            Integer page = 1;
+            if (params.get("page") != null) {
+                String pageStr = params.get("page").toString();
+                if (pageStr != null && !pageStr.trim().isEmpty()) {
+                    page = Integer.valueOf(pageStr);
+                }
+            }
+            
+            Integer pageSize = 20;
+            if (params.get("pageSize") != null) {
+                String pageSizeStr = params.get("pageSize").toString();
+                if (pageSizeStr != null && !pageSizeStr.trim().isEmpty()) {
+                    pageSize = Integer.valueOf(pageSizeStr);
+                }
+            }
+            
+            String keyword = null;
+            if (params.get("keyword") != null) {
+                String keywordStr = params.get("keyword").toString();
+                if (keywordStr != null && !keywordStr.trim().isEmpty()) {
+                    keyword = keywordStr;
+                }
+            }
+            
+            Long productId = null;
+            if (params.get("productId") != null) {
+                String productIdStr = params.get("productId").toString();
+                if (productIdStr != null && !productIdStr.trim().isEmpty()) {
+                    productId = Long.valueOf(productIdStr);
+                }
+            }
+            
+            Long groupId = null;
+            if (params.get("groupId") != null) {
+                String groupIdStr = params.get("groupId").toString();
+                if (groupIdStr != null && !groupIdStr.trim().isEmpty()) {
+                    groupId = Long.valueOf(groupIdStr);
+                }
+            }
             
             Integer status = null;
             if (params.get("status") != null) {
@@ -128,8 +212,17 @@ public class DeviceController {
                 }
             }
             
+            // 数据权限过滤：非超管只能查看本分组及下级分组的设备
+            List<Long> allowedGroupIds = null;
+            if (!isSuper && currentUser != null) {
+                Long userGroupId = currentUser.getGroupId() != null ? currentUser.getGroupId() : 0L;
+                // 获取当前用户分组及所有下级分组ID
+                allowedGroupIds = deviceService.getAllSubGroupIds(userGroupId);
+                log.info("用户 {} 允许查看的分组ID: {}", currentUser.getUsername(), allowedGroupIds);
+            }
+            
             IPage<Device> devicePage = deviceService.getDevicePage(
-                page, pageSize, keyword, productId, groupId, status
+                page, pageSize, keyword, productId, groupId, status, allowedGroupIds
             );
             
             // 获取所有产品和分组信息，用于关联查询
@@ -174,6 +267,7 @@ public class DeviceController {
                     // 添加产品名称
                     Product product = productMap.get(device.getProductId());
                     deviceMap.put("productName", product != null ? product.getProductName() : "");
+                    deviceMap.put("productModel", product != null ? product.getProductModel() : "");
                     
                     deviceMap.put("groupId", device.getGroupId());
                     
@@ -303,19 +397,24 @@ public class DeviceController {
             }
             
             // 获取最新数据
-            List<DeviceData> latestDataList = deviceDataService.getLatestData(deviceCode, 1);
+            List<DeviceData> latestDataList = deviceDataService.getLatestData(deviceCode, 10); // 获取最近10条数据以覆盖所有属性
             
             Map<String, Object> result = new HashMap<>();
             result.put("deviceId", device.getId());
             result.put("deviceCode", device.getDeviceCode());
             
             if (!latestDataList.isEmpty()) {
-                DeviceData latestData = latestDataList.get(0);
                 // 构造data对象
                 Map<String, String> dataMap = new HashMap<>();
-                dataMap.put(latestData.getAddr(), latestData.getAddrv());
+                
+                // 按时间排序，最新的数据优先，填充到dataMap中
+                latestDataList.sort((a, b) -> b.getCtime().compareTo(a.getCtime()));
+                for (DeviceData dataItem : latestDataList) {
+                    dataMap.put(dataItem.getAddr(), dataItem.getAddrv());
+                }
+                
                 result.put("data", dataMap);
-                result.put("reportTime", latestData.getCtime());
+                result.put("reportTime", latestDataList.get(0).getCtime());
             } else {
                 result.put("data", new HashMap<>());
                 result.put("reportTime", null);
@@ -340,6 +439,49 @@ public class DeviceController {
         } catch (Exception e) {
             log.error("更新设备状态失败", e);
             return Result.error(e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取设备统计数据
+     */
+    @GetMapping("/statistics")
+    public Result<Map<String, Object>> getStatistics(
+            @RequestHeader(value = "Authorization", required = false) String token) {
+        try {
+            // 获取当前用户（可选）
+            com.iot.platform.entity.User currentUser = getCurrentUser(token);
+            
+            // 判断是否为超级管理员
+            boolean isSuper = currentUser != null && isSuperAdmin(currentUser);
+            
+            // 数据权限过滤：非超管只能查看本分组及下级分组的设备
+            List<Long> allowedGroupIds = null;
+            if (!isSuper && currentUser != null) {
+                Long userGroupId = currentUser.getGroupId() != null ? currentUser.getGroupId() : 0L;
+                allowedGroupIds = deviceService.getAllSubGroupIds(userGroupId);
+            }
+            
+            Map<String, Object> statistics = deviceService.getDeviceStatistics(allowedGroupIds);
+            
+            // 补充今日数据量统计
+            try {
+                java.time.LocalDateTime todayStart = java.time.LocalDateTime.now()
+                    .withHour(0).withMinute(0).withSecond(0);
+                com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.iot.platform.entity.DeviceData> query = 
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+                query.ge(com.iot.platform.entity.DeviceData::getReceiveTime, todayStart);
+                long todayDataCount = deviceDataService.count(query);
+                statistics.put("todayDataCount", todayDataCount);
+            } catch (Exception e) {
+                log.error("统计今日数据量失败", e);
+                statistics.put("todayDataCount", 0L);
+            }
+            
+            return Result.success(statistics);
+        } catch (Exception e) {
+            log.error("获取统计数据失败", e);
+            return Result.error("获取统计数据失败: " + e.getMessage());
         }
     }
     

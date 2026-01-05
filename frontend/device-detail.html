@@ -605,7 +605,7 @@
           }
 
           container.innerHTML = commands.map(cmd => `
-            <button class="command-btn" onclick="sendCommand('${cmd.commandIdentifier}', '${cmd.commandValue}', '${cmd.commandName}')">
+            <button class="command-btn" onclick="sendCommand('${cmd.addr}', '${cmd.commandValue}', '${cmd.commandName}')">
               <div class="command-icon">⚡</div>
               <div class="command-name">${cmd.commandName}</div>
             </button>

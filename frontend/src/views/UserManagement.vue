@@ -316,6 +316,8 @@ const selectAllUsers = () => {
 const selectGroup = (id) => {
   currentGroupId.value = id
   console.log('选中分组:', id)
+  // 清空搜索条件
+  searchQuery.value = ''
   // 重新加载用户列表，传递分组ID参数
   loadUsers()
 }
@@ -348,8 +350,9 @@ const groupHintText = computed(() => {
 // 角色变化处理
 const handleRoleChange = () => {
   if (isSuperAdminRole.value) {
-    // 超级管理员默认归属"总分组"（groupId = 1）
-    userForm.groupId = 1
+    // 超级管理员默认归属总分组（动态获取parentId=0的分组）
+    const rootGroup = groups.value.find(g => g.parentId === 0 || g.parentId === null)
+    userForm.groupId = rootGroup ? rootGroup.id : null
   }
 }
 
@@ -363,8 +366,13 @@ const openAddDialog = () => {
   userForm.username = ''
   userForm.realName = ''
   userForm.password = ''
-  // 默认选中当前分组，如果没有则默认总分组
-  userForm.groupId = currentGroupId.value || 1
+  // 默认选中当前分组，如果没有则默认总分组（动态获取）
+  if (currentGroupId.value) {
+    userForm.groupId = currentGroupId.value
+  } else {
+    const rootGroup = groups.value.find(g => g.parentId === 0 || g.parentId === null)
+    userForm.groupId = rootGroup ? rootGroup.id : null
+  }
   userForm.roleId = null
   userForm.status = 1
   
@@ -461,6 +469,8 @@ const saveUser = async () => {
           roleId: userForm.roleId,
           status: userForm.status
         })
+        dialogVisible.value = false
+        await loadUsers()  // 先关闭对话框，再刷新列表
         ElMessage.success('用户更新成功')
       } else {
         // 添加模式：新增用户
@@ -472,10 +482,10 @@ const saveUser = async () => {
           roleId: userForm.roleId,
           status: userForm.status
         })
+        dialogVisible.value = false
+        await loadUsers()  // 先关闭对话框，再刷新列表
         ElMessage.success('用户创建成功')
       }
-      dialogVisible.value = false
-      await loadUsers()
     }
   } catch (error) {
     console.error('验证或提交错误:', error)
@@ -518,6 +528,8 @@ const resetForm = () => {
 const loadUsers = async () => {
   try {
     loading.value = true
+    console.log('loadUsers 被调用, currentGroupId:', currentGroupId.value)
+    
     // 传递分组ID参数
     const params = {
       page: 1,
@@ -526,10 +538,17 @@ const loadUsers = async () => {
     // 如果选中了分组，传递groupId参数
     if (currentGroupId.value) {
       params.groupId = currentGroupId.value
+      console.log('查询指定分组的用户, groupId:', currentGroupId.value)
+    } else {
+      console.log('查询全部用户')
     }
+    
     const res = await getUserList(params)
-    // 直接使用后端返回的数据，不做任何逼辑处理
+    console.log('用户列表响应:', res)
+    
+    // 直接使用后端返回的数据，不做任何逻辑处理
     users.value = res.list || []
+    console.log('用户数量:', users.value.length)
     
     // 更新总用户数（只在查询全部用户时更新）
     if (!currentGroupId.value) {
@@ -537,6 +556,7 @@ const loadUsers = async () => {
     }
   } catch (error) {
     console.error('加载用户失败:', error)
+    users.value = []
   } finally {
     loading.value = false
   }

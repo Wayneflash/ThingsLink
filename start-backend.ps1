@@ -44,7 +44,8 @@ if (-not (Test-Path "target\iot-platform.jar")) {
 Write-Host "后端将在新窗口启动，请查看新窗口了解启动状态" -ForegroundColor Green
 Write-Host ""
 
-Start-Process powershell -ArgumentList "-NoExit","-Command","& 'C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot\bin\java.exe' -jar target\iot-platform.jar"
+$javaPath = 'C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot\bin\java.exe'
+Start-Process $javaPath -ArgumentList "-jar", "target\iot-platform.jar" -WorkingDirectory "D:\AICoding\IOT\backend"
 
 Start-Sleep -Seconds 2
 

@@ -11,6 +11,7 @@ D:\AICoding\IOT\backend\src\main\java\com\iot\platform\controller\DeviceGroupCon
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\entity\Role.java
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\service\DeviceGroupService.java
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\entity\Product.java
+D:\AICoding\IOT\backend\src\main\java\com\iot\platform\controller\SystemController.java
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\entity\Command.java
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\mapper\AttributeMapper.java
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\controller\UserController.java
@@ -18,6 +19,7 @@ D:\AICoding\IOT\backend\src\main\java\com\iot\platform\config\MybatisPlusConfig.
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\mqtt\MqttMessageHandler.java
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\mapper\DeviceDataMapper.java
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\service\ProductService.java
+D:\AICoding\IOT\backend\src\main\java\com\iot\platform\task\DeviceStatusCheckTask.java
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\controller\DeviceController.java
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\controller\DeviceDataController.java
 D:\AICoding\IOT\backend\src\main\java\com\iot\platform\mapper\ProductMapper.java

@@ -38,11 +38,11 @@ public class MqttConfig {
     private MqttMessageHandler mqttMessageHandler;
     
     /**
-     * 创建 MQTT 客户端
+     * 创建 MQTT 客户端（延迟连接，避免阻塞应用启动）
      */
     @Bean
     public MqttClient mqttClient() throws MqttException {
-        // 创建客户端
+        // 创建客户端（不立即连接）
         MqttClient client = new MqttClient(brokerUrl, clientId, new MemoryPersistence());
         
         // 配置连接选项
@@ -58,7 +58,7 @@ public class MqttConfig {
         client.setCallback(new MqttCallback() {
             @Override
             public void connectionLost(Throwable cause) {
-                log.error("MQTT 连接断开", cause);
+                log.warn("MQTT 连接断开，将自动重连: {}", cause.getMessage());
             }
             
             @Override
@@ -72,20 +72,37 @@ public class MqttConfig {
             }
         });
         
-        // 连接到 MQTT Broker
-        try {
-            client.connect(options);
-            log.info("MQTT 客户端连接成功: {}", brokerUrl);
-            
-            // 订阅设备上报主题
-            String topic = "ssc/+/report";
-            client.subscribe(topic, 1);
-            log.info("订阅主题成功: {}", topic);
-            
-        } catch (MqttException e) {
-            log.error("MQTT 客户端连接失败", e);
-            throw e;
-        }
+        // 异步连接到 MQTT Broker（避免阻塞应用启动）
+        new Thread(() -> {
+            int retryCount = 0;
+            int maxRetries = 5;
+            while (retryCount < maxRetries) {
+                try {
+                    Thread.sleep(2000); // 延迟2秒后再连接
+                    client.connect(options);
+                    log.info("MQTT 客户端连接成功: {}", brokerUrl);
+                    
+                    // 订阅设备上报主题
+                    String topic = "ssc/+/report";
+                    client.subscribe(topic, 1);
+                    log.info("订阅主题成功: {}", topic);
+                    break;
+                    
+                } catch (Exception e) {
+                    retryCount++;
+                    log.warn("MQTT 客户端连接失败 (尝试 {}/{}): {}", retryCount, maxRetries, e.getMessage());
+                    if (retryCount >= maxRetries) {
+                        log.error("MQTT 客户端连接失败，已达到最大重试次数");
+                    } else {
+                        try {
+                            Thread.sleep(3000); // 每次重试间隔3秒
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                }
+            }
+        }, "mqtt-connector").start();
         
         return client;
     }

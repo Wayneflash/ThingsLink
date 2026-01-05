@@ -70,7 +70,15 @@ public class DeviceDataService extends ServiceImpl<DeviceDataMapper, DeviceData>
                 data.setCtime(ctime);
             } catch (Exception e) {
                 log.error("时间格式解析失败: {}", content.getCtime(), e);
-                data.setCtime(LocalDateTime.now());
+                // 尝试解析另一种格式
+                try {
+                    DateTimeFormatter altFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                    LocalDateTime ctime = LocalDateTime.parse(content.getCtime(), altFormatter);
+                    data.setCtime(ctime);
+                } catch (Exception ex) {
+                    log.error("备用时间格式解析失败: {}", content.getCtime(), ex);
+                    data.setCtime(LocalDateTime.now());
+                }
             }
             
             data.setReceiveTime(LocalDateTime.now());

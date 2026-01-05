@@ -26,6 +26,12 @@ const routes = [
         meta: { title: '设备管理' }
       },
       {
+        path: 'devices/detail',
+        name: 'DeviceDetail',
+        component: () => import('../views/DeviceDetail.vue'),
+        meta: { title: '设备详情' }
+      },
+      {
         path: 'alarms',
         name: 'Alarms',
         component: () => import('../views/AlarmLog.vue'),

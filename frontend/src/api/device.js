@@ -44,14 +44,15 @@ export const createDevice = (data) => {
 
 /**
  * 获取设备详情
- * @param {string} deviceCode - 设备编码
+ * @param {Object} params - 参数对象
+ * @param {string} params.deviceCode - 设备编码
  * @returns {Promise} 返回设备详细信息
  */
-export const getDeviceDetail = (deviceCode) => {
+export const getDeviceDetail = (params) => {
   return request({
     url: '/devices/detail',
     method: 'post',
-    data: { deviceCode }
+    data: params
   })
 }
 
@@ -103,14 +104,15 @@ export const updateDeviceStatus = (deviceCode, online) => {
 
 /**
  * 获取设备最新数据
- * @param {string} deviceCode - 设备编码
+ * @param {Object} params - 参数对象
+ * @param {string} params.deviceCode - 设备编码
  * @returns {Promise} 返回设备最新上报的数据
  */
-export const getDeviceLatestData = (deviceCode) => {
+export const getDeviceLatestData = (params) => {
   return request({
     url: '/devices/latest-data',
     method: 'post',
-    data: { deviceCode }
+    data: params
   })
 }
 

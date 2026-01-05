@@ -9,7 +9,7 @@
             <Connection />
           </el-icon>
           <transition name="fade">
-            <span v-show="!isCollapsed" class="logo-text">物联网平台</span>
+            <span v-show="!isCollapsed" class="logo-text">ThingsLink</span>
           </transition>
         </div>
         <el-button
