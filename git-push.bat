@@ -77,13 +77,18 @@ if not errorlevel 1 (
     echo [INFO] MySQL container is running, backing up database...
     set "BACKUP_DIR=%CD%\backups"
     if not exist "%BACKUP_DIR%" (
-        mkdir "%BACKUP_DIR%" 2>nul
+        mkdir "%BACKUP_DIR%"
+        if errorlevel 1 (
+            echo [WARNING] Failed to create backup directory: %BACKUP_DIR%
+            echo [WARNING] Skipping database backup, continuing with code push
+            goto :skip_backup
+        )
     )
     set "BACKUP_FILE=%BACKUP_DIR%\iot_platform_latest.sql"
     
-    docker exec iot-mysql mysqldump -uroot -proot123456 iot_platform > "%BACKUP_FILE%" 2>nul
+    docker exec iot-mysql mysqldump -uroot -proot123456 iot_platform > "%BACKUP_FILE%" 2>&1
     if not errorlevel 1 (
-        echo [OK] Database backup completed
+        echo [OK] Database backup completed: %BACKUP_FILE%
     ) else (
         echo [WARNING] Database backup failed, continuing with code push
     )
@@ -104,11 +109,28 @@ if %GIT_ADD_ERROR% neq 0 (
 )
 
 echo [2/4] Committing...
+git status --short >nul 2>&1
+if errorlevel 1 (
+    echo [INFO] Checking for changes...
+    git status
+)
+
 git commit -m "%commit_msg%"
 set GIT_COMMIT_ERROR=%errorlevel%
 if %GIT_COMMIT_ERROR% neq 0 (
     echo [WARNING] Commit failed, may be no changes to commit
-    echo Continuing with push...
+    echo Checking git status...
+    git status
+    echo.
+    echo [INFO] If there are no changes, push will be skipped
+    set SKIP_PUSH=1
+) else (
+    set SKIP_PUSH=0
+)
+
+if "%SKIP_PUSH%"=="1" (
+    echo [INFO] Skipping push - no changes to commit
+    goto :skip_push
 )
 
 echo [3/4] Pushing to GitHub...
@@ -135,6 +157,7 @@ if %GIT_PUSH_ERROR% neq 0 (
     )
 )
 
+:skip_push
 echo.
 echo [4/4] Push completed!
 
