@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.iot.platform.dto.AlarmConfigDTO;
 import com.iot.platform.entity.Attribute;
 import com.iot.platform.entity.Device;
 import com.iot.platform.entity.Product;
@@ -38,6 +40,9 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
     
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
+    
+    @Resource
+    private ObjectMapper objectMapper;
     
     private static final String DEVICE_ONLINE_KEY = "device:online:";
     
@@ -311,19 +316,23 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
         // 产品分布
         try {
             List<Map<String, Object>> productDistribution = new ArrayList<>();
+            
+            // 获取所有产品
+            List<Product> allProducts = productService.list();
+            
+            // 统计每个产品的设备数
             List<Device> devices = this.list(baseQuery);
             Map<Long, Long> productCountMap = devices.stream()
                 .collect(Collectors.groupingBy(Device::getProductId, Collectors.counting()));
             
-            for (Map.Entry<Long, Long> entry : productCountMap.entrySet()) {
-                Product product = productService.getById(entry.getKey());
-                if (product != null) {
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("productName", product.getProductName());
-                    item.put("count", entry.getValue());
-                    productDistribution.add(item);
-                }
+            // 遍历所有产品，包括没有设备的产品
+            for (Product product : allProducts) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("productName", product.getProductName());
+                item.put("count", productCountMap.getOrDefault(product.getId(), 0L));
+                productDistribution.add(item);
             }
+            
             stats.put("productDistribution", productDistribution);
             
             // 产品总数：统计产品表的总数，而不是设备使用的产品数
@@ -361,5 +370,77 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
         }
         
         return stats;
+    }
+    
+    /**
+     * 配置设备告警阈值（单个或批量）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int configureAlarm(List<Long> deviceIds, AlarmConfigDTO alarmConfig, Boolean enabled) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            throw new RuntimeException("设备ID列表不能为空");
+        }
+        
+        try {
+            // 将配置对象转为JSON字符串
+            String configJson = objectMapper.writeValueAsString(alarmConfig);
+            
+            // 批量更新设备告警配置
+            int count = 0;
+            for (Long deviceId : deviceIds) {
+                Device device = this.getById(deviceId);
+                if (device != null) {
+                    device.setAlarmConfig(configJson);
+                    device.setAlarmEnabled(enabled);
+                    device.setUpdateTime(LocalDateTime.now());
+                    this.updateById(device);
+                    count++;
+                }
+            }
+            
+            log.info("批量配置设备告警阈值成功: {} 台设备", count);
+            return count;
+        } catch (Exception e) {
+            log.error("配置设备告警阈值失败", e);
+            throw new RuntimeException("配置告警阈值失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取设备告警配置
+     */
+    public AlarmConfigDTO getAlarmConfig(Long deviceId) {
+        Device device = this.getById(deviceId);
+        if (device == null) {
+            throw new RuntimeException("设备不存在: " + deviceId);
+        }
+        
+        if (device.getAlarmConfig() == null || device.getAlarmConfig().isEmpty()) {
+            return null;
+        }
+        
+        try {
+            return objectMapper.readValue(device.getAlarmConfig(), AlarmConfigDTO.class);
+        } catch (Exception e) {
+            log.error("解析设备告警配置失败", e);
+            return null;
+        }
+    }
+    
+    /**
+     * 切换设备告警启用状态
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void toggleAlarmEnabled(Long deviceId, Boolean enabled) {
+        Device device = this.getById(deviceId);
+        if (device == null) {
+            throw new RuntimeException("设备不存在: " + deviceId);
+        }
+        
+        device.setAlarmEnabled(enabled);
+        device.setUpdateTime(LocalDateTime.now());
+        this.updateById(device);
+        
+        log.info("设备 {} 告警状态切换为: {}", device.getDeviceName(), enabled ? "启用" : "禁用");
     }
 }

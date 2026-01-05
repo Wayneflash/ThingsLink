@@ -36,6 +36,11 @@ public class Device implements Serializable {
     
     private Integer offlineTimeout;
     
+    // 告警配置字段
+    private String alarmConfig;  // JSON格式存储告警配置
+    
+    private Boolean alarmEnabled;  // 告警是否启用
+    
     private LocalDateTime createTime;
     
     private LocalDateTime updateTime;

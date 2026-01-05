@@ -38,6 +38,18 @@ const routes = [
         meta: { title: '报警日志' }
       },
       {
+        path: 'alarm-rules',
+        name: 'AlarmRules',
+        component: () => import('../views/AlarmRules.vue'),
+        meta: { title: '告警规则', noAuth: true } // 原型页面，免登录
+      },
+      {
+        path: 'alarm-threshold',
+        name: 'AlarmThresholdConfig',
+        component: () => import('../views/AlarmThresholdConfig.vue'),
+        meta: { title: '告警阈值配置' }
+      },
+      {
         path: 'products',
         redirect: '/products/list',
         meta: { title: '产品管理' }
@@ -119,6 +131,12 @@ router.beforeEach((to, from, next) => {
     document.title = `${to.meta.title} - IOT Platform`
   } else {
     document.title = 'IOT Platform'
+  }
+  
+  // 原型页面，免登录
+  if (to.meta.noAuth) {
+    next()
+    return
   }
   
   // 登录页逻辑

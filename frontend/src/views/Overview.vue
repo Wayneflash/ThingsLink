@@ -1,14 +1,24 @@
 <template>
   <div class="dashboard-container">
-    <!-- 统计卡片 -->
+    <!-- 统计卡片区域 - 4个核心指标 -->
     <div class="stats-cards">
-      <div class="stat-card">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-          <span style="font-size: 32px;">📱</span>
+      <!-- 设备总数 -->
+      <div class="stat-card stat-card-primary" @click="goToDevices">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="white"/>
+            </svg>
+          </div>
+          <div class="stat-trend" v-if="stats.deviceTrend !== 0">
+            <span :class="stats.deviceTrend > 0 ? 'trend-up' : 'trend-down'">
+              {{ stats.deviceTrend > 0 ? '↑' : '↓' }} {{ Math.abs(stats.deviceTrend) }}
+            </span>
+          </div>
         </div>
         <div class="stat-info">
           <div class="stat-label">设备总数</div>
-          <div class="stat-value">{{ stats.totalDevices }}</div>
+          <div class="stat-value">{{ formatNumber(stats.totalDevices) }}</div>
           <div class="stat-detail">
             <span class="online">在线 {{ stats.onlineDevices }}</span>
             <span class="offline">离线 {{ stats.offlineDevices }}</span>
@@ -16,60 +26,183 @@
         </div>
       </div>
 
-      <div class="stat-card">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-          <span style="font-size: 32px;">📊</span>
+      <!-- 在线设备 -->
+      <div class="stat-card stat-card-success">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="white"/>
+            </svg>
+          </div>
+          <div class="stat-trend" v-if="stats.onlineRate">
+            <span class="trend-up">{{ stats.onlineRate }}%</span>
+          </div>
         </div>
         <div class="stat-info">
-          <div class="stat-label">今日数据量</div>
-          <div class="stat-value">{{ stats.todayDataCount }}</div>
+          <div class="stat-label">在线设备</div>
+          <div class="stat-value">{{ formatNumber(stats.onlineDevices) }}</div>
           <div class="stat-detail">
-            <span style="color: #999;">设备上报的数据条数</span>
+            <span style="color: #999;">在线率 {{ stats.onlineRate || 0 }}%</span>
           </div>
         </div>
       </div>
 
-      <div class="stat-card">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-          <span style="font-size: 32px;">🏭</span>
+      <!-- 产品数量 -->
+      <div class="stat-card stat-card-warning">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z" fill="white"/>
+            </svg>
+          </div>
         </div>
         <div class="stat-info">
           <div class="stat-label">产品类型</div>
-          <div class="stat-value">{{ productCount }}</div>
+          <div class="stat-value">{{ formatNumber(stats.productCount || 0) }}</div>
           <div class="stat-detail">
-            <span v-if="stats.productDistribution.length > 0" style="color: #999;">
-              {{ stats.productDistribution.map(p => p.productName).join('、') }}
+            <span style="color: #999;">已创建产品</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 今日数据量 -->
+      <div class="stat-card stat-card-info">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" fill="white"/>
+            </svg>
+          </div>
+          <div class="stat-trend" v-if="stats.dataTrend !== 0">
+            <span :class="stats.dataTrend > 0 ? 'trend-up' : 'trend-down'">
+              {{ stats.dataTrend > 0 ? '↑' : '↓' }} {{ formatPercent(Math.abs(stats.dataTrend)) }}
             </span>
-            <span v-else style="color: #999;">暂无产品</span>
+          </div>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">今日数据量</div>
+          <div class="stat-value">{{ formatNumber(stats.todayDataCount) }}</div>
+          <div class="stat-detail">
+            <span style="color: #999;">较昨日 {{ stats.dataTrend > 0 ? '+' : '' }}{{ formatPercent(stats.dataTrend) }}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 最近更新设备列表 -->
-    <div class="recent-devices">
-      <div class="section-title">
-        <span>⏰ 最近活跃设备</span>
-      </div>
-      <div class="device-list">
-        <div v-for="device in stats.recentDevices" :key="device.deviceCode" class="device-item">
-          <div class="device-icon">
-            <span :class="device.status === 1 ? 'status-dot online' : 'status-dot offline'"></span>
-            📱
+    <!-- 图表区域 - 第一行：数据趋势和产品分布 -->
+    <div class="charts-row">
+      <!-- 24小时数据趋势图 -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title-wrapper">
+            <span class="chart-icon">📈</span>
+            <span class="chart-title">数据上报趋势（最近24小时）</span>
           </div>
-          <div class="device-info">
-            <div class="device-name">{{ device.deviceName }}</div>
-            <div class="device-meta">{{ device.productName }} · {{ formatTime(device.lastOnlineTime) }}</div>
-          </div>
-          <div class="device-status">
-            <span :class="device.status === 1 ? 'badge online' : 'badge offline'">
-              {{ device.status === 1 ? '在线' : '离线' }}
-            </span>
+          <div class="chart-actions">
+            <el-button-group>
+              <el-button :type="timeRange === '24h' ? 'primary' : ''" size="small" @click="timeRange = '24h'; loadDataTrend()">24小时</el-button>
+              <el-button :type="timeRange === '7d' ? 'primary' : ''" size="small" @click="timeRange = '7d'; loadDataTrend()">7天</el-button>
+            </el-button-group>
           </div>
         </div>
-        <div v-if="stats.recentDevices.length === 0" class="empty-state">
-          <span style="font-size: 48px; opacity: 0.3;">📭</span>
-          <p>暂无设备数据</p>
+        <div ref="trendChartRef" class="chart-container" v-loading="trendLoading"></div>
+      </div>
+
+      <!-- 产品分布饼图 -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title-wrapper">
+            <span class="chart-icon">🏭</span>
+            <span class="chart-title">产品分布</span>
+          </div>
+        </div>
+        <div ref="productChartRef" class="chart-container" v-loading="productChartLoading"></div>
+      </div>
+    </div>
+
+    <!-- 图表区域 - 第二行：设备状态分布和分组统计 -->
+    <div class="charts-row">
+      <!-- 设备状态分布 -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title-wrapper">
+            <span class="chart-icon">📊</span>
+            <span class="chart-title">设备状态分布</span>
+          </div>
+        </div>
+        <div ref="statusChartRef" class="chart-container" v-loading="statusChartLoading"></div>
+      </div>
+
+      <!-- 分组统计 -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title-wrapper">
+            <span class="chart-icon">📁</span>
+            <span class="chart-title">设备分组统计</span>
+          </div>
+        </div>
+        <div class="group-stats-list">
+          <div v-for="group in groupStats" :key="group.groupId" class="group-stat-item">
+            <div class="group-stat-header">
+              <span class="group-name">{{ group.groupName || '未分组' }}</span>
+              <span class="group-count">{{ group.deviceCount }} 台</span>
+            </div>
+            <div class="group-stat-bar">
+              <div class="group-stat-bar-fill" :style="{ width: getGroupPercentage(group.deviceCount) + '%' }">
+                <div class="group-stat-bar-info">
+                  <span class="online-count">在线 {{ group.onlineCount }}</span>
+                  <span class="offline-count">离线 {{ group.offlineCount }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="groupStats.length === 0" class="empty-state">
+            <span style="font-size: 48px; opacity: 0.3;">📭</span>
+            <p>暂无分组数据</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部区域：最近活跃设备 -->
+    <div class="bottom-row">
+      <!-- 最近活跃设备 -->
+      <div class="info-card">
+        <div class="card-header">
+          <div class="card-title-wrapper">
+            <span class="card-icon">⏰</span>
+            <span class="card-title">最近活跃设备</span>
+          </div>
+          <el-button type="text" @click="goToDevices">查看全部 →</el-button>
+        </div>
+        <div class="device-list">
+          <div v-for="device in stats.recentDevices" :key="device.deviceCode" class="device-item" @click="goToDeviceDetail(device.deviceCode)">
+            <div class="device-icon-wrapper">
+              <div class="device-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z" fill="currentColor"/>
+                </svg>
+              </div>
+              <span :class="device.status === 1 ? 'status-dot online' : 'status-dot offline'"></span>
+            </div>
+            <div class="device-info">
+              <div class="device-name">{{ device.deviceName }}</div>
+              <div class="device-meta">
+                <span>{{ device.productName }}</span>
+                <span class="separator">·</span>
+                <span>{{ formatTime(device.lastOnlineTime) }}</span>
+              </div>
+            </div>
+            <div class="device-status">
+              <el-tag :type="device.status === 1 ? 'success' : 'warning'" size="small">
+                {{ device.status === 1 ? '在线' : '离线' }}
+              </el-tag>
+            </div>
+          </div>
+          <div v-if="stats.recentDevices.length === 0" class="empty-state">
+            <span style="font-size: 48px; opacity: 0.3;">📭</span>
+            <p>暂无设备数据</p>
+          </div>
         </div>
       </div>
     </div>
@@ -77,39 +210,98 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElLoading } from 'element-plus'
 import axios from '@/utils/request'
+import * as echarts from 'echarts'
 
+const router = useRouter()
+
+// 统计数据
 const stats = ref({
   totalDevices: 0,
   onlineDevices: 0,
   offlineDevices: 0,
   todayDataCount: 0,
+  yesterdayDataCount: 0,
+  alarmCount: 0,
+  onlineRate: 0,
+  deviceTrend: 0,
+  dataTrend: 0,
   productDistribution: [],
   recentDevices: [],
-  productCount: 0 // 添加产品总数
+  productCount: 0
 })
 
-const productCount = computed(() => stats.value.productCount)
+// 图表相关
+const trendChartRef = ref(null)
+const productChartRef = ref(null)
+const statusChartRef = ref(null)
+let trendChartInstance = null
+let productChartInstance = null
+let statusChartInstance = null
 
+// 加载状态
+const trendLoading = ref(false)
+const productChartLoading = ref(false)
+const statusChartLoading = ref(false)
+
+// 时间范围
+const timeRange = ref('24h')
+
+// 分组统计
+const groupStats = ref([])
+
+// 最近告警
+const recentAlarms = ref([])
+
+// 刷新定时器
+let refreshTimer = null
+
+// 计算属性
+const onlineRate = computed(() => {
+  if (stats.value.totalDevices === 0) return 0
+  return Math.round((stats.value.onlineDevices / stats.value.totalDevices) * 100)
+})
+
+// 加载统计数据
 const loadStatistics = async () => {
   try {
-    // axios 拦截器已经解包了 response.data.data，直接使用即可
     const data = await axios.get('/devices/statistics')
-    console.log('Dashboard 统计数据:', data)
+    console.log('统计数据:', data)
     
     if (data) {
+      const onlineRate = data.totalDevices > 0 
+        ? Math.round((data.onlineDevices / data.totalDevices) * 100) 
+        : 0
+      
+      // 补充最近设备的productName（如果后端没有返回）
+      const recentDevices = (data.recentDevices || []).slice(0, 8).map(device => {
+        // 如果设备没有productName，尝试从productDistribution中查找
+        if (!device.productName && device.productId) {
+          const product = data.productDistribution?.find(p => p.productId === device.productId)
+          if (product) {
+            device.productName = product.productName
+          }
+        }
+        return device
+      })
+      
       stats.value = {
         totalDevices: data.totalDevices || 0,
         onlineDevices: data.onlineDevices || 0,
         offlineDevices: data.offlineDevices || 0,
         todayDataCount: data.todayDataCount || 0,
+        yesterdayDataCount: 0, // 后端暂无此字段，设为0
+        alarmCount: 0, // 后端返回0，告警功能待实现
+        onlineRate: onlineRate,
+        deviceTrend: 0, // 后端暂无此字段
+        dataTrend: 0, // 需要计算昨日数据后才能得出
         productDistribution: data.productDistribution || [],
-        recentDevices: (data.recentDevices || []).slice(0, 5),
-        productCount: data.productCount || 0 // 从接口获取产品总数
+        recentDevices: recentDevices,
+        productCount: data.productCount || 0
       }
-      console.log('设置后的 stats:', stats.value)
     }
   } catch (error) {
     console.error('加载统计数据失败:', error)
@@ -117,6 +309,290 @@ const loadStatistics = async () => {
   }
 }
 
+// 加载数据趋势图
+const loadDataTrend = async () => {
+  if (!trendChartRef.value) return
+  
+  trendLoading.value = true
+  try {
+    // 调用真实API获取数据趋势
+    const data = await axios.post('/statistics/data-trend', {
+      range: timeRange.value
+    })
+    
+    const timeLabels = data.timeLabels || []
+    const dataCounts = data.dataCounts || []
+    
+    await nextTick()
+    
+    if (!trendChartInstance) {
+      trendChartInstance = echarts.init(trendChartRef.value)
+    }
+    
+    const option = {
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(50, 50, 50, 0.9)',
+        borderColor: 'transparent',
+        textStyle: { color: '#fff' }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: '10%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: timeLabels,
+        axisLine: { lineStyle: { color: '#e0e0e0' } },
+        axisLabel: { color: '#999', fontSize: 12 }
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: '#999', fontSize: 12 },
+        splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } }
+      },
+      series: [{
+        name: '数据量',
+        type: 'line',
+        smooth: true,
+        data: dataCounts,
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(102, 126, 234, 0.3)' },
+              { offset: 1, color: 'rgba(102, 126, 234, 0.05)' }
+            ]
+          }
+        },
+        lineStyle: { color: '#667eea', width: 3 },
+        itemStyle: { color: '#667eea' },
+        symbol: 'circle',
+        symbolSize: 6
+      }]
+    }
+    
+    trendChartInstance.setOption(option)
+    
+    // 响应式调整
+    window.addEventListener('resize', () => {
+      trendChartInstance?.resize()
+    })
+  } catch (error) {
+    console.error('加载数据趋势失败:', error)
+  } finally {
+    trendLoading.value = false
+  }
+}
+
+// 加载产品分布饼图
+const loadProductChart = async () => {
+  if (!productChartRef.value || stats.value.productDistribution.length === 0) return
+  
+  productChartLoading.value = true
+  try {
+    await nextTick()
+    
+    if (!productChartInstance) {
+      productChartInstance = echarts.init(productChartRef.value)
+    }
+    
+    const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#11998e', '#38ef7d']
+    const data = stats.value.productDistribution.map((item, index) => ({
+      value: item.count,
+      name: item.productName,
+      itemStyle: { color: colors[index % colors.length] }
+    }))
+    
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {c} ({d}%)'
+      },
+      legend: {
+        orient: 'vertical',
+        right: 10,
+        top: 'center',
+        textStyle: { color: '#666', fontSize: 12 }
+      },
+      series: [{
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['35%', '50%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 8,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: true,
+          formatter: '{b}\n{c}台 ({d}%)',
+          fontSize: 12
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 14,
+            fontWeight: 'bold'
+          }
+        },
+        data: data
+      }]
+    }
+    
+    productChartInstance.setOption(option)
+    
+    window.addEventListener('resize', () => {
+      productChartInstance?.resize()
+    })
+  } catch (error) {
+    console.error('加载产品分布图失败:', error)
+  } finally {
+    productChartLoading.value = false
+  }
+}
+
+// 加载设备状态分布图
+const loadStatusChart = async () => {
+  if (!statusChartRef.value) return
+  
+  statusChartLoading.value = true
+  try {
+    await nextTick()
+    
+    if (!statusChartInstance) {
+      statusChartInstance = echarts.init(statusChartRef.value)
+    }
+    
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {c} ({d}%)'
+      },
+      legend: {
+        orient: 'vertical',
+        right: 10,
+        top: 'center',
+        textStyle: { color: '#666', fontSize: 12 }
+      },
+      series: [{
+        type: 'pie',
+        radius: '65%',
+        center: ['40%', '50%'],
+        data: [
+          { value: stats.value.onlineDevices, name: '在线', itemStyle: { color: '#67c23a' } },
+          { value: stats.value.offlineDevices, name: '离线', itemStyle: { color: '#e6a23c' } }
+        ],
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          }
+        },
+        label: {
+          show: true,
+          formatter: '{b}\n{c}台 ({d}%)',
+          fontSize: 14
+        }
+      }]
+    }
+    
+    statusChartInstance.setOption(option)
+    
+    window.addEventListener('resize', () => {
+      statusChartInstance?.resize()
+    })
+  } catch (error) {
+    console.error('加载状态分布图失败:', error)
+  } finally {
+    statusChartLoading.value = false
+  }
+}
+
+// 加载分组统计
+const loadGroupStats = async () => {
+  try {
+    const res = await axios.post('/devices/list', { page: 1, pageSize: 10000 })
+    console.log('设备列表数据:', res)
+    const devices = res?.list || []
+    
+    const groupMap = {}
+    devices.forEach(device => {
+      const groupId = device.groupId || 0
+      const groupName = device.groupName || '未分组'
+      
+      if (!groupMap[groupId]) {
+        groupMap[groupId] = {
+          groupId,
+          groupName,
+          deviceCount: 0,
+          onlineCount: 0,
+          offlineCount: 0
+        }
+      }
+      groupMap[groupId].deviceCount++
+      if (device.status === 1) {
+        groupMap[groupId].onlineCount++
+      } else {
+        groupMap[groupId].offlineCount++
+      }
+    })
+    
+    groupStats.value = Object.values(groupMap)
+      .sort((a, b) => b.deviceCount - a.deviceCount)
+      .slice(0, 5)
+  } catch (error) {
+    console.error('加载分组统计失败:', error)
+    groupStats.value = []
+  }
+}
+
+// 加载最近告警（暂时禁用）
+const loadRecentAlarms = async () => {
+  // 告警功能暂未实现，隐藏该模块
+  recentAlarms.value = []
+}
+
+// 获取分组百分比
+const getGroupPercentage = (count) => {
+  if (stats.value.totalDevices === 0) return 0
+  return Math.round((count / stats.value.totalDevices) * 100)
+}
+
+// 获取告警级别样式
+const getAlarmLevelClass = (level) => {
+  return `alarm-level-${level || 'info'}`
+}
+
+// 格式化数字
+const formatNumber = (num) => {
+  if (num >= 10000) {
+    return (num / 10000).toFixed(1) + 'W'
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K'
+  }
+  return num.toString()
+}
+
+// 格式化百分比
+const formatPercent = (num) => {
+  return num > 0 ? `+${num}%` : `${num}%`
+}
+
+// 格式化时间
 const formatTime = (time) => {
   if (!time) return '-'
   const now = new Date()
@@ -126,13 +602,66 @@ const formatTime = (time) => {
   if (diff < 60) return '刚刚'
   if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`
   if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`
-  return `${Math.floor(diff / 86400)}天前`
+  if (diff < 604800) return `${Math.floor(diff / 86400)}天前`
+  return target.toLocaleDateString()
 }
 
+// 导航方法
+const goToDevices = () => {
+  router.push('/devices')
+}
+
+const goToAlarms = () => {
+  router.push('/alarms')
+}
+
+const goToDeviceDetail = (deviceCode) => {
+  router.push(`/devices/${deviceCode}`)
+}
+
+// 加载所有数据
+const loadAllData = async () => {
+  await loadStatistics()
+  await loadGroupStats()
+  await loadRecentAlarms()
+  
+  // 等待DOM更新后渲染图表
+  await nextTick()
+  setTimeout(() => {
+    loadDataTrend()
+    loadProductChart()
+    loadStatusChart()
+  }, 300)
+}
+
+// 生命周期
 onMounted(() => {
-  loadStatistics()
+  loadAllData()
+  
   // 每30秒刷新一次
-  setInterval(loadStatistics, 30000)
+  refreshTimer = setInterval(() => {
+    loadStatistics()
+    loadGroupStats()
+    loadRecentAlarms()
+  }, 30000)
+})
+
+onBeforeUnmount(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+  }
+  
+  // 销毁图表实例
+  trendChartInstance?.dispose()
+  productChartInstance?.dispose()
+  statusChartInstance?.dispose()
+  
+  // 移除事件监听
+  window.removeEventListener('resize', () => {
+    trendChartInstance?.resize()
+    productChartInstance?.resize()
+    statusChartInstance?.resize()
+  })
 })
 </script>
 
@@ -146,19 +675,34 @@ onMounted(() => {
 /* 统计卡片 */
 .stats-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
   margin-bottom: 24px;
 }
 
 .stat-card {
   background: white;
   border-radius: 16px;
-  padding: 28px;
+  padding: 24px;
   display: flex;
   gap: 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transform: scaleX(0);
+  transition: transform 0.3s;
 }
 
 .stat-card:hover {
@@ -166,15 +710,60 @@ onMounted(() => {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
+.stat-card:hover::before {
+  transform: scaleX(1);
+}
+
+.stat-icon-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .stat-icon {
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stat-trend {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: white;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.trend-up {
+  color: #67c23a;
+}
+
+.trend-down {
+  color: #f56c6c;
+}
+
+.stat-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #f56c6c;
   color: white;
-  flex-shrink: 0;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(245, 108, 108, 0.4);
 }
 
 .stat-info {
@@ -191,7 +780,7 @@ onMounted(() => {
 }
 
 .stat-value {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
   color: #1d1d1f;
   line-height: 1;
@@ -214,23 +803,211 @@ onMounted(() => {
   font-weight: 500;
 }
 
-/* 最近设备列表 */
-.recent-devices {
+/* 图表区域 */
+.charts-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.chart-card {
   background: white;
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-.section-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1d1d1f;
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 12px;
+  padding-bottom: 16px;
   border-bottom: 2px solid #f0f0f0;
 }
 
+.chart-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chart-icon {
+  font-size: 20px;
+}
+
+.chart-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.chart-container {
+  width: 100%;
+  height: 300px;
+}
+
+/* 分组统计列表 */
+.group-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.group-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.group-count {
+  font-size: 14px;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.group-stat-bar {
+  height: 32px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.group-stat-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  transition: width 0.5s;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 12px;
+  min-width: 120px;
+}
+
+.group-stat-bar-info {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: white;
+  font-weight: 500;
+}
+
+/* 底部区域 */
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.info-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.card-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-icon {
+  font-size: 20px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+/* 告警列表 */
+.alarm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alarm-item {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border-left: 4px solid #e6a23c;
+  transition: all 0.2s;
+}
+
+.alarm-item:hover {
+  background: #e9ecef;
+  transform: translateX(4px);
+}
+
+.alarm-item.alarm-level-critical {
+  border-left-color: #f56c6c;
+}
+
+.alarm-item.alarm-level-warning {
+  border-left-color: #e6a23c;
+}
+
+.alarm-item.alarm-level-info {
+  border-left-color: #409eff;
+}
+
+.alarm-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.alarm-content {
+  flex: 1;
+}
+
+.alarm-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.alarm-desc {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.alarm-time {
+  font-size: 12px;
+  color: #999;
+}
+
+/* 设备列表 */
 .device-list {
   display: flex;
   flex-direction: column;
@@ -245,11 +1022,17 @@ onMounted(() => {
   background: #f8f9fa;
   border-radius: 12px;
   transition: all 0.2s;
+  cursor: pointer;
 }
 
 .device-item:hover {
   background: #e9ecef;
   transform: translateX(4px);
+}
+
+.device-icon-wrapper {
+  position: relative;
+  flex-shrink: 0;
 }
 
 .device-icon {
@@ -260,9 +1043,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  position: relative;
-  flex-shrink: 0;
+  color: white;
 }
 
 .status-dot {
@@ -297,29 +1078,20 @@ onMounted(() => {
 .device-meta {
   font-size: 13px;
   color: #999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.separator {
+  color: #ddd;
 }
 
 .device-status {
   flex-shrink: 0;
 }
 
-.badge {
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.badge.online {
-  background: #f0f9ff;
-  color: #67c23a;
-}
-
-.badge.offline {
-  background: #fef0f0;
-  color: #e6a23c;
-}
-
+/* 空状态 */
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -332,9 +1104,14 @@ onMounted(() => {
 }
 
 /* 响应式 */
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
   .stats-cards {
     grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .charts-row,
+  .bottom-row {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -349,6 +1126,10 @@ onMounted(() => {
   
   .stat-value {
     font-size: 28px;
+  }
+  
+  .chart-container {
+    height: 250px;
   }
 }
 </style>
