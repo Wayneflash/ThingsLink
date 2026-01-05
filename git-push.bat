@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 echo ========================================
 echo   Git Push Script (Backup+Commit+Push)
 echo ========================================
@@ -94,30 +95,36 @@ if not errorlevel 1 (
 echo.
 echo [1/4] Adding changes...
 git add .
-if errorlevel 1 (
+set GIT_ADD_ERROR=%errorlevel%
+if %GIT_ADD_ERROR% neq 0 (
     echo [ERROR] Git add failed
+    echo Please check if you are in a valid Git repository
     pause
     exit /b 1
 )
 
 echo [2/4] Committing...
 git commit -m "%commit_msg%"
-if errorlevel 1 (
+set GIT_COMMIT_ERROR=%errorlevel%
+if %GIT_COMMIT_ERROR% neq 0 (
     echo [WARNING] Commit failed, may be no changes to commit
     echo Continuing with push...
 )
 
 echo [3/4] Pushing to GitHub...
 git push origin main
+set GIT_PUSH_ERROR=%errorlevel%
 
-if errorlevel 1 (
+if %GIT_PUSH_ERROR% neq 0 (
     echo.
-    echo [WARNING] Push failed, trying force push...
+    echo [WARNING] Push failed
     set /p force_confirm=Force push? (y/n): 
-    if /i "%force_confirm%"=="y" (
+    if /i "!force_confirm!"=="y" (
         git push origin main --force
-        if errorlevel 1 (
+        set GIT_FORCE_ERROR=%errorlevel%
+        if !GIT_FORCE_ERROR! neq 0 (
             echo [ERROR] Force push also failed
+            echo Please check your network connection and GitHub credentials
             pause
             exit /b 1
         )

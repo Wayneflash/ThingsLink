@@ -1,87 +1,92 @@
 @echo off
-chcp 936 >nul
+setlocal enabledelayedexpansion
 echo ========================================
-echo   启动所有服务 (Docker+后端+前端)
+echo   Start All Services (Docker+Backend+Frontend)
 echo ========================================
 echo.
 
-REM 自动检测脚本所在目录
+REM Auto detect script directory
 set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
+if errorlevel 1 (
+    echo [ERROR] Cannot change to script directory: %SCRIPT_DIR%
+    pause
+    exit /b 1
+)
 
-echo [1/4] 启动Docker服务（自动恢复数据库）...
-REM 检查 Docker 是否运行
+echo [1/4] Starting Docker services (auto restore database)...
+REM Check if Docker is running
 docker info >nul 2>&1
 if errorlevel 1 (
-    echo [错误] Docker 未运行，请先启动 Docker Desktop
-    echo 等待 Docker 启动...
+    echo [ERROR] Docker is not running, please start Docker Desktop first
+    echo Waiting for Docker to start...
     timeout /t 5 /nobreak >nul
     
-    REM 再次检查
+    REM Check again
     docker info >nul 2>&1
     if errorlevel 1 (
-        echo [错误] Docker 仍未运行，请手动启动 Docker Desktop
-        echo 跳过Docker启动，继续其他步骤...
+        echo [ERROR] Docker still not running, please start Docker Desktop manually
+        echo Skipping Docker startup, continuing with other steps...
         goto :skip_docker
     )
 )
 
-echo [OK] Docker 已运行
+echo [OK] Docker is running
 
-echo [INFO] 启动Docker容器...
+echo [INFO] Starting Docker containers...
 docker-compose up -d >nul 2>&1
 
 if errorlevel 1 (
-    echo [警告] Docker启动失败，继续其他步骤...
+    echo [WARNING] Docker startup failed, continuing with other steps...
     goto :skip_docker
 )
 
-echo [INFO] 等待MySQL启动...
+echo [INFO] Waiting for MySQL to start...
 timeout /t 5 /nobreak >nul
 
-REM 等待MySQL完全启动
+REM Wait for MySQL to be ready
 :wait_mysql
 docker exec iot-mysql mysqladmin ping -uroot -proot123456 --silent >nul 2>&1
 if errorlevel 1 (
     timeout /t 2 /nobreak >nul
     goto :wait_mysql
 )
-echo [OK] MySQL已就绪
+echo [OK] MySQL is ready
 
-REM 检查并恢复数据库
+REM Check and restore database
 set "BACKUP_FILE=%CD%\backups\iot_platform_latest.sql"
 if exist "%BACKUP_FILE%" (
-    echo [INFO] 发现数据库备份文件，正在检查数据库状态...
+    echo [INFO] Found database backup file, checking database status...
     
-    REM 检查数据库是否为空
+    REM Check if database is empty
     for /f "tokens=*" %%i in ('docker exec iot-mysql mysql -uroot -proot123456 -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='iot_platform';" -s -N 2^>nul') do set TABLE_COUNT=%%i
     
     if "%TABLE_COUNT%"=="" set TABLE_COUNT=0
     if %TABLE_COUNT% LSS 5 (
-        echo [INFO] 数据库为空，正在恢复备份...
+        echo [INFO] Database is empty, restoring backup...
         docker exec -i iot-mysql mysql -uroot -proot123456 iot_platform < "%BACKUP_FILE%" >nul 2>&1
         if not errorlevel 1 (
-            echo [OK] 数据库恢复成功！
+            echo [OK] Database restored successfully!
         ) else (
-            echo [警告] 数据库恢复失败，但服务已启动
+            echo [WARNING] Database restore failed, but services are started
         )
     ) else (
-        echo [INFO] 数据库已有数据，跳过恢复
+        echo [INFO] Database already has data, skipping restore
     )
 ) else (
-    echo [INFO] 未找到备份文件，使用初始数据库
-    echo 备份文件路径: %BACKUP_FILE%
+    echo [INFO] Backup file not found, using initial database
+    echo Backup file path: %BACKUP_FILE%
 )
 
-echo [OK] Docker服务已启动
+echo [OK] Docker services started
 
 :skip_docker
 
 echo.
-echo [2/4] 启动后端服务...
+echo [2/4] Starting backend service...
 set "BACKEND_DIR=%CD%\backend"
 
-REM 设置Java环境变量
+REM Set Java environment variable
 if "%JAVA_HOME%"=="" (
     if exist "C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot" (
         set JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot
@@ -94,7 +99,7 @@ if not "%JAVA_HOME%"=="" (
     set "PATH=%JAVA_HOME%\bin;%PATH%"
 )
 
-REM 停止旧的8080端口进程
+REM Stop old 8080 port process
 for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr :8080 ^| findstr LISTENING') do (
     taskkill /F /PID %%a >nul 2>&1
 )
@@ -102,18 +107,26 @@ timeout /t 2 /nobreak >nul
 
 if exist "%BACKEND_DIR%\target\iot-platform.jar" (
     cd /d "%BACKEND_DIR%"
-    start "IOT Backend" cmd /k "java -jar target\iot-platform.jar"
-    echo [OK] 后端服务已启动
+    if errorlevel 1 (
+        echo [WARNING] Cannot change to backend directory: %BACKEND_DIR%
+    ) else (
+        start "IOT Backend" cmd /k "java -jar target\iot-platform.jar"
+        if errorlevel 1 (
+            echo [WARNING] Failed to start backend service
+        ) else (
+            echo [OK] Backend service started
+        )
+    )
 ) else (
-    echo [警告] 找不到后端jar文件，跳过后端启动
-    echo 请先编译: cd backend ^&^& mvn clean package -DskipTests
+    echo [WARNING] Backend jar file not found, skipping backend startup
+    echo Please compile first: cd backend ^&^& mvn clean package -DskipTests
 )
 
 echo.
-echo [3/4] 启动前端服务...
+echo [3/4] Starting frontend service...
 set "FRONTEND_DIR=%CD%\frontend"
 
-REM 停止旧的5173端口进程
+REM Stop old 5173 port process
 for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr :5173 ^| findstr LISTENING') do (
     taskkill /F /PID %%a >nul 2>&1
 )
@@ -121,34 +134,40 @@ timeout /t 2 /nobreak >nul
 
 if exist "%FRONTEND_DIR%\package.json" (
     cd /d "%FRONTEND_DIR%"
-    
-    REM 检查依赖
-    if not exist "node_modules" (
-        echo [INFO] 正在安装前端依赖...
-        call npm install >nul 2>&1
+    if errorlevel 1 (
+        echo [WARNING] Cannot change to frontend directory: %FRONTEND_DIR%
+    ) else (
+        REM Check dependencies
+        if not exist "node_modules" (
+            echo [INFO] Installing frontend dependencies...
+            call npm install >nul 2>&1
+        )
+        
+        start "IOT Frontend" cmd /k "npm run dev"
+        if errorlevel 1 (
+            echo [WARNING] Failed to start frontend service
+        ) else (
+            echo [OK] Frontend service started
+        )
     )
-    
-    start "IOT Frontend" cmd /k "npm run dev"
-    echo [OK] 前端服务已启动
 ) else (
-    echo [警告] 找不到前端目录，跳过前端启动
+    echo [WARNING] Frontend directory not found, skipping frontend startup
 )
 
 echo.
-echo [4/4] 完成！
+echo [4/4] Completed!
 
 echo.
 echo ========================================
-echo   所有服务已启动！
+echo   All Services Started!
 echo ========================================
 echo.
-echo 服务地址：
+echo Service addresses:
 echo   MySQL:    localhost:3306
 echo   Redis:    localhost:16379
 echo   EMQX:     localhost:1883 (MQTT)
 echo   EMQX Web: http://localhost:18083 (admin/public)
-echo   后端:     http://localhost:8080
-echo   前端:     http://localhost:5173
+echo   Backend:  http://localhost:8080
+echo   Frontend: http://localhost:5173
 echo.
 pause
-
