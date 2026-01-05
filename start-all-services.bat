@@ -59,12 +59,15 @@ if exist "%BACKUP_FILE%" (
     echo [INFO] Found database backup file, checking database status...
     
     REM Check if database is empty
-    for /f "tokens=*" %%i in ('docker exec iot-mysql mysql -uroot -proot123456 -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='iot_platform';" -s -N 2^>nul') do set TABLE_COUNT=%%i
+    set TABLE_COUNT=0
+    for /f "tokens=*" %%i in ('docker exec iot-mysql mysql -uroot -proot123456 -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='iot_platform';" -s -N 2^>nul') do (
+        set TABLE_COUNT=%%i
+    )
     
-    if "%TABLE_COUNT%"=="" set TABLE_COUNT=0
-    if %TABLE_COUNT% LSS 5 (
+    if "!TABLE_COUNT!"=="" set TABLE_COUNT=0
+    if !TABLE_COUNT! LSS 5 (
         echo [INFO] Database is empty, restoring backup...
-        docker exec -i iot-mysql mysql -uroot -proot123456 iot_platform < "%BACKUP_FILE%" >nul 2>&1
+        docker exec -i iot-mysql mysql -uroot -proot123456 iot_platform < "%BACKUP_FILE%" 2>nul
         if not errorlevel 1 (
             echo [OK] Database restored successfully!
         ) else (
@@ -100,7 +103,7 @@ if not "%JAVA_HOME%"=="" (
 )
 
 REM Stop old 8080 port process
-for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr :8080 ^| findstr LISTENING') do (
+for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr :8080 ^| findstr LISTENING 2^>nul') do (
     taskkill /F /PID %%a >nul 2>&1
 )
 timeout /t 2 /nobreak >nul
@@ -110,11 +113,13 @@ if exist "%BACKEND_DIR%\target\iot-platform.jar" (
     if errorlevel 1 (
         echo [WARNING] Cannot change to backend directory: %BACKEND_DIR%
     ) else (
-        start "IOT Backend" cmd /k "java -jar target\iot-platform.jar"
+        REM Check if Java is available
+        java -version >nul 2>&1
         if errorlevel 1 (
-            echo [WARNING] Failed to start backend service
+            echo [WARNING] Java not found, skipping backend startup
         ) else (
-            echo [OK] Backend service started
+            start "IOT Backend" cmd /k "java -jar target\iot-platform.jar"
+            echo [OK] Backend service started in new window
         )
     )
 ) else (
@@ -122,12 +127,15 @@ if exist "%BACKEND_DIR%\target\iot-platform.jar" (
     echo Please compile first: cd backend ^&^& mvn clean package -DskipTests
 )
 
+REM Return to project root directory
+cd /d "%SCRIPT_DIR%"
+
 echo.
 echo [3/4] Starting frontend service...
-set "FRONTEND_DIR=%CD%\frontend"
+set "FRONTEND_DIR=%SCRIPT_DIR%frontend"
 
 REM Stop old 5173 port process
-for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr :5173 ^| findstr LISTENING') do (
+for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr :5173 ^| findstr LISTENING 2^>nul') do (
     taskkill /F /PID %%a >nul 2>&1
 )
 timeout /t 2 /nobreak >nul
@@ -137,17 +145,19 @@ if exist "%FRONTEND_DIR%\package.json" (
     if errorlevel 1 (
         echo [WARNING] Cannot change to frontend directory: %FRONTEND_DIR%
     ) else (
-        REM Check dependencies
-        if not exist "node_modules" (
-            echo [INFO] Installing frontend dependencies...
-            call npm install >nul 2>&1
-        )
-        
-        start "IOT Frontend" cmd /k "npm run dev"
+        REM Check if Node.js is available
+        node --version >nul 2>&1
         if errorlevel 1 (
-            echo [WARNING] Failed to start frontend service
+            echo [WARNING] Node.js not found, skipping frontend startup
         ) else (
-            echo [OK] Frontend service started
+            REM Check dependencies
+            if not exist "node_modules" (
+                echo [INFO] Installing frontend dependencies...
+                call npm install >nul 2>&1
+            )
+            
+            start "IOT Frontend" cmd /k "npm run dev"
+            echo [OK] Frontend service started in new window
         )
     )
 ) else (
