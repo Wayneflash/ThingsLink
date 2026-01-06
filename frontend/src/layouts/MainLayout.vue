@@ -154,7 +154,8 @@ import {
   Box,
   FolderOpened,
   TrendCharts,
-  BellFilled
+  BellFilled,
+  Warning
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -180,6 +181,7 @@ const iconMap = {
   FolderOpened,
   TrendCharts,
   BellFilled,
+  Warning,
   Setting,
   User
 }

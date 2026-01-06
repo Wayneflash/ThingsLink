@@ -4,46 +4,86 @@
     <div class="topbar">
       <div class="breadcrumb">
         <span @click="goBack" class="breadcrumb-link">设备管理</span>
-        <span>/</span>
-        <span>设备详情</span>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">设备详情</span>
       </div>
-      <el-button type="primary" @click="goBack" size="small">
-        <span style="margin-right: 4px;">←</span>
-        返回列表
+      <el-button type="primary" @click="goBack" size="default" class="back-btn">
+        <el-icon style="margin-right: 6px;"><ArrowLeft /></el-icon>
+        返回设备列表
       </el-button>
     </div>
 
-    <!-- 设备头部卡片 - 只在实时数据和命令控制Tab显示 -->
-    <div v-if="activeTab !== 'history'" class="device-header">
-      <div class="device-header-top">
-        <div class="device-title">
-          <div class="device-icon">📱</div>
-          <div>
-            <h1 class="device-name">{{ deviceInfo.deviceName || '-' }}</h1>
-            <div class="device-code">{{ deviceInfo.deviceCode || '-' }}</div>
+    <!-- 设备信息区域：双列布局 -->
+    <div v-if="activeTab !== 'history'" class="header-section">
+      <!-- 左侧：基本信息 -->
+      <div class="header-left">
+        <div class="device-title-bar-compact">
+          <div :class="['device-icon-large', deviceInfo.status === 1 ? 'icon-online' : 'icon-offline']">📱</div>
+          <div class="device-title-text">
+            <div class="title-row">
+              <div class="device-name-wrapper">
+                <h1 class="device-name-large">{{ deviceInfo.deviceName || '-' }}</h1>
+                <div class="device-code-badge">{{ deviceInfo.deviceCode || '-' }}</div>
+              </div>
+              <div :class="['status-badge', deviceInfo.status === 1 ? 'status-online' : 'status-offline']">
+                <span class="status-dot"></span>
+                <span>{{ deviceInfo.status === 1 ? '在线' : '离线' }}</span>
+              </div>
+            </div>
           </div>
         </div>
-        <span :class="['badge', deviceInfo.status === 1 ? 'badge-online' : 'badge-offline']">
-          {{ deviceInfo.status === 1 ? '在线' : '离线' }}
-        </span>
+        
+        <div class="info-grid-compact">
+          <div class="info-card-compact">
+            <div class="info-label">产品类型</div>
+            <div class="info-value">{{ deviceInfo.productName || '-' }}</div>
+          </div>
+          <div class="info-card-compact">
+            <div class="info-label">所属分组</div>
+            <div class="info-value">{{ deviceInfo.groupName || '-' }}</div>
+          </div>
+          <div class="info-card-compact">
+            <div class="info-label">最后上线</div>
+            <div class="info-value">{{ formatDateTime(deviceInfo.lastOnlineTime) || '-' }}</div>
+          </div>
+        </div>
       </div>
 
-      <div class="device-meta">
-        <div class="meta-item">
-          <span class="meta-label">所属产品</span>
-          <span class="meta-value">{{ deviceInfo.productName || '-' }}</span>
+      <!-- 右侧：MQTT连接信息 -->
+      <div class="header-right">
+        <div class="info-section-title">
+          <span class="section-icon">📡</span>
+          MQTT连接信息
         </div>
-        <div class="meta-item">
-          <span class="meta-label">设备分组</span>
-          <span class="meta-value">{{ deviceInfo.groupName || '-' }}</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">最后在线</span>
-          <span class="meta-value">{{ formatDateTime(deviceInfo.lastOnlineTime) || '-' }}</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">创建时间</span>
-          <span class="meta-value">{{ formatDateTime(deviceInfo.createTime) || '-' }}</span>
+        <div class="mqtt-card-compact">
+          <div class="mqtt-line">
+            <span class="mqtt-label">地址:</span>
+            <span class="mqtt-value">{{ mqttConfig.broker || '-' }}</span>
+            <span class="mqtt-sep">|</span>
+            <span class="mqtt-label">端口:</span>
+            <span class="mqtt-value">{{ mqttConfig.port || '-' }}</span>
+          </div>
+          <div class="mqtt-line">
+            <span class="mqtt-label">Client ID:</span>
+            <code class="mqtt-code-inline">{{ deviceInfo.deviceCode || '-' }}</code>
+            <el-button text class="copy-btn" @click="copyToClipboard(deviceInfo.deviceCode, 'Client ID')" size="small">
+              <el-icon><DocumentCopy /></el-icon>
+            </el-button>
+          </div>
+          <div class="mqtt-line">
+            <span class="mqtt-label">发布主题:</span>
+            <code class="mqtt-code-inline">ssc/{{ deviceInfo.deviceCode || '-' }}/report</code>
+            <el-button text class="copy-btn" @click="copyToClipboard(`ssc/${deviceInfo.deviceCode}/report`, '发布主题')" size="small">
+              <el-icon><DocumentCopy /></el-icon>
+            </el-button>
+          </div>
+          <div class="mqtt-line">
+            <span class="mqtt-label">订阅主题:</span>
+            <code class="mqtt-code-inline">ssc/{{ deviceInfo.deviceCode || '-' }}/command</code>
+            <el-button text class="copy-btn" @click="copyToClipboard(`ssc/${deviceInfo.deviceCode}/command`, '订阅主题')" size="small">
+              <el-icon><DocumentCopy /></el-icon>
+            </el-button>
+          </div>
         </div>
       </div>
     </div>
@@ -75,7 +115,8 @@
 
     <!-- 实时数据 Tab -->
     <div class="tab-content" :class="{ active: activeTab === 'realtime' }">
-        <div v-if="realtimeData.length > 0" class="data-grid">
+      <div v-if="realtimeData.length > 0" class="data-grid-wrapper">
+        <div class="data-grid">
           <div 
             v-for="item in realtimeData" 
             :key="item.key" 
@@ -89,11 +130,12 @@
             <div class="data-time">📅 {{ updateTime }}</div>
           </div>
         </div>
-        <div v-else class="empty-data">
-          <div class="empty-icon">📭</div>
-          <div>暂无实时数据</div>
-        </div>
       </div>
+      <div v-else class="empty-data">
+        <div class="empty-icon">📭</div>
+        <div>暂无实时数据</div>
+      </div>
+    </div>
 
     <!-- 历史数据 Tab -->
     <div class="tab-content" :class="{ active: activeTab === 'history' }">
@@ -127,36 +169,38 @@
       </div>
       
       <!-- 表格视图 -->
-      <div v-show="historyViewMode === 'table'" class="history-table-container">
-        <el-table :data="paginatedHistoryData" stripe style="width: 100%">
-          <el-table-column prop="reportTime" label="上报时间" width="220" fixed />
-          <el-table-column 
-            v-for="attr in productAttributes" 
-            :key="attr.addr" 
-            :label="attr.attrName"
-            min-width="100"
-          >
-            <template #default="{ row }">
-              <span v-if="row[attr.addr] !== undefined && row[attr.addr] !== null">
-                {{ row[attr.addr] }}
-                <span v-if="attr.unit" class="unit-text">{{ attr.unit }}</span>
-              </span>
-              <span v-else style="color: #ccc;">-</span>
-            </template>
-          </el-table-column>
-        </el-table>
-        <el-pagination
-          v-if="historyData.length > 0"
-          v-model:current-page="historyPagination.currentPage"
-          v-model:page-size="historyPagination.pageSize"
-          :page-sizes="[20, 50, 100, 200]"
-          :total="historyPagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          style="margin-top: 20px; justify-content: center;"
-        />
-        <div v-if="historyData.length === 0" class="empty-data">
-          <div class="empty-icon">📭</div>
-          <div>暂无历史数据</div>
+      <div v-show="historyViewMode === 'table'" class="history-table-wrapper">
+        <div class="history-table-container">
+          <el-table :data="paginatedHistoryData" stripe style="width: 100%" :height="tableHeight">
+            <el-table-column prop="reportTime" label="上报时间" width="220" fixed />
+            <el-table-column 
+              v-for="attr in productAttributes" 
+              :key="attr.addr" 
+              :label="attr.attrName"
+              min-width="100"
+            >
+              <template #default="{ row }">
+                <span v-if="row[attr.addr] !== undefined && row[attr.addr] !== null">
+                  {{ row[attr.addr] }}
+                  <span v-if="attr.unit" class="unit-text">{{ attr.unit }}</span>
+                </span>
+                <span v-else style="color: #ccc;">-</span>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-pagination
+            v-if="historyData.length > 0"
+            v-model:current-page="historyPagination.currentPage"
+            v-model:page-size="historyPagination.pageSize"
+            :page-sizes="[20, 50, 100, 200]"
+            :total="historyPagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            class="history-pagination"
+          />
+          <div v-if="historyData.length === 0" class="empty-data">
+            <div class="empty-icon">📭</div>
+            <div>暂无历史数据</div>
+          </div>
         </div>
       </div>
     </div>
@@ -186,10 +230,12 @@
 import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowLeft, DocumentCopy } from '@element-plus/icons-vue'
 import { getDeviceDetail, getDeviceLatestData } from '@/api/device'
 import { getProductAttributes, getProductCommands } from '@/api/product'
 import { getHistoryData } from '@/api/data'
 import { sendCommand as sendCommandAPI } from '@/api/command'
+import { getMqttConfig } from '@/api/system'
 import * as echarts from 'echarts'
 
 const route = useRoute()
@@ -233,6 +279,32 @@ const historyPagination = reactive({
 // 当前激活的Tab
 const activeTab = ref('realtime')
 
+// MQTT配置信息
+const mqttConfig = reactive({
+  broker: '',
+  port: '',
+  username: '',
+  password: ''
+})
+const showPassword = ref(false)
+
+// 加载MQTT配置
+const loadMqttConfig = async () => {
+  try {
+    const config = await getMqttConfig()
+    if (config) {
+      Object.assign(mqttConfig, config)
+    }
+  } catch (error) {
+    console.error('加载MQTT配置失败:', error)
+    // 设置默认值
+    mqttConfig.broker = 'localhost'
+    mqttConfig.port = '1883'
+    mqttConfig.username = 'admin'
+    mqttConfig.password = 'admin123.'
+  }
+}
+
 // 加载设备详情
 const loadDeviceDetail = async () => {
   try {
@@ -243,6 +315,9 @@ const loadDeviceDetail = async () => {
       return
     }
 
+    // 加载MQTT配置
+    await loadMqttConfig()
+    
     // 只加载设备基本信息
     const data = await getDeviceDetail({ deviceCode })
     if (data) {
@@ -362,6 +437,18 @@ const paginatedHistoryData = computed(() => {
   return historyData.value.slice(start, end)
 })
 
+// 表格高度计算（1920x1080下优化）
+const tableHeight = computed(() => {
+  // 顶部导航栏: ~60px
+  // 面包屑: ~60px
+  // Tab标签: ~50px
+  // 工具栏: ~60px
+  // 分页器: ~50px
+  // 容器padding和margin: ~40px
+  // 剩余空间给表格
+  return 'calc(100vh - 320px)'
+})
+
 // 查询历史数据
 const queryHistory = async () => {
   try {
@@ -431,6 +518,15 @@ const renderHistoryChart = () => {
   
   if (rect.width === 0 || rect.height === 0) {
     console.error('容器尺寸为0，可能未显示')
+    // 延迟重试
+    setTimeout(() => {
+      if (historyChartRef.value) {
+        const retryRect = historyChartRef.value.getBoundingClientRect()
+        if (retryRect.width > 0 && retryRect.height > 0) {
+          renderHistoryChart()
+        }
+      }
+    }, 200)
     return
   }
   
@@ -548,17 +644,17 @@ const renderHistoryChart = () => {
     },
     legend: {
       data: series.map(s => s.name),
-      top: 45,
+      top: 30,
       type: 'scroll',
       textStyle: {
-        fontSize: 12
+        fontSize: 11
       }
     },
     grid: {
-      left: 60,
-      right: 40,
-      bottom: 80,
-      top: 90,
+      left: 55,
+      right: 35,
+      bottom: 50,
+      top: 65,
       containLabel: false
     },
     xAxis: {
@@ -611,8 +707,8 @@ const renderHistoryChart = () => {
         type: 'slider',
         start: 0,
         end: 100,
-        height: 25,
-        bottom: 15,
+        height: 20,
+        bottom: 8,
         borderColor: '#ccc',
         fillerColor: 'rgba(64, 158, 255, 0.2)',
         handleStyle: {
@@ -650,7 +746,17 @@ watch(historyViewMode, async (newMode) => {
   }
 })
 
-// 监听窗口大小变化
+// 监听窗口大小变化和Tab切换
+watch([() => activeTab.value, () => historyViewMode.value], () => {
+  if (activeTab.value === 'history' && historyViewMode.value === 'chart' && historyChartInstance) {
+    setTimeout(() => {
+      if (historyChartInstance) {
+        historyChartInstance.resize()
+      }
+    }, 100)
+  }
+})
+
 onMounted(() => {
   window.addEventListener('resize', () => {
     if (historyChartInstance) {
@@ -755,6 +861,21 @@ const goBack = () => {
   router.push('/devices')
 }
 
+// 复制到剪贴板
+const copyToClipboard = async (text, label) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage({
+      message: `${label}已复制到剪贴板`,
+      type: 'success',
+      duration: 2000
+    })
+  } catch (err) {
+    console.error('复制失败:', err)
+    ElMessage.error('复制失败，请手动选择复制')
+  }
+}
+
 onMounted(() => {
   loadDeviceDetail()
   // 设置默认历史数据时间范围
@@ -765,46 +886,598 @@ onMounted(() => {
 <style scoped>
 /* 主容器 */
 .device-detail-page {
-  background: var(--el-bg-color);
-  min-height: calc(100vh - 60px);
-  padding: 40px;
+  background: #f5f5f7;
+  height: calc(100vh - 60px);
+  padding: 4px 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-/* 顶部导航 */
+/* 顶部导航与面包屑 */
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+  background: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: var(--el-text-color-secondary);
-  font-size: 15px;
-  font-weight: 500;
+  gap: 6px;
+  font-size: 13px;
 }
 
 .breadcrumb-link {
-  color: var(--el-text-color-secondary);
+  color: #007AFF;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: all 0.2s;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
 }
 
 .breadcrumb-link:hover {
-  color: var(--el-color-primary);
+  background: #f0f7ff;
+  color: #0051d5;
 }
 
-/* 设备头部 */
+.breadcrumb-sep {
+  color: #d2d2d7;
+  margin: 0 4px;
+}
+
+.breadcrumb-current {
+  color: #1d1d1f;
+  font-weight: 600;
+}
+
+/* 返回按钮 */
+.back-btn {
+  font-weight: 500 !important;
+  padding: 6px 14px !important;
+  font-size: 13px !important;
+}
+
+/* 顶部双列布局 */
+.header-section {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.header-left {
+  flex: 1.6;
+  background: white;
+  border-radius: 16px;
+  padding: 28px 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.header-right {
+  flex: 1;
+  background: white;
+  border-radius: 16px;
+  padding: 28px 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 左侧标题区域 */
+.device-title-bar-compact {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.device-icon-large {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+
+.device-icon-large.icon-online {
+  background: linear-gradient(135deg, #34C759 0%, #30D158 100%);
+  box-shadow: 0 4px 16px rgba(52, 199, 89, 0.3);
+}
+
+.device-icon-large.icon-offline {
+  background: linear-gradient(135deg, #86868b 0%, #a1a1a6 100%);
+  box-shadow: 0 4px 16px rgba(134, 134, 139, 0.2);
+}
+
+.device-title-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.device-name-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.device-name-large {
+  font-size: 36px;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.device-code-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  color: #86868b;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  background: #f5f5f7;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* 状态徽章 */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-badge.status-online {
+  background: #e8f5e9;
+  color: #34C759;
+}
+
+.status-badge.status-offline {
+  background: #f5f5f7;
+  color: #86868b;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* 左侧信息网格 */
+.info-grid-compact {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.info-card-compact {
+  background: #f5f5f7;
+  padding: 14px 18px;
+  border-radius: 10px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #86868b;
+  margin-bottom: 6px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.info-value {
+  font-size: 17px;
+  color: #1d1d1f;
+  font-weight: 600;
+}
+
+/* 右侧MQTT卡片 */
+.mqtt-card-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.mqtt-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.mqtt-code-inline {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  color: #007AFF;
+  background: #f5f5f7;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  word-break: break-all;
+  flex: 1;
+  font-weight: 500;
+}
+
+.mqtt-label {
+  color: #86868b;
+  font-weight: 500;
+  white-space: nowrap;
+  font-size: 15px;
+}
+
+.mqtt-value {
+  color: #1d1d1f;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.mqtt-sep {
+  color: #d2d2d7;
+  margin: 0 6px;
+  font-size: 15px;
+}
+
+/* 复制按钮 */
+.copy-btn {
+  padding: 4px !important;
+  margin-left: 8px;
+  color: #86868b !important;
+  transition: all 0.2s;
+}
+
+.copy-btn:hover {
+  color: #007AFF !important;
+  background: #f0f7ff !important;
+}
+
+/* 实时数据部分 */
+.data-grid-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 4px 2px 0 0;
+}
+
+.data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  padding: 0;
+}
+
+.data-card {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.data-value {
+  font-size: 32px;
+  font-weight: 600;
+  color: #007AFF;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.data-unit {
+  font-size: 20px;
+  color: #86868b;
+  margin-left: 6px;
+  font-weight: 500;
+}
+
+.info-section-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1d1d1f;
+}
+
+.section-icon {
+  font-size: 20px;
+}
+
+.device-info-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.device-title-compact {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.device-icon-compact {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+}
+
+.device-title-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.device-name-compact {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.device-code-compact {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  background: var(--el-fill-color-light);
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.badge-compact {
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.device-meta-compact {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.meta-item-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-label-compact {
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+  font-weight: 500;
+}
+
+.meta-value-compact {
+  font-size: 13px;
+  color: var(--el-text-color-primary);
+  font-weight: 500;
+}
+
+/* MQTT信息区域 - 右侧 */
+.mqtt-info-section {
+  width: 440px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--el-border-color-lighter);
+  padding-left: 24px;
+}
+
+.mqtt-info-title-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.mqtt-icon-compact {
+  font-size: 18px;
+}
+
+.mqtt-info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mqtt-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.mqtt-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mqtt-label-compact {
+  font-size: 11px;
+  color: var(--el-text-color-placeholder);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mqtt-value-compact {
+  font-size: 13px;
+  color: var(--el-text-color-primary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.password-mask-compact {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  letter-spacing: 1.5px;
+}
+
+.password-toggle {
+  padding: 0 4px !important;
+  font-size: 11px !important;
+  height: auto !important;
+  min-height: auto !important;
+  color: var(--el-color-primary) !important;
+}
+
+.mqtt-code-row {
+  margin-top: 2px;
+}
+
+.mqtt-code-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mqtt-code-label {
+  font-size: 11px;
+  color: var(--el-text-color-placeholder);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mqtt-code-value {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
+  background: var(--el-fill-color-light);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--el-border-color-lighter);
+  color: var(--el-color-primary);
+  font-weight: 500;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* 设备头部 - 旧样式保留（兼容） */
 .device-header {
   background: var(--el-bg-color-overlay);
   border: 1px solid var(--el-border-color);
   border-radius: 16px;
-  padding: 32px;
-  margin-bottom: 28px;
+  padding: 24px;
+  margin-bottom: 16px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.06);
+}
+
+.device-header-top {
+  margin-bottom: 20px;
+}
+
+/* MQTT连接信息卡片 */
+.mqtt-info-card {
+  background: var(--el-bg-color-overlay);
+  border: 1px solid var(--el-border-color);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.06);
+}
+
+.mqtt-info-header {
+  margin-bottom: 16px;
+}
+
+.mqtt-info-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.mqtt-icon {
+  font-size: 20px;
+}
+
+.mqtt-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.mqtt-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mqtt-info-item-full {
+  grid-column: span 4;
+}
+
+.mqtt-info-label {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mqtt-info-value {
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+  font-weight: 500;
+  word-break: break-all;
+  display: flex;
+  align-items: center;
+}
+
+.code-text {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  background: var(--el-fill-color-light);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--el-border-color-lighter);
+  color: var(--el-color-primary);
+  font-weight: 600;
+}
+
+.password-mask {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  letter-spacing: 2px;
 }
 
 .device-header-top {
@@ -872,8 +1545,8 @@ onMounted(() => {
 
 .device-meta {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
 }
 
 .meta-item {
@@ -899,56 +1572,52 @@ onMounted(() => {
 /* 标签页 - Apple风格 */
 .tabs {
   display: flex;
-  gap: 8px;
-  border-bottom: 1px solid var(--el-border-color);
-  margin-bottom: 28px;
-  background: var(--el-bg-color-overlay);
-  padding: 8px 8px 0;
-  border-radius: 12px 12px 0 0;
+  gap: 0;
+  border-bottom: 1px solid #d2d2d7;
+  margin-bottom: 0;
+  background: white;
+  padding: 0;
+  border-radius: 8px 8px 0 0;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .tab {
-  padding: 12px 24px;
+  padding: 6px 18px;
   background: transparent;
   border: none;
-  color: var(--el-text-color-secondary);
-  font-size: 15px;
+  color: #86868b;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  border-radius: 8px 8px 0 0;
-  margin-bottom: -1px;
-  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: all 0.2s ease;
   position: relative;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
 }
 
 .tab:hover {
-  color: var(--el-text-color-primary);
-  background: var(--el-fill-color-light);
+  color: #1d1d1f;
+  background: #f5f5f7;
 }
 
 .tab.active {
-  color: var(--el-color-primary);
-  background: var(--el-bg-color);
-}
-
-.tab.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--el-color-primary);
-  border-radius: 2px 2px 0 0;
+  color: #007AFF;
+  border-bottom-color: #007AFF;
 }
 
 .tab-content {
   display: none;
   opacity: 0;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-top: 0;
 }
 
 .tab-content.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
   animation: fadeInUp 0.3s ease forwards;
 }
 
@@ -963,57 +1632,6 @@ onMounted(() => {
   }
 }
 
-/* 实时数据 */
-.data-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 20px;
-}
-
-.data-card {
-  background: var(--el-bg-color-overlay);
-  border: 1px solid var(--el-border-color);
-  border-radius: 12px;
-  padding: 24px;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.data-card:hover {
-  border-color: var(--el-color-primary);
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 8px 24px rgba(64, 158, 255, 0.15);
-}
-
-.data-label {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-  margin-bottom: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.data-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--el-color-primary);
-  letter-spacing: -0.02em;
-}
-
-.data-unit {
-  font-size: 15px;
-  color: var(--el-text-color-secondary);
-  margin-left: 6px;
-  font-weight: 600;
-}
-
-.data-time {
-  font-size: 12px;
-  color: var(--el-text-color-placeholder);
-  margin-top: 10px;
-  font-weight: 500;
-}
 
 /* 命令控制 */
 .command-grid {
@@ -1063,37 +1681,63 @@ onMounted(() => {
 
 /* 历史数据 */
 .history-toolbar {
-  background: var(--el-bg-color-overlay);
-  border: 1px solid var(--el-border-color);
-  border-radius: 12px;
-  padding: 16px 24px;
-  margin-bottom: 20px;
+  background: white;
+  border: 1px solid #e5e5e7;
+  border-radius: 8px;
+  padding: 6px 14px;
+  margin-bottom: 4px;
   display: flex;
-  gap: 20px;
+  gap: 12px;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+}
+
+.history-table-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .history-table-container {
-  background: var(--el-bg-color-overlay);
-  border: 1px solid var(--el-border-color);
-  border-radius: 12px;
+  background: white;
+  border: 1px solid #e5e5e7;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.history-pagination {
+  padding: 8px 16px;
+  flex-shrink: 0;
+  border-top: 1px solid #e5e5e7;
 }
 
 .history-chart-container {
-  background: var(--el-bg-color-overlay);
-  border: 1px solid var(--el-border-color);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  min-height: 500px;
+  background: white;
+  border: 1px solid #e5e5e7;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 520px;
+  overflow: hidden;
 }
 
 .history-chart {
   width: 100%;
-  height: 500px;
+  flex: 1;
+  min-height: 0;
+  max-height: 504px;
 }
 
 .unit-text {
@@ -1103,7 +1747,7 @@ onMounted(() => {
 }
 
 .empty-data {
-  padding: 80px;
+  padding: 40px;
   text-align: center;
   color: var(--el-text-color-placeholder);
 }

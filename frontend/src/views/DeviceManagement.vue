@@ -201,6 +201,7 @@ import { getGroupTree } from '@/api/group'
 import { getProductList } from '@/api/product'
 import GroupTree from '@/components/GroupTree.vue'
 import GroupSelector from '@/components/GroupSelector.vue'
+import { flattenTree } from '@/utils/tree'
 
 const router = useRouter()
 const loading = ref(false)
@@ -346,28 +347,6 @@ const loadGroups = async () => {
   }
 }
 
-// 扁平化树形数据
-const flattenTree = (tree) => {
-  const result = []
-  const flatten = (nodes) => {
-    if (!Array.isArray(nodes)) return
-    nodes.forEach(node => {
-      result.push({
-        id: node.id,
-        name: node.name,
-        parentId: node.parentId || 0,
-        path: node.path,
-        level: node.level
-      })
-      // 递归处理子节点
-      if (node.children && node.children.length > 0) {
-        flatten(node.children)
-      }
-    })
-  }
-  flatten(tree)
-  return result
-}
 
 // 获取产品标签（产品名称+产品型号）
 const getProductLabel = (product) => {

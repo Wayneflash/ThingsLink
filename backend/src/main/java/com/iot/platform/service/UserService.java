@@ -158,17 +158,22 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             menus.add(createMenu("alarms", "报警日志", "/alarms", "BellFilled", null, sort++));
         }
         
-        // 6. 数据查询
+        // 6. 告警阈值配置
+        if (isSuperAdmin || permissions.contains("alarm-threshold")) {
+            menus.add(createMenu("alarm-threshold", "告警阈值配置", "/alarm-threshold", "Warning", null, sort++));
+        }
+        
+        // 7. 数据查询
         if (isSuperAdmin || permissions.contains("data-query")) {
             menus.add(createMenu("data-query", "数据查询", "/data-query", "Search", null, sort++));
         }
         
-        // 7. 用户管理（仅超级管理员或有权限的角色）
+        // 8. 用户管理（仅超级管理员或有权限的角色）
         if (isSuperAdmin || permissions.contains("users")) {
             menus.add(createMenu("users", "用户管理", "/users", "User", null, sort++));
         }
         
-        // 8. 角色管理（仅超级管理员或有权限的角色）
+        // 9. 角色管理（仅超级管理员或有权限的角色）
         if (isSuperAdmin || permissions.contains("roles")) {
             menus.add(createMenu("roles", "角色管理", "/roles", "Setting", null, sort++));
         }

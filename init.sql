@@ -147,6 +147,8 @@ CREATE TABLE `tb_device` (
   `location` varchar(200) DEFAULT NULL COMMENT '设备位置',
   `tags` varchar(500) DEFAULT NULL COMMENT '设备标签（JSON格式）',
   `offline_timeout` int NOT NULL DEFAULT 300 COMMENT '离线超时时间（秒）',
+  `alarm_config` text DEFAULT NULL COMMENT '告警配置(JSON格式): {level, conditions, notifyUsers, stackMode}',
+  `alarm_enabled` tinyint(1) NOT NULL DEFAULT 0 COMMENT '告警是否启用(0:禁用 1:启用)',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
@@ -154,6 +156,7 @@ CREATE TABLE `tb_device` (
   KEY `idx_product_id` (`product_id`),
   KEY `idx_group_id` (`group_id`),
   KEY `idx_status` (`status`),
+  KEY `idx_alarm_enabled` (`alarm_enabled`),
   CONSTRAINT `fk_device_product` FOREIGN KEY (`product_id`) REFERENCES `tb_product` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='设备表';
 
@@ -223,12 +226,9 @@ INSERT INTO `tb_command` (`product_id`, `addr`, `command_name`, `command_value`,
 INSERT INTO `tb_user` (`id`, `username`, `password`, `real_name`, `group_id`, `status`, `role_id`) VALUES
 (1, 'admin', 'admin123456', '超级管理员', 1, 1, 1);
 
--- 初始化角色：超级管理员
+-- 初始化角色：仅保留超级管理员
 INSERT INTO `tb_role` (`id`, `role_name`, `role_code`, `description`, `menu_ids`, `data_scope`) VALUES
-(1, '超级管理员', 'super_admin', '拥有所有权限', 'dashboard,device,group,product,user,role,menu,log', 0),
-(2, '设备管理员', 'device_admin', '管理设备和产品', 'dashboard,device,group,product', 1),
-(3, '数据查看员', 'data_viewer', '仅查看数据和设备', 'dashboard,device', 2),
-(4, '运维人员', 'operator', '运维和监控权限', 'dashboard,device,log', 1);
+(1, '超级管理员', 'super_admin', '拥有所有权限', 'dashboard,device,group,product,user,role,menu,log', 0);
 
 -- 初始化菜单权限
 INSERT INTO `tb_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `path`, `component`, `permission`, `icon`, `sort`) VALUES

@@ -27,7 +27,7 @@
           v-for="group in childGroups"
           :key="group.id"
           :group="group"
-          :all-groups="groups"
+          :all-groups="actualGroups"
           :current-group-id="currentGroupId"
           :show-actions="showActions"
           :show-count="showCount"
@@ -42,14 +42,22 @@
 </template>
 
 <script setup>
-import { ref, computed, defineComponent, h } from 'vue'
+import { ref, computed, defineComponent, h, onMounted, watch } from 'vue'
 import { ArrowRight } from '@element-plus/icons-vue'
+import { getGroupTree } from '@/api/group'
+import { ElMessage } from 'element-plus'
+import { flattenTree } from '@/utils/tree'
 
 const props = defineProps({
-  // 分组列表
+  // 分组列表（如果提供，则不自动加载）
   groups: {
     type: Array,
     default: () => []
+  },
+  // 是否自动加载数据（如果groups为空，则自动加载）
+  autoLoad: {
+    type: Boolean,
+    default: true
   },
   // 当前选中的分组ID
   currentGroupId: {
@@ -78,19 +86,49 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select', 'edit', 'delete'])
+const emit = defineEmits(['select', 'edit', 'delete', 'loaded'])
 
 // 展开/收起状态
 const expanded = ref(props.defaultExpanded)
 
+// 分组数据（内部状态）
+const groupsData = ref([])
+const loading = ref(false)
+
+// 实际使用的分组数据（优先使用props.groups，否则使用groupsData）
+const actualGroups = computed(() => {
+  return props.groups && props.groups.length > 0 ? props.groups : groupsData.value
+})
+
+// 加载分组数据
+const loadGroups = async () => {
+  try {
+    loading.value = true
+    const res = await getGroupTree()
+    // 后端返回的是树形结构 {tree: [...]}
+    // 需要扁平化为列表格式供组件使用
+    groupsData.value = flattenTree(res.tree || [])
+    emit('loaded', groupsData.value)
+  } catch (error) {
+    console.error('加载分组数据失败:', error)
+    ElMessage.error('加载分组数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 使用统一的工具函数扁平化树形数据
+
+// 暴露加载方法给父组件
+defineExpose({
+  loadGroups,
+  groupsData
+})
+
 // 总分组（parentId=0或null的顶级分组，如果有多个则取第一个）
 const rootGroup = computed(() => {
-  const roots = props.groups.filter(g => g.parentId === 0 || g.parentId === null)
-  console.log('GroupTree - 分组数据:', JSON.stringify(props.groups, null, 2))
-  console.log('GroupTree - 根节点:', JSON.stringify(roots, null, 2))
+  const roots = actualGroups.value.filter(g => g.parentId === 0 || g.parentId === null)
   const root = roots.length > 0 ? roots[0] : null
-  console.log('GroupTree - 最终根节点:', root)
-  console.log('GroupTree - 根节点名称:', root?.name)
   return root
 })
 
@@ -98,7 +136,7 @@ const rootGroup = computed(() => {
 const childGroups = computed(() => {
   const root = rootGroup.value
   if (!root) return []
-  return props.groups.filter(g => g.parentId === root.id)
+  return actualGroups.value.filter(g => g.parentId === root.id)
 })
 
 // 切换展开/收起
@@ -192,7 +230,7 @@ const TreeNode = defineComponent({
           h(TreeNode, {
             key: child.id,
             group: child,
-            allGroups: this.allGroups,
+            allGroups: this.actualGroups,
             currentGroupId: this.currentGroupId,
             showActions,
             showCount,
@@ -257,6 +295,20 @@ const TreeNode = defineComponent({
     ])
   }
 })
+
+// 组件挂载时自动加载数据（如果autoLoad为true且groups为空）
+onMounted(() => {
+  if (props.autoLoad && (!props.groups || props.groups.length === 0)) {
+    loadGroups()
+  }
+})
+
+// 监听groups变化，如果groups为空且autoLoad为true，则自动加载
+watch(() => props.groups, (newGroups) => {
+  if (props.autoLoad && (!newGroups || newGroups.length === 0) && groupsData.value.length === 0) {
+    loadGroups()
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>

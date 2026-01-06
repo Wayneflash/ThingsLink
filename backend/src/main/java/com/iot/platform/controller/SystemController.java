@@ -23,7 +23,7 @@ public class SystemController {
     @Value("${mqtt.username:admin}")
     private String mqttUsername;
 
-    @Value("${mqtt.password:public}")
+    @Value("${mqtt.password:admin123.}")
     private String mqttPassword;
 
     /**

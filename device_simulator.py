@@ -13,12 +13,20 @@ from datetime import datetime
 import threading
 import signal
 import sys
+import os
+
+# 设置Windows控制台编码为UTF-8（避免中文乱码）
+if sys.platform == 'win32':
+    try:
+        os.system('chcp 65001 >nul 2>&1')
+    except:
+        pass
 
 # MQTT配置 - 从后端配置获取
 MQTT_BROKER = "localhost"  # 实际部署时请替换为实际服务器地址
 MQTT_PORT = 1883
 MQTT_USERNAME = "admin"
-MQTT_PASSWORD = "admin123."
+MQTT_PASSWORD = "admin123."  # 与EMQX配置保持一致
 
 # 设备信息
 DEVICE_CODE = "888866666"  # 你的设备编码
@@ -44,16 +52,16 @@ class Colors:
     END = '\033[0m'
 
 def print_success(msg):
-    print(f"{Colors.GREEN}✓ {msg}{Colors.END}")
+    print(f"{Colors.GREEN}[OK] {msg}{Colors.END}")
 
 def print_error(msg):
-    print(f"{Colors.RED}✗ {msg}{Colors.END}")
+    print(f"{Colors.RED}[ERROR] {msg}{Colors.END}")
 
 def print_info(msg):
-    print(f"{Colors.CYAN}ℹ {msg}{Colors.END}")
+    print(f"{Colors.CYAN}[INFO] {msg}{Colors.END}")
 
 def print_warning(msg):
-    print(f"{Colors.YELLOW}⚠ {msg}{Colors.END}")
+    print(f"{Colors.YELLOW}[WARN] {msg}{Colors.END}")
 
 def print_title(msg):
     print(f"\n{Colors.MAGENTA}{'='*10} {msg} {'='*10}{Colors.END}")
@@ -112,7 +120,17 @@ def on_publish(client, userdata, mid):
 
 def on_disconnect(client, userdata, rc):
     if rc != 0:
-        print_error(f"MQTT连接断开，错误码: {rc}")
+        # 错误码说明：0=正常断开，其他=异常断开
+        # 7=网络错误或服务器主动断开
+        error_msg = {
+            1: "协议版本错误",
+            2: "客户端ID无效",
+            3: "服务器不可用",
+            4: "用户名或密码错误",
+            5: "未授权",
+            7: "网络错误或服务器主动断开"
+        }.get(rc, f"未知错误码: {rc}")
+        print_error(f"MQTT连接断开，错误码: {rc} ({error_msg})")
 
 def generate_sample_data():
     """生成示例数据，根据物模型"""
@@ -181,8 +199,23 @@ if __name__ == "__main__":
     print_info(f"上报主题: {TOPIC_REPORT}")
     print_info(f"命令主题: {TOPIC_COMMAND}")
     
-    # 创建MQTT客户端
-    client = mqtt.Client(f"device_{DEVICE_CODE}")
+    # 创建MQTT客户端（兼容paho-mqtt 2.0+）
+    # 使用UUID确保客户端ID唯一，避免多次运行时的冲突
+    import uuid
+    unique_client_id = f"device_{DEVICE_CODE}_{uuid.uuid4().hex[:8]}"
+    print_info(f"客户端ID: {unique_client_id}")
+    
+    try:
+        # paho-mqtt 2.0+ 需要指定callback_api_version
+        client = mqtt.Client(
+            client_id=unique_client_id,
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION1,
+            clean_session=True  # 使用clean session，避免旧会话冲突
+        )
+    except AttributeError:
+        # 兼容旧版本（1.x）
+        client = mqtt.Client(unique_client_id, clean_session=True)
+    
     client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     
     # 设置回调函数
@@ -193,7 +226,9 @@ if __name__ == "__main__":
     
     try:
         # 连接MQTT服务器
-        client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        print_info("正在连接MQTT服务器...")
+        # 设置keepalive为60秒，避免连接超时
+        client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
         
         # 设置信号处理器，用于优雅退出
         signal.signal(signal.SIGINT, signal_handler)
@@ -201,12 +236,32 @@ if __name__ == "__main__":
         # 启动网络循环
         client.loop_start()
         
+        # 等待连接建立
+        wait_count = 0
+        while not client.is_connected() and wait_count < 10:
+            time.sleep(0.5)
+            wait_count += 1
+        
+        if not client.is_connected():
+            print_error("MQTT连接超时，请检查服务器是否运行")
+            sys.exit(1)
+        
         print_success("设备模拟器启动成功，开始周期性上报数据...")
         print_info("按 Ctrl+C 退出程序")
         
+        # 等待一下确保连接稳定
+        time.sleep(1)
+        
         # 周期性上报数据
         while True:
-            publish_data(client)
+            if client.is_connected():
+                publish_data(client)
+            else:
+                print_warning("MQTT连接已断开，尝试重连...")
+                try:
+                    client.reconnect()
+                except:
+                    pass
             time.sleep(10)  # 每10秒上报一次数据
             
     except Exception as e:

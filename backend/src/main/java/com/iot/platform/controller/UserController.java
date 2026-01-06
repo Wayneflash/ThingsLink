@@ -8,12 +8,14 @@ import com.iot.platform.entity.Role;
 import com.iot.platform.entity.User;
 import com.iot.platform.service.UserService;
 import com.iot.platform.mapper.RoleMapper;
+import com.iot.platform.util.PermissionUtil;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -37,31 +39,8 @@ public class UserController {
     @Resource
     private com.iot.platform.mapper.UserMapper userMapper;
     
-    /**
-     * 获取当前用户信息
-     */
-    private User getCurrentUser(String token) {
-        if (token == null || !token.startsWith("Bearer ")) {
-            return null;
-        }
-        String actualToken = token.substring(7);
-        Long userId = userService.validateToken(actualToken);
-        if (userId == null) {
-            return null;
-        }
-        return userMapper.selectById(userId);
-    }
-    
-    /**
-     * 判断用户是否为超级管理员
-     */
-    private boolean isSuperAdmin(User user) {
-        if (user == null || user.getRoleId() == null) {
-            return false;
-        }
-        Role role = roleMapper.selectById(user.getRoleId());
-        return role != null && "super_admin".equals(role.getRoleCode());
-    }
+    @Resource
+    private PermissionUtil permissionUtil;
     
     /**
      * 用户列表
@@ -72,13 +51,13 @@ public class UserController {
             @RequestBody(required = false) UserQueryRequest requestParam) {
         try {
             // 获取当前用户
-            User currentUser = getCurrentUser(token);
+            User currentUser = permissionUtil.getCurrentUser(token);
             if (currentUser == null) {
                 return Result.error("未授权，请先登录");
             }
             
             // 判断是否为超级管理员
-            boolean isSuper = isSuperAdmin(currentUser);
+            boolean isSuper = permissionUtil.isSuperAdmin(currentUser);
             
             // 如果requestParam为null，使用默认值
             final UserQueryRequest request = (requestParam != null) ? requestParam : new UserQueryRequest();
@@ -91,10 +70,10 @@ public class UserController {
             LambdaQueryWrapper<User> query = new LambdaQueryWrapper<>();
             
             // 数据权限过滤：非超管只能查看本分组及下级分组的用户
-            if (!isSuper) {
-                Long userGroupId = currentUser.getGroupId() != null ? currentUser.getGroupId() : 0L;
-                // TODO: 这里需要查询所有下级分组ID，暂时只限制本分组
-                query.eq(User::getGroupId, userGroupId);
+            // 使用统一的权限工具类，确保权限逻辑与设备管理完全一致
+            List<Long> allowedGroupIds = permissionUtil.getAllowedGroupIds(currentUser);
+            if (allowedGroupIds != null && !allowedGroupIds.isEmpty()) {
+                query.in(User::getGroupId, allowedGroupIds);
             }
             
             // 分组筛选
@@ -181,11 +160,11 @@ public class UserController {
             @RequestBody CreateUserRequest request) {
         try {
             // 权限验证：只有超级管理员可以创建用户
-            User currentUser = getCurrentUser(token);
+            User currentUser = permissionUtil.getCurrentUser(token);
             if (currentUser == null) {
                 return Result.error("未授权，请先登录");
             }
-            if (!isSuperAdmin(currentUser)) {
+            if (!permissionUtil.isSuperAdmin(currentUser)) {
                 return Result.error("无权限操作，只有超级管理员可以创建用户");
             }
             
@@ -287,11 +266,11 @@ public class UserController {
             @RequestBody UpdateUserRequest request) {
         try {
             // 权限验证：只有超级管理员可以编辑用户
-            User currentUser = getCurrentUser(token);
+            User currentUser = permissionUtil.getCurrentUser(token);
             if (currentUser == null) {
                 return Result.error("未授权，请先登录");
             }
-            if (!isSuperAdmin(currentUser)) {
+            if (!permissionUtil.isSuperAdmin(currentUser)) {
                 return Result.error("无权限操作，只有超级管理员可以编辑用户");
             }
             
@@ -389,11 +368,11 @@ public class UserController {
             @RequestBody Map<String, Long> params) {
         try {
             // 权限验证：只有超级管理员可以删除用户
-            User currentUser = getCurrentUser(token);
+            User currentUser = permissionUtil.getCurrentUser(token);
             if (currentUser == null) {
                 return Result.error("未授权，请先登录");
             }
-            if (!isSuperAdmin(currentUser)) {
+            if (!permissionUtil.isSuperAdmin(currentUser)) {
                 return Result.error("无权限操作，只有超级管理员可以删除用户");
             }
             
@@ -430,11 +409,11 @@ public class UserController {
             @RequestBody UpdateStatusRequest request) {
         try {
             // 权限验证：只有超级管理员可以启用/禁用用户
-            User currentUser = getCurrentUser(token);
+            User currentUser = permissionUtil.getCurrentUser(token);
             if (currentUser == null) {
                 return Result.error("未授权，请先登录");
             }
-            if (!isSuperAdmin(currentUser)) {
+            if (!permissionUtil.isSuperAdmin(currentUser)) {
                 return Result.error("无权限操作，只有超级管理员可以启用/禁用用户");
             }
             

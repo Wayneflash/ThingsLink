@@ -1,8 +1,11 @@
 package com.iot.platform.controller;
 
 import com.iot.platform.common.Result;
+import com.iot.platform.entity.Device;
 import com.iot.platform.entity.DeviceData;
 import com.iot.platform.service.DeviceDataService;
+import com.iot.platform.service.DeviceService;
+import com.iot.platform.util.PermissionUtil;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -27,13 +30,33 @@ public class DeviceDataController {
     @Resource
     private DeviceDataService deviceDataService;
     
+    @Resource
+    private DeviceService deviceService;
+    
+    @Resource
+    private PermissionUtil permissionUtil;
+    
     /**
      * 获取设备最新数据
      */
     @GetMapping("/latest/{deviceCode}")
-    public Result<List<DeviceData>> getLatestData(@PathVariable String deviceCode,
-                                                   @RequestParam(defaultValue = "10") Integer limit) {
+    public Result<List<DeviceData>> getLatestData(
+            @PathVariable String deviceCode,
+            @RequestParam(defaultValue = "10") Integer limit,
+            @RequestHeader(value = "Authorization", required = false) String token) {
         try {
+            // 数据权限验证：检查设备是否在用户权限范围内
+            Device device = deviceService.getByDeviceCode(deviceCode);
+            if (device == null) {
+                return Result.error("设备不存在");
+            }
+            
+            // 获取用户权限分组列表
+            List<Long> allowedGroupIds = permissionUtil.getAllowedGroupIds(token);
+            if (allowedGroupIds != null && !allowedGroupIds.contains(device.getGroupId())) {
+                return Result.error("无权限查看该设备数据");
+            }
+            
             List<DeviceData> list = deviceDataService.getLatestData(deviceCode, limit);
             return Result.success(list);
         } catch (Exception e) {
@@ -46,8 +69,26 @@ public class DeviceDataController {
      * 查询设备历史数据
      */
     @PostMapping("/list")
-    public Result<List<DeviceData>> getDeviceDataList(@RequestBody DataQueryRequest request) {
+    public Result<List<DeviceData>> getDeviceDataList(
+            @RequestBody DataQueryRequest request,
+            @RequestHeader(value = "Authorization", required = false) String token) {
         try {
+            // 数据权限验证：检查设备是否在用户权限范围内
+            if (request.getDeviceCode() == null || request.getDeviceCode().trim().isEmpty()) {
+                return Result.error("设备编码不能为空");
+            }
+            
+            Device device = deviceService.getByDeviceCode(request.getDeviceCode());
+            if (device == null) {
+                return Result.error("设备不存在");
+            }
+            
+            // 获取用户权限分组列表
+            List<Long> allowedGroupIds = permissionUtil.getAllowedGroupIds(token);
+            if (allowedGroupIds != null && !allowedGroupIds.contains(device.getGroupId())) {
+                return Result.error("无权限查看该设备数据");
+            }
+            
             LocalDateTime startTime = null;
             LocalDateTime endTime = null;
             

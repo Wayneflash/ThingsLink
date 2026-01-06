@@ -108,6 +108,7 @@ import { Plus } from '@element-plus/icons-vue'
 import { getGroupTree, createGroup, updateGroup, deleteGroup as apiDeleteGroup } from '@/api/group'
 import { getDeviceList } from '@/api/device'
 import GroupTree from '@/components/GroupTree.vue'
+import { flattenTree } from '@/utils/tree'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -345,29 +346,7 @@ const loadGroups = async () => {
   }
 }
 
-// 扁平化树形数据
-const flattenTree = (tree) => {
-  const result = []
-  const flatten = (nodes) => {
-    if (!Array.isArray(nodes)) return
-    nodes.forEach(node => {
-      result.push({
-        id: node.id,
-        name: node.name,
-        parentId: node.parentId || 0,
-        path: node.path,
-        level: node.level,
-        deviceCount: node.deviceCount || 0,
-        desc: node.description || ''
-      })
-      if (node.children && node.children.length > 0) {
-        flatten(node.children)
-      }
-    })
-  }
-  flatten(tree)
-  return result
-}
+// 使用统一的工具函数扁平化树形数据（已在顶部import）
 
 // 加载设备列表
 const loadDevices = async () => {

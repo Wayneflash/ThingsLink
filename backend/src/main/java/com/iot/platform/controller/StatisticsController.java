@@ -6,6 +6,7 @@ import com.iot.platform.entity.Device;
 import com.iot.platform.entity.DeviceData;
 import com.iot.platform.service.DeviceDataService;
 import com.iot.platform.service.DeviceService;
+import com.iot.platform.util.PermissionUtil;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -33,16 +34,23 @@ public class StatisticsController {
     @Resource
     private DeviceDataService deviceDataService;
     
+    @Resource
+    private PermissionUtil permissionUtil;
+    
     /**
      * 获取平台统计数据概览（按照API文档）
      */
     @PostMapping("/overview")
-    public Result<Map<String, Object>> getStatisticsOverview() {
+    public Result<Map<String, Object>> getStatisticsOverview(
+            @RequestHeader(value = "Authorization", required = false) String token) {
         try {
+            // 获取用户权限分组列表
+            List<Long> allowedGroupIds = permissionUtil.getAllowedGroupIds(token);
+            
             Map<String, Object> result = new HashMap<>();
             
-            // 设备统计（不限制分组，返回所有设备）
-            Map<String, Object> deviceStats = deviceService.getDeviceStatistics(null);
+            // 设备统计（根据权限过滤）
+            Map<String, Object> deviceStats = deviceService.getDeviceStatistics(allowedGroupIds);
             result.put("deviceTotal", deviceStats.get("totalDevices"));
             result.put("deviceOnline", deviceStats.get("onlineDevices"));
             result.put("deviceOffline", deviceStats.get("offlineDevices"));
@@ -52,10 +60,30 @@ public class StatisticsController {
             result.put("productCount", 0); // 暂时设为0，后续可实现产品统计
             result.put("userCount", 0); // 暂时设为0，后续可实现用户统计
             
-            // 今日数据上报量
+            // 今日数据上报量（根据权限过滤）
             LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
             LambdaQueryWrapper<DeviceData> query = new LambdaQueryWrapper<>();
             query.ge(DeviceData::getReceiveTime, todayStart);
+            
+            // 如果有限制分组，需要通过设备表关联过滤
+            if (allowedGroupIds != null && !allowedGroupIds.isEmpty()) {
+                // 获取权限范围内的设备编码列表
+                LambdaQueryWrapper<Device> deviceQuery = new LambdaQueryWrapper<>();
+                deviceQuery.in(Device::getGroupId, allowedGroupIds);
+                List<Device> allowedDevices = deviceService.list(deviceQuery);
+                List<String> allowedDeviceCodes = new ArrayList<>();
+                for (Device device : allowedDevices) {
+                    allowedDeviceCodes.add(device.getDeviceCode());
+                }
+                if (!allowedDeviceCodes.isEmpty()) {
+                    query.in(DeviceData::getDeviceCode, allowedDeviceCodes);
+                } else {
+                    // 如果没有权限范围内的设备，返回0
+                    result.put("todayDataCount", 0L);
+                    return Result.success(result);
+                }
+            }
+            
             long todayDataCount = deviceDataService.count(query);
             result.put("todayDataCount", todayDataCount);
             
@@ -70,9 +98,26 @@ public class StatisticsController {
      * 获取数据上报量趋势（最近24小时/7天/30天）
      */
     @PostMapping("/data-trend")
-    public Result<Map<String, Object>> getDataTrend(@RequestBody DataTrendRequest request) {
+    public Result<Map<String, Object>> getDataTrend(
+            @RequestBody DataTrendRequest request,
+            @RequestHeader(value = "Authorization", required = false) String token) {
         try {
             String range = request.getRange() != null ? request.getRange() : "24h";
+            
+            // 获取用户权限分组列表
+            List<Long> allowedGroupIds = permissionUtil.getAllowedGroupIds(token);
+            
+            // 获取权限范围内的设备编码列表（如果有限制）
+            List<String> allowedDeviceCodes = null;
+            if (allowedGroupIds != null && !allowedGroupIds.isEmpty()) {
+                LambdaQueryWrapper<Device> deviceQuery = new LambdaQueryWrapper<>();
+                deviceQuery.in(Device::getGroupId, allowedGroupIds);
+                List<Device> allowedDevices = deviceService.list(deviceQuery);
+                allowedDeviceCodes = new ArrayList<>();
+                for (Device device : allowedDevices) {
+                    allowedDeviceCodes.add(device.getDeviceCode());
+                }
+            }
             
             Map<String, Object> result = new HashMap<>();
             
@@ -94,6 +139,12 @@ public class StatisticsController {
                     LambdaQueryWrapper<DeviceData> query = new LambdaQueryWrapper<>();
                     query.ge(DeviceData::getReceiveTime, hourStart)
                          .lt(DeviceData::getReceiveTime, hourEnd);
+                    
+                    // 数据权限过滤
+                    if (allowedDeviceCodes != null && !allowedDeviceCodes.isEmpty()) {
+                        query.in(DeviceData::getDeviceCode, allowedDeviceCodes);
+                    }
+                    
                     long count = deviceDataService.count(query);
                     dataCounts.add((int) count);
                 }
@@ -117,6 +168,12 @@ public class StatisticsController {
                     LambdaQueryWrapper<DeviceData> query = new LambdaQueryWrapper<>();
                     query.ge(DeviceData::getReceiveTime, dayStart)
                          .lt(DeviceData::getReceiveTime, dayEnd);
+                    
+                    // 数据权限过滤
+                    if (allowedDeviceCodes != null && !allowedDeviceCodes.isEmpty()) {
+                        query.in(DeviceData::getDeviceCode, allowedDeviceCodes);
+                    }
+                    
                     long count = deviceDataService.count(query);
                     dataCounts.add((int) count);
                 }
@@ -140,6 +197,12 @@ public class StatisticsController {
                     LambdaQueryWrapper<DeviceData> query = new LambdaQueryWrapper<>();
                     query.ge(DeviceData::getReceiveTime, dayStart)
                          .lt(DeviceData::getReceiveTime, dayEnd);
+                    
+                    // 数据权限过滤
+                    if (allowedDeviceCodes != null && !allowedDeviceCodes.isEmpty()) {
+                        query.in(DeviceData::getDeviceCode, allowedDeviceCodes);
+                    }
+                    
                     long count = deviceDataService.count(query);
                     dataCounts.add((int) count);
                 }

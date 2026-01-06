@@ -187,6 +187,7 @@ import { getUserList, createUser, updateUser, deleteUser as apiDeleteUser, updat
 import { getRoleList } from '@/api/role'
 import GroupTree from '@/components/GroupTree.vue'
 import GroupSelector from '@/components/GroupSelector.vue'
+import { flattenTree } from '@/utils/tree'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -582,27 +583,7 @@ const loadGroups = async () => {
   }
 }
 
-// 扁平化树形数据
-const flattenTree = (tree) => {
-  const result = []
-  const flatten = (nodes) => {
-    if (!Array.isArray(nodes)) return
-    nodes.forEach(node => {
-      result.push({
-        id: node.id,
-        name: node.name,
-        parentId: node.parentId || 0,
-        path: node.path,
-        level: node.level
-      })
-      if (node.children && node.children.length > 0) {
-        flatten(node.children)
-      }
-    })
-  }
-  flatten(tree)
-  return result
-}
+// 使用统一的工具函数扁平化树形数据（已在顶部import）
 
 // 加载总用户数量
 const loadTotalUserCount = async () => {
