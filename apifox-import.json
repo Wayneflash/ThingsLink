@@ -1,0 +1,557 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "物联网平台 API",
+    "version": "1.0.0",
+    "description": "物联网平台后端接口文档"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "本地开发环境"
+    }
+  ],
+  "tags": [
+    {
+      "name": "认证授权",
+      "description": "用户登录、登出、Token刷新"
+    },
+    {
+      "name": "用户管理",
+      "description": "用户增删改查"
+    },
+    {
+      "name": "角色管理",
+      "description": "角色权限管理"
+    },
+    {
+      "name": "设备分组",
+      "description": "设备分组管理"
+    },
+    {
+      "name": "产品管理",
+      "description": "产品模型管理"
+    },
+    {
+      "name": "设备管理",
+      "description": "设备增删改查"
+    },
+    {
+      "name": "数据管理",
+      "description": "设备数据查询"
+    },
+    {
+      "name": "命令控制",
+      "description": "设备命令下发"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["认证授权"],
+        "summary": "用户登录",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "admin"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "admin123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "登录成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["认证授权"],
+        "summary": "用户登出",
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "登出成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["认证授权"],
+        "summary": "刷新Token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["refreshToken"],
+                "properties": {
+                  "refreshToken": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "刷新成功"
+          }
+        }
+      }
+    },
+    "/users/list": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "查询用户列表",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "查询成功"
+          }
+        }
+      }
+    },
+    "/users/create": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "创建用户",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": {"type": "string"},
+                  "password": {"type": "string"},
+                  "realName": {"type": "string"},
+                  "phone": {"type": "string"},
+                  "email": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "创建成功"
+          }
+        }
+      }
+    },
+    "/users/update": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "更新用户",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": {"type": "integer"},
+                  "username": {"type": "string"},
+                  "realName": {"type": "string"},
+                  "phone": {"type": "string"},
+                  "email": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功"
+          }
+        }
+      }
+    },
+    "/users/delete": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "删除用户",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": {"type": "integer"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "删除成功"
+          }
+        }
+      }
+    },
+    "/roles/list": {
+      "post": {
+        "tags": ["角色管理"],
+        "summary": "查询角色列表",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "查询成功"
+          }
+        }
+      }
+    },
+    "/device-groups/list": {
+      "post": {
+        "tags": ["设备分组"],
+        "summary": "查询设备分组列表",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "查询成功"
+          }
+        }
+      }
+    },
+    "/device-groups/create": {
+      "post": {
+        "tags": ["设备分组"],
+        "summary": "创建设备分组",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["groupName"],
+                "properties": {
+                  "groupName": {"type": "string"},
+                  "parentId": {"type": "integer"},
+                  "remark": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "创建成功"
+          }
+        }
+      }
+    },
+    "/products/list": {
+      "post": {
+        "tags": ["产品管理"],
+        "summary": "查询产品列表",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "查询成功"
+          }
+        }
+      }
+    },
+    "/products/create": {
+      "post": {
+        "tags": ["产品管理"],
+        "summary": "创建产品",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["productName", "productKey"],
+                "properties": {
+                  "productName": {"type": "string"},
+                  "productKey": {"type": "string"},
+                  "description": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "创建成功"
+          }
+        }
+      }
+    },
+    "/devices/list": {
+      "post": {
+        "tags": ["设备管理"],
+        "summary": "查询设备列表",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {"$ref": "#/components/schemas/PageRequest"},
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "integer",
+                        "description": "0=离线, 1=在线"
+                      },
+                      "productId": {"type": "integer"},
+                      "groupId": {"type": "integer"}
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "查询成功"
+          }
+        }
+      }
+    },
+    "/devices/create": {
+      "post": {
+        "tags": ["设备管理"],
+        "summary": "创建设备",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["deviceName", "deviceCode", "productId"],
+                "properties": {
+                  "deviceName": {"type": "string"},
+                  "deviceCode": {"type": "string"},
+                  "productId": {"type": "integer"},
+                  "groupId": {"type": "integer"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "创建成功"
+          }
+        }
+      }
+    },
+    "/device-data/list": {
+      "post": {
+        "tags": ["数据管理"],
+        "summary": "查询设备数据",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {"$ref": "#/components/schemas/PageRequest"},
+                  {
+                    "type": "object",
+                    "properties": {
+                      "deviceId": {"type": "integer"},
+                      "startTime": {"type": "string"},
+                      "endTime": {"type": "string"}
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "查询成功"
+          }
+        }
+      }
+    },
+    "/commands/send": {
+      "post": {
+        "tags": ["命令控制"],
+        "summary": "发送设备命令",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["deviceId", "commandCode"],
+                "properties": {
+                  "deviceId": {"type": "integer"},
+                  "commandCode": {"type": "string"},
+                  "params": {"type": "object"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "发送成功"
+          }
+        }
+      }
+    },
+    "/statistics/overview": {
+      "post": {
+        "tags": ["数据管理"],
+        "summary": "统计概览",
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "查询成功"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "CommonResponse": {
+        "type": "object",
+        "properties": {
+          "code": {"type": "integer", "example": 200},
+          "message": {"type": "string", "example": "操作成功"},
+          "data": {"type": "object"},
+          "timestamp": {"type": "integer"}
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "code": {"type": "integer", "example": 200},
+          "message": {"type": "string", "example": "登录成功"},
+          "data": {
+            "type": "object",
+            "properties": {
+              "token": {"type": "string"},
+              "refreshToken": {"type": "string"},
+              "expiresIn": {"type": "integer", "example": 7200},
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": {"type": "integer"},
+                  "username": {"type": "string"},
+                  "realname": {"type": "string"},
+                  "avatar": {"type": "string"},
+                  "email": {"type": "string"},
+                  "phone": {"type": "string"},
+                  "groupId": {"type": "integer"},
+                  "groupName": {"type": "string"},
+                  "roles": {"type": "array", "items": {"type": "object"}},
+                  "status": {"type": "integer", "description": "0=禁用, 1=启用"},
+                  "lastLoginTime": {"type": "string"},
+                  "lastLoginIp": {"type": "string"}
+                }
+              }
+            }
+          }
+        }
+      },
+      "PageRequest": {
+        "type": "object",
+        "properties": {
+          "page": {"type": "integer", "example": 1},
+          "pageSize": {"type": "integer", "example": 20},
+          "keyword": {"type": "string"},
+          "sortBy": {"type": "string"},
+          "sortOrder": {"type": "string", "enum": ["asc", "desc"]}
+        }
+      }
+    }
+  }
+}

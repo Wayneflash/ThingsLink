@@ -1,0 +1,302 @@
+/* 公共样式 - 苹果风格简洁设计 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f2f2f7;
+    min-height: 100vh;
+    color: #1d1d1f;
+}
+
+/* 顶部导航栏 - 苹果风格 */
+.header {
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    height: 52px;
+    border-bottom: 0.5px solid rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 24px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+}
+
+.logo {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1d1d1f;
+    letter-spacing: -0.01em;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.user-info span {
+    font-size: 14px;
+    color: #86868b;
+}
+
+.user-info a {
+    color: #0071e3;
+    text-decoration: none;
+    padding: 6px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.user-info a:hover {
+    background: #f5f5f7;
+}
+
+/* 主容器 */
+.container {
+    display: flex;
+    margin-top: 52px;
+    min-height: calc(100vh - 52px);
+}
+
+/* 侧边栏 - 苹果风格 */
+.sidebar {
+    width: 200px;
+    background: #fff;
+    border-right: 0.5px solid rgba(0,0,0,0.08);
+    padding: 12px 0;
+    position: fixed;
+    left: 0;
+    top: 52px;
+    bottom: 0;
+    overflow-y: auto;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    margin: 2px 12px;
+    padding: 8px 12px;
+    color: #1d1d1f;
+    font-size: 14px;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.menu-item:hover {
+    background: #f5f5f7;
+}
+
+.menu-item.active {
+    background: #0071e3;
+    color: #fff;
+    font-weight: 500;
+}
+
+.menu-item .icon {
+    font-size: 18px;
+    margin-right: 8px;
+    opacity: 0.8;
+}
+
+.menu-divider {
+    height: 0.5px;
+    background: rgba(0,0,0,0.08);
+    margin: 8px 12px;
+}
+
+/* 主内容区 */
+.main-content {
+    flex: 1;
+    margin-left: 200px;
+    padding: 24px;
+}
+
+.page-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #1d1d1f;
+    margin-bottom: 24px;
+    letter-spacing: -0.02em;
+}
+
+/* 按钮样式 - 苹果风格 */
+.btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: #0071e3;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0077ed;
+}
+
+.btn-success {
+    background: #34c759;
+    color: white;
+}
+
+.btn-danger {
+    background: #ff3b30;
+    color: white;
+}
+
+.btn-default {
+    background: #f5f5f7;
+    color: #1d1d1f;
+    border: 0.5px solid rgba(0,0,0,0.1);
+}
+
+/* 表格样式 - 苹果风格 */
+table {
+    width: 100%;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 0.5px solid rgba(0,0,0,0.08);
+}
+
+thead {
+    background: #f5f5f7;
+}
+
+th, td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 0.5px solid rgba(0,0,0,0.08);
+}
+
+th {
+    font-weight: 600;
+    font-size: 13px;
+    color: #86868b;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+td {
+    font-size: 14px;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+tr:hover {
+    background: #f5f5f7;
+}
+
+/* 卡片样式 - 苹果风格 */
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    border: 0.5px solid rgba(0,0,0,0.08);
+    margin-bottom: 16px;
+}
+
+.card-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1d1d1f;
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+}
+
+/* 表单样式 - 苹果风格 */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    color: #1d1d1f;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 0.5px solid rgba(0,0,0,0.2);
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    transition: all 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #0071e3;
+    box-shadow: 0 0 0 3px rgba(0,113,227,0.1);
+}
+
+/* 标签样式 - 苹果风格 */
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background: rgba(52,199,89,0.15);
+    color: #34c759;
+}
+
+.badge-warning {
+    background: rgba(255,159,10,0.15);
+    color: #ff9f0a;
+}
+
+.badge-danger {
+    background: rgba(255,59,48,0.15);
+    color: #ff3b30;
+}
+
+.badge-info {
+    background: rgba(0,113,227,0.15);
+    color: #0071e3;
+}
+
+/* 原型备注样式 */
+.prototype-note {
+    background: rgba(255,204,0,0.1);
+    border-left: 3px solid #ffcc00;
+    padding: 12px;
+    margin: 16px 0;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #86868b;
+}
+
+.prototype-note strong {
+    color: #1d1d1f;
+    display: block;
+    margin-bottom: 4px;
+}

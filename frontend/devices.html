@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设备管理 - IoT设备管理平台</title>
+  <link rel="stylesheet" href="/src/styles/common.css">
+  <style>
+    body {
+      background: var(--bg-dark);
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* 侧边栏 - 科技风 */
+    .sidebar {
+      width: 260px;
+      background: var(--bg-sidebar);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      padding: 28px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text-dark);
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-menu {
+      flex: 1;
+      padding: 20px 0;
+      overflow-y: auto;
+    }
+
+    .menu-item {
+      padding: 12px 20px;
+      margin: 4px 12px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: var(--text-dark-secondary);
+      text-decoration: none;
+      transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 500;
+      position: relative;
+    }
+
+    .menu-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-dark);
+    }
+
+    .menu-item.active {
+      background: rgba(0, 122, 255, 0.15);
+      color: #007aff;
+      font-weight: 600;
+    }
+
+    .menu-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 60%;
+      background: #007aff;
+      border-radius: 0 2px 2px 0;
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg-primary);
+    }
+
+    .topbar {
+      height: 72px;
+      background: var(--bg-topbar);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .content {
+      flex: 1;
+      padding: 40px;
+      overflow-y: auto;
+    }
+
+    /* 筛选栏 */
+    .filter-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 28px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      box-shadow: var(--shadow-card);
+    }
+
+    .filter-item {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .filter-label {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: var(--text-primary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .select {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+      -webkit-appearance: none;
+    }
+
+    .select:hover {
+      border-color: var(--border-hover);
+    }
+
+    .select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--primary-light);
+    }
+
+    /* 工具栏 */
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .toolbar-left {
+      display: flex;
+      gap: 14px;
+    }
+
+    /* 表格容器 */
+    .table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* 分页 */
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-top: 1px solid var(--border-color);
+      background: var(--bg-tertiary);
+    }
+
+    .pagination-info {
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .pagination-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .page-btn {
+      min-width: 36px;
+      height: 36px;
+      padding: 0 10px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .page-btn:hover:not(:disabled) {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .page-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .page-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+    }
+
+    /* 模态框 - Apple风格 */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.25s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      width: 540px;
+      max-width: 90vw;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .modal-header {
+      padding: 24px 28px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .modal-close {
+      background: var(--bg-tertiary);
+      border: none;
+      color: var(--text-secondary);
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.25s;
+    }
+
+    .modal-close:hover {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transform: rotate(90deg);
+    }
+
+    .modal-body {
+      padding: 28px;
+    }
+
+    .form-row {
+      margin-bottom: 24px;
+    }
+
+    .modal-footer {
+      padding: 20px 28px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 14px;
+      background: var(--bg-tertiary);
+      border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <span style="font-size: 32px;">⚙️</span>
+          <span>IoT管理平台</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="/dashboard.html" class="menu-item">
+          <span style="font-size: 20px;">📊</span>
+          <span>仪表盘</span>
+        </a>
+        <a href="/devices.html" class="menu-item active">
+          <span style="font-size: 20px;">📱</span>
+          <span>设备管理</span>
+        </a>
+        <a href="/products.html" class="menu-item">
+          <span style="font-size: 20px;">📦</span>
+          <span>产品管理</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+      <div class="topbar">
+        <h1 class="page-title" style="color: var(--text-dark);">设备管理</h1>
+        <button class="btn btn-sm" style="background: rgba(255, 59, 48, 0.15); color: #ff3b30; border: none; font-weight: 600;" onclick="logout()">退出</button>
+      </div>
+
+      <div class="content">
+        <!-- 筛选栏 -->
+        <div class="filter-bar">
+          <div class="filter-item">
+            <label class="filter-label">搜索</label>
+            <input type="text" class="input" id="searchKeyword" placeholder="设备名称或编码">
+          </div>
+          <div class="filter-item" style="flex: 0.5;">
+            <label class="filter-label">产品</label>
+            <select class="select" id="productFilter">
+              <option value="">全部产品</option>
+            </select>
+          </div>
+          <div class="filter-item" style="flex: 0.5;">
+            <label class="filter-label">状态</label>
+            <select class="select" id="statusFilter">
+              <option value="">全部状态</option>
+              <option value="1">在线</option>
+              <option value="0">离线</option>
+            </select>
+          </div>
+          <div style="flex: 0;">
+            <button class="btn btn-primary" onclick="searchDevices()">查询</button>
+          </div>
+        </div>
+
+        <!-- 工具栏 -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <button class="btn btn-primary" onclick="showAddModal()">+ 新增设备</button>
+            <button class="btn" onclick="loadDevices()">🔄 刷新</button>
+          </div>
+          <div style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">
+            共 <span id="totalCount" style="color: var(--primary); font-weight: 700;">0</span> 台设备
+          </div>
+        </div>
+
+        <!-- 表格 -->
+        <div class="table-container">
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>设备名称</th>
+                  <th>设备编码</th>
+                  <th>产品</th>
+                  <th>分组</th>
+                  <th>状态</th>
+                  <th>最后在线时间</th>
+                  <th>创建时间</th>
+                  <th style="width: 180px;">操作</th>
+                </tr>
+              </thead>
+              <tbody id="deviceTableBody">
+                <tr>
+                  <td colspan="8" style="text-align: center; padding: 40px;">
+                    <div class="loading"></div>
+                    <div style="margin-top: 12px; color: var(--text-muted);">加载中...</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 分页 -->
+          <div class="pagination">
+            <div class="pagination-info" id="pageInfo">-</div>
+            <div class="pagination-buttons" id="paginationButtons"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 新增设备模态框 -->
+  <div class="modal" id="addDeviceModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">新增设备</h3>
+        <button class="modal-close" onclick="closeModal('addDeviceModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="addDeviceForm">
+          <div class="form-row">
+            <label class="filter-label">设备名称 *</label>
+            <input type="text" class="input" name="name" required placeholder="请输入设备名称">
+          </div>
+          <div class="form-row">
+            <label class="filter-label">设备编码 *</label>
+            <input type="text" class="input" name="code" required placeholder="请输入设备编码">
+          </div>
+          <div class="form-row">
+            <label class="filter-label">所属产品 *</label>
+            <select class="select" name="productId" required id="productSelect">
+              <option value="">请选择产品</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="filter-label">所属分组 *</label>
+            <select class="select" name="groupId" required id="groupSelect">
+              <option value="">请选择分组</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="filter-label">备注</label>
+            <input type="text" class="input" name="remark" placeholder="选填">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('addDeviceModal')">取消</button>
+        <button class="btn btn-primary" onclick="submitAddDevice()">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { deviceApi, productApi, groupApi, authApi } from '/src/utils/api.js';
+
+    // 检查登录
+    if (!localStorage.getItem('token')) {
+      window.location.href = '/login.html';
+    }
+
+    window.logout = () => {
+      if (confirm('确定要退出登录吗？')) {
+        authApi.logout();
+      }
+    };
+
+    // 全局变量
+    let currentPage = 1;
+    let pageSize = 10;
+    let totalPages = 1;
+    let products = [];
+    let groups = [];
+
+    // 加载产品列表
+    async function loadProducts() {
+      try {
+        const result = await productApi.list({ page: 1, pageSize: 100 });
+        if (result.code === 200) {
+          products = result.data.list || [];
+          
+          // 更新产品筛选器
+          const productFilter = document.getElementById('productFilter');
+          productFilter.innerHTML = '<option value="">全部产品</option>' +
+            products.map(p => `<option value="${p.id}">${p.productName}</option>`).join('');
+          
+          // 更新产品选择器
+          const productSelect = document.getElementById('productSelect');
+          productSelect.innerHTML = '<option value="">请选择产品</option>' +
+            products.map(p => `<option value="${p.id}">${p.productName}</option>`).join('');
+        }
+      } catch (error) {
+        console.error('加载产品列表失败:', error);
+      }
+    }
+
+    // 加载分组列表
+    async function loadGroups() {
+      try {
+        const result = await groupApi.list();
+        if (result.code === 200) {
+          groups = result.data.list || [];
+          
+          const groupSelect = document.getElementById('groupSelect');
+          groupSelect.innerHTML = '<option value="">请选择分组</option>' +
+            groups.map(g => `<option value="${g.id}">${g.groupName}</option>`).join('');
+        }
+      } catch (error) {
+        console.error('加载分组列表失败:', error);
+      }
+    }
+
+    // 加载设备列表
+    window.loadDevices = async function(page = 1) {
+      currentPage = page;
+      
+      const keyword = document.getElementById('searchKeyword').value.trim();
+      const productId = document.getElementById('productFilter').value;
+      const status = document.getElementById('statusFilter').value;
+
+      const params = {
+        page: currentPage,
+        pageSize: pageSize,
+      };
+
+      if (keyword) params.keyword = keyword;
+      if (productId) params.productId = parseInt(productId);
+      if (status !== '') params.status = parseInt(status);
+
+      try {
+        const result = await deviceApi.list(params);
+        if (result.code === 200) {
+          const data = result.data;
+          totalPages = data.totalPages || 1;
+          
+          renderDeviceTable(data.list || []);
+          renderPagination(data.total || 0, currentPage, totalPages);
+          
+          document.getElementById('totalCount').textContent = data.total || 0;
+        }
+      } catch (error) {
+        console.error('加载设备列表失败:', error);
+        document.getElementById('deviceTableBody').innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 40px; color: var(--danger);">
+              加载失败，请刷新重试
+            </td>
+          </tr>
+        `;
+      }
+    };
+
+    // 渲染设备表格
+    function renderDeviceTable(devices) {
+      const tbody = document.getElementById('deviceTableBody');
+      
+      if (devices.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+              暂无数据
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = devices.map(device => `
+        <tr>
+          <td>${device.deviceName || '-'}</td>
+          <td><code>${device.deviceCode || '-'}</code></td>
+          <td>${device.productName || '-'}</td>
+          <td>${device.groupPath || device.groupName || '-'}</td>
+          <td>
+            ${device.status === 1 
+              ? '<span class="badge badge-online">在线</span>' 
+              : '<span class="badge badge-offline">离线</span>'}
+          </td>
+          <td>${device.lastOnlineTime || '-'}</td>
+          <td>${device.createTime || '-'}</td>
+          <td>
+            <div class="action-buttons">
+              <a href="/device-detail.html?code=${device.deviceCode}" class="btn btn-sm">详情</a>
+              <button class="btn btn-sm btn-danger" onclick="deleteDevice('${device.deviceCode}', '${device.deviceName}')">删除</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // 渲染分页
+    function renderPagination(total, current, totalPages) {
+      const pageInfo = document.getElementById('pageInfo');
+      const buttons = document.getElementById('paginationButtons');
+      
+      const start = (current - 1) * pageSize + 1;
+      const end = Math.min(current * pageSize, total);
+      pageInfo.textContent = `显示 ${start}-${end} / 共 ${total} 条`;
+
+      let html = `
+        <button class="page-btn" ${current === 1 ? 'disabled' : ''} onclick="loadDevices(${current - 1})">上一页</button>
+      `;
+
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= current - 2 && i <= current + 2)) {
+          html += `<button class="page-btn ${i === current ? 'active' : ''}" onclick="loadDevices(${i})">${i}</button>`;
+        } else if (i === current - 3 || i === current + 3) {
+          html += `<span style="padding: 0 8px; color: var(--text-muted);">...</span>`;
+        }
+      }
+
+      html += `
+        <button class="page-btn" ${current === totalPages ? 'disabled' : ''} onclick="loadDevices(${current + 1})">下一页</button>
+      `;
+
+      buttons.innerHTML = html;
+    }
+
+    // 搜索设备
+    window.searchDevices = function() {
+      loadDevices(1);
+    };
+
+    // 显示新增模态框
+    window.showAddModal = function() {
+      document.getElementById('addDeviceForm').reset();
+      document.getElementById('addDeviceModal').classList.add('show');
+    };
+
+    // 关闭模态框
+    window.closeModal = function(id) {
+      document.getElementById(id).classList.remove('show');
+    };
+
+    // 提交新增设备
+    window.submitAddDevice = async function() {
+      const form = document.getElementById('addDeviceForm');
+      const formData = new FormData(form);
+      
+      const data = {
+        name: formData.get('name'),
+        code: formData.get('code'),
+        productId: parseInt(formData.get('productId')),
+        groupId: parseInt(formData.get('groupId')),
+        remark: formData.get('remark') || '',
+      };
+
+      if (!data.name || !data.code || !data.productId || !data.groupId) {
+        alert('请填写必填项');
+        return;
+      }
+
+      try {
+        const result = await deviceApi.create(data);
+        if (result.code === 200) {
+          alert('创建成功');
+          closeModal('addDeviceModal');
+          loadDevices(1);
+        } else {
+          alert(result.message || '创建失败');
+        }
+      } catch (error) {
+        console.error('创建设备失败:', error);
+        alert('创建失败，请重试');
+      }
+    };
+
+    // 删除设备
+    window.deleteDevice = async function(deviceCode, deviceName) {
+      if (!confirm(`确定要删除设备"${deviceName}"吗？`)) {
+        return;
+      }
+
+      try {
+        const result = await deviceApi.delete(deviceCode);
+        if (result.code === 200) {
+          alert('删除成功');
+          loadDevices(currentPage);
+        } else {
+          alert(result.message || '删除失败');
+        }
+      } catch (error) {
+        console.error('删除设备失败:', error);
+        alert('删除失败，请重试');
+      }
+    };
+
+    // 初始化
+    loadProducts();
+    loadGroups();
+    loadDevices();
+  </script>
+</body>
+</html>

@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>产品管理 - 物联网平台</title>
+    <link rel="stylesheet" href="common-style.css">
+    <style>
+        /* 主内容布局 */
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+        }
+        .content-main { min-width: 0; }
+        .content-sidebar {
+            position: sticky;
+            top: 76px;
+            height: fit-content;
+        }
+        
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .search-box { padding: 8px 12px; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; width: 300px; }
+        .product-table { background: white; border-radius: 12px; overflow: hidden; }
+        .action-btns { display: flex; gap: 8px; }
+        .action-btns button { padding: 6px 12px; font-size: 13px; }
+        
+        /* 弹窗遮罩 */
+        .modal-overlay { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            bottom: 0; 
+            background: rgba(0,0,0,0.4); 
+            z-index: 1000; 
+            align-items: center; 
+            justify-content: center;
+            backdrop-filter: blur(2px);
+            animation: fadeIn 0.2s;
+        }
+        .modal-overlay.show { display: flex; }
+        
+        /* 弹窗容器 */
+        .modal-content { 
+            background: white; 
+            border-radius: 16px; 
+            width: 600px; 
+            max-height: 85vh; 
+            overflow-y: auto; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s;
+        }
+        
+        /* 弹窗头部 */
+        .modal-header { 
+            padding: 20px 24px;
+            border-bottom: 0.5px solid rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title { 
+            font-size: 20px; 
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        .modal-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: none;
+            background: #f5f5f7;
+            cursor: pointer;
+            font-size: 18px;
+            color: #86868b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background: #e5e5e7;
+            color: #1d1d1f;
+        }
+        
+        /* 弹窗主体 */
+        .modal-body { padding: 24px; }
+        
+        /* 弹窗底部 */
+        .modal-footer { 
+            padding: 16px 24px;
+            border-top: 0.5px solid rgba(0,0,0,0.08);
+            display: flex; 
+            justify-content: flex-end; 
+            gap: 12px;
+            background: #f5f5f7;
+        }
+        
+        /* Tab标签 */
+        .tabs { 
+            display: flex; 
+            gap: 24px; 
+            border-bottom: 0.5px solid rgba(0,0,0,0.08); 
+            margin-bottom: 20px;
+        }
+        .tab { 
+            padding: 10px 0; 
+            font-size: 14px; 
+            color: #86868b; 
+            cursor: pointer; 
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab.active { 
+            color: #0071e3; 
+            border-bottom-color: #0071e3; 
+            font-weight: 500; 
+        }
+        .tab:hover { color: #0071e3; }
+        
+        /* 列表区域 */
+        .list-container { 
+            background: #f5f5f7; 
+            padding: 16px; 
+            border-radius: 8px; 
+            max-height: 350px; 
+            overflow-y: auto;
+        }
+        .list-item { 
+            background: white; 
+            padding: 12px 16px; 
+            margin-bottom: 8px; 
+            border-radius: 8px; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        .list-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .list-item:last-child { margin-bottom: 0; }
+        .list-item-main { flex: 1; }
+        .list-item-title { font-size: 14px; font-weight: 500; color: #1d1d1f; margin-bottom: 4px; }
+        .list-item-desc { font-size: 12px; color: #86868b; }
+        .list-item-actions { display: flex; gap: 8px; }
+        .list-item-actions button { padding: 4px 12px; font-size: 12px; }
+        
+        .empty-state { 
+            text-align: center; 
+            padding: 60px 20px; 
+            color: #86868b;
+        }
+        .empty-state-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+        .empty-state-text { font-size: 14px; }
+        
+        /* 输入框提示 */
+        .input-hint {
+            font-size: 12px;
+            color: #86868b;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        
+        /* 必填标记 */
+        .required { color: #ff3b30; }
+        
+        /* 动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">物联网平台</div>
+        <div class="user-info"><span>👤 admin</span><a href="login.html">退出</a></div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <a href="dashboard.html" class="menu-item"><span class="icon">📊</span> 数据监控</a>
+            <a href="device-group.html" class="menu-item"><span class="icon">🗂️</span> 设备分组</a>
+            <a href="device-list.html" class="menu-item"><span class="icon">📱</span> 设备管理</a>
+            <a href="product-manage.html" class="menu-item active"><span class="icon">📦</span> 产品管理</a>
+            <!-- <a href="data-query.html" class="menu-item"><span class="icon">🔍</span> 数据查询</a> -->
+            <div class="menu-divider"></div>
+            <a href="user-manage.html" class="menu-item"><span class="icon">👥</span> 用户管理</a>
+            <a href="role-manage.html" class="menu-item"><span class="icon">🎭</span> 角色管理</a>
+            <div class="menu-divider"></div>
+            <a href="index.html" class="menu-item"><span class="icon">🏠</span> 返回导航</a>
+        </div>
+
+        <div class="main-content">
+            <h1 class="page-title">产品管理</h1>
+
+            <div class="content-wrapper">
+                <!-- 主内容区 -->
+                <div class="content-main">
+                    <div class="toolbar">
+                        <input type="text" class="search-box" id="searchInput" placeholder="🔍 搜索产品名称或型号..." onkeyup="searchProducts()">
+                        <button class="btn btn-primary" onclick="openCreateModal()">+ 创建产品</button>
+                    </div>
+
+                    <table class="product-table" id="productTable">
+                        <thead>
+                            <tr>
+                                <th>产品ID</th>
+                                <th>产品名称</th>
+                                <th>产品型号</th>
+                                <th>协议类型</th>
+                                <th>属性数量</th>
+                                <th>命令数量</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productList">
+                            <!-- 动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 右侧备注栏 -->
+                <div class="content-sidebar">
+                    <div class="prototype-note">
+                        <strong>📌 高保真原型说明</strong><br><br>
+                        本页面为完整可用的产品管理原型，所有功能均可真实操作<br>
+                        <br>
+                        <strong>✅ 已实现功能：</strong><br>
+                        • 创建产品：填写表单后数据会保存到浏览器（刷新不丢失）<br>
+                        • 查看详情：真实弹窗显示产品的属性和命令<br>
+                        • 添加属性：动态添加产品数据点（温度、湿度等）<br>
+                        • 添加命令：动态添加控制指令（开关、设置等）<br>
+                        • 编辑产品：修改产品信息并保存<br>
+                        • 删除产品：从列表中移除（带确认提示）<br>
+                        • 数据持久化：使用 localStorage 存储，关闭浏览器后数据仍在<br>
+                        <br>
+                        <strong>💡 操作提示：</strong><br>
+                        • 所有标记 <span class="required">*</span> 的字段为必填项<br>
+                        • 鼠标悬停在输入框下方可看到字段说明<br>
+                        • 点击"查看详情"可查看产品的完整物模型（属性+命令）<br>
+                        • 数据存储在浏览器本地，清除缓存后会丢失
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建产品弹窗 -->
+    <div class="modal-overlay" id="productModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">创建产品</div>
+                <button class="modal-close" onclick="closeProductModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>产品名称 <span class="required">*</span></label>
+                    <input type="text" id="productName" placeholder="如：智能水表、空气监测仪、温湿度传感器">
+                    <div class="input-hint">💡 给产品起一个清晰易懂的名称，方便后续管理</div>
+                </div>
+                <div class="form-group">
+                    <label>产品型号 <span class="required">*</span></label>
+                    <input type="text" id="productModel" placeholder="如：WATER-PRO、AIR-01、TEM-SENSOR">
+                    <div class="input-hint">💡 产品型号是唯一标识，建议使用英文+数字组合，创建后不可修改</div>
+                </div>
+                <div class="form-group">
+                    <label>协议类型 <span class="required">*</span></label>
+                    <select id="productProtocol">
+                        <option value="">请选择协议类型</option>
+                        <option value="MQTT">MQTT（推荐，轻量级物联网协议）</option>
+                        <option value="HTTP">HTTP（适合请求-响应场景）</option>
+                        <option value="CoAP">CoAP（适合资源受限设备）</option>
+                        <option value="Modbus">Modbus（工业设备常用）</option>
+                    </select>
+                    <div class="input-hint">💡 选择设备使用的通信协议，影响设备接入方式</div>
+                </div>
+                <div class="form-group">
+                    <label>产品描述</label>
+                    <textarea id="productDesc" rows="3" placeholder="描述产品的功能、用途、适用场景等..."></textarea>
+                    <div class="input-hint">💡 详细描述有助于团队成员理解产品定位</div>
+                </div>
+                <div class="prototype-note">
+                    <strong>📋 下一步操作</strong>
+                    创建产品后，点击"查看详情"跳转到详情页，添加"属性"和"命令"来完整定义设备的物模型：<br>
+                    • <strong>属性</strong>：设备上报的数据字段（如温度、湿度、电量）<br>
+                    • <strong>命令</strong>：平台下发给设备的控制指令（如开关、设置参数）
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="closeProductModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveProduct()">确定创建</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 数据管理 ====================
+        let products = [];
+        let currentProduct = null;
+        let editingProductId = null;
+
+        // 页面加载时初始化
+        window.onload = function() {
+            loadProducts();
+            renderProducts();
+        };
+
+        // 从 localStorage 加载产品数据
+        function loadProducts() {
+            const data = localStorage.getItem('iot_products');
+            if (data) {
+                products = JSON.parse(data);
+            } else {
+                // 初始化示例数据
+                products = [
+                    {
+                        id: 1,
+                        name: '温湿度传感器',
+                        model: 'TEM-001',
+                        protocol: 'MQTT',
+                        desc: '用于监测环境温度和湿度',
+                        createTime: '2025-12-20 10:30:00',
+                        attrs: [
+                            { identifier: 'tem', name: '温度', type: 'float', unit: '℃' },
+                            { identifier: 'hum', name: '湿度', type: 'float', unit: '%' },
+                            { identifier: 'window', name: '窗户状态', type: 'int', unit: '' }
+                        ],
+                        cmds: [
+                            { name: '打开窗户', attr: 'window', value: '1' },
+                            { name: '关闭窗户', attr: 'window', value: '0' }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        name: '智能门锁',
+                        model: 'LOCK-PRO',
+                        protocol: 'MQTT',
+                        desc: '远程控制的智能门锁，支持多种开锁方式',
+                        createTime: '2025-12-22 14:20:00',
+                        attrs: [
+                            { identifier: 'lock_status', name: '锁状态', type: 'int', unit: '' },
+                            { identifier: 'battery', name: '电量', type: 'int', unit: '%' },
+                            { identifier: 'temperature', name: '温度', type: 'float', unit: '℃' }
+                        ],
+                        cmds: [
+                            { name: '远程开锁', attr: 'lock_status', value: '0' },
+                            { name: '远程上锁', attr: 'lock_status', value: '1' }
+                        ]
+                    }
+                ];
+                saveProducts();
+            }
+        }
+
+        // 保存产品数据到 localStorage
+        function saveProducts() {
+            localStorage.setItem('iot_products', JSON.stringify(products));
+        }
+
+        // 渲染产品列表
+        function renderProducts(filteredProducts = null) {
+            const list = filteredProducts || products;
+            const tbody = document.getElementById('productList');
+            
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">暂无产品，点击右上角"创建产品"开始添加</div></td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = list.map(p => `
+                <tr>
+                    <td>${p.id}</td>
+                    <td>${p.name}</td>
+                    <td>${p.model}</td>
+                    <td>${p.protocol}</td>
+                    <td>${p.attrs ? p.attrs.length : 0} 个</td>
+                    <td>${p.cmds ? p.cmds.length : 0} 个</td>
+                    <td>${p.createTime}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="btn btn-default" onclick="viewProductDetail(${p.id})">查看详情</button>
+                            <button class="btn btn-default" onclick="editProduct(${p.id})">编辑</button>
+                            <button class="btn btn-danger" onclick="deleteProduct(${p.id})">删除</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 搜索产品
+        function searchProducts() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+            if (!keyword) {
+                renderProducts();
+                return;
+            }
+            const filtered = products.filter(p => 
+                p.name.toLowerCase().includes(keyword) || 
+                p.model.toLowerCase().includes(keyword)
+            );
+            renderProducts(filtered);
+        }
+
+        // ==================== 产品增删改 ====================
+        
+        // 打开创建产品弹窗
+        function openCreateModal() {
+            editingProductId = null;
+            document.querySelector('#productModal .modal-title').textContent = '创建产品';
+            document.getElementById('productName').value = '';
+            document.getElementById('productModel').value = '';
+            document.getElementById('productModel').disabled = false;
+            document.getElementById('productProtocol').value = '';
+            document.getElementById('productDesc').value = '';
+            document.getElementById('productModal').classList.add('show');
+        }
+
+        // 关闭产品弹窗
+        function closeProductModal() {
+            document.getElementById('productModal').classList.remove('show');
+        }
+
+        // 保存产品
+        function saveProduct() {
+            const name = document.getElementById('productName').value.trim();
+            const model = document.getElementById('productModel').value.trim();
+            const protocol = document.getElementById('productProtocol').value;
+            const desc = document.getElementById('productDesc').value.trim();
+
+            // 验证必填项
+            if (!name) {
+                alert('❌ 请输入产品名称');
+                return;
+            }
+            if (!model) {
+                alert('❌ 请输入产品型号');
+                return;
+            }
+            if (!protocol) {
+                alert('❌ 请选择协议类型');
+                return;
+            }
+
+            if (editingProductId) {
+                // 编辑模式
+                const product = products.find(p => p.id === editingProductId);
+                if (product) {
+                    product.name = name;
+                    product.protocol = protocol;
+                    product.desc = desc;
+                    saveProducts();
+                    closeProductModal();
+                    renderProducts();
+                    alert('✅ 产品信息已更新');
+                }
+            } else {
+                // 创建模式
+                // 检查型号是否重复
+                if (products.some(p => p.model === model)) {
+                    alert('❌ 产品型号已存在，请使用其他型号');
+                    return;
+                }
+                
+                const newProduct = {
+                    id: products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1,
+                    name,
+                    model,
+                    protocol,
+                    desc,
+                    createTime: new Date().toLocaleString('zh-CN', { hour12: false }),
+                    attrs: [],
+                    cmds: []
+                };
+                products.push(newProduct);
+
+                saveProducts();
+                closeProductModal();
+                
+                // 创建成功后跳转到详情页
+                alert('✅ 产品创建成功！\n\n现在跳转到详情页添加属性和命令');
+                window.location.href = `product-detail.html?id=${newProduct.id}`;
+            }
+        }
+
+        // 删除产品
+        function deleteProduct(id) {
+            const product = products.find(p => p.id === id);
+            if (!confirm(`确定要删除产品"${product.name}"吗？\n\n删除后该产品的所有属性和命令也将被删除，此操作不可恢复！`)) {
+                return;
+            }
+            products = products.filter(p => p.id !== id);
+            saveProducts();
+            renderProducts();
+            alert('✅ 产品已删除');
+        }
+
+        // 查看产品详情 - 跳转到详情页
+        function viewProductDetail(id) {
+            window.location.href = `product-detail.html?id=${id}`;
+        }
+        // 编辑产品 - 弹窗形式
+        function editProduct(id) {
+            const product = products.find(p => p.id === id);
+            if (!product) return;
+
+            editingProductId = id;
+            document.querySelector('#productModal .modal-title').textContent = '编辑产品';
+            document.getElementById('productName').value = product.name;
+            document.getElementById('productModel').value = product.model;
+            document.getElementById('productModel').disabled = true; // 型号不可修改
+            document.getElementById('productProtocol').value = product.protocol;
+            document.getElementById('productDesc').value = product.desc || '';
+            document.getElementById('productModal').classList.add('show');
+        }
+    </script>
+</body>
+</html>

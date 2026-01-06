@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物联网平台原型 - 导航页</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f2f2f7;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 48px;
+            max-width: 1000px;
+            width: 100%;
+            border: 0.5px solid rgba(0,0,0,0.08);
+        }
+        h1 {
+            font-size: 40px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 12px;
+            text-align: center;
+            letter-spacing: -0.02em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #86868b;
+            font-size: 17px;
+            margin-bottom: 40px;
+        }
+        .prototype-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-top: 32px;
+        }
+        .prototype-card {
+            background: #f5f5f7;
+            border-radius: 12px;
+            padding: 24px;
+            text-decoration: none;
+            color: #1d1d1f;
+            transition: all 0.2s;
+            border: 0.5px solid transparent;
+        }
+        .prototype-card:hover {
+            background: #fff;
+            border-color: rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .card-icon { font-size: 36px; margin-bottom: 12px; }
+        .card-title { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+        .card-desc { font-size: 13px; color: #86868b; line-height: 1.5; }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            background: rgba(52,199,89,0.15);
+            color: #34c759;
+            border-radius: 8px;
+            font-size: 11px;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #86868b;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>物联网平台原型</h1>
+        <p class="subtitle">产品功能演示 - 点击卡片查看各模块</p>
+        
+        <div class="prototype-grid">
+            <a href="login.html" class="prototype-card">
+                <div class="card-icon">🔐</div>
+                <div class="card-title">登录页面</div>
+                <div class="card-desc">用户登录验证<br>默认：admin/admin</div>
+                <span class="status-badge">✓ 已完成</span>
+            </a>
+
+            <a href="dashboard.html" class="prototype-card">
+                <div class="card-icon">📊</div>
+                <div class="card-title">数据监控</div>
+                <div class="card-desc">实时数据、设备统计<br>可视化图表</div>
+                <span class="status-badge">✓ 已完成</span>
+            </a>
+
+            <a href="device-group.html" class="prototype-card">
+                <div class="card-icon">🗂️</div>
+                <div class="card-title">设备分组</div>
+                <div class="card-desc">树形分组结构<br>拖拽排序</div>
+                <span class="status-badge">✓ 已完成</span>
+            </a>
+
+            <a href="device-list.html" class="prototype-card">
+                <div class="card-icon">📱</div>
+                <div class="card-title">设备管理</div>
+                <div class="card-desc">设备列表、在线状态<br>详情查看</div>
+                <span class="status-badge">✓ 已完成</span>
+            </a>
+
+            <a href="product-manage.html" class="prototype-card">
+                <div class="card-icon">📦</div>
+                <div class="card-title">产品管理</div>
+                <div class="card-desc">产品定义、属性配置<br>命令管理</div>
+                <span class="status-badge">✓ 已完成</span>
+            </a>
+
+            <a href="user-manage.html" class="prototype-card">
+                <div class="card-icon">👥</div>
+                <div class="card-title">用户管理</div>
+                <div class="card-desc">用户增删改查<br>角色分配</div>
+                <span class="status-badge">✓ 已完成</span>
+            </a>
+
+            <a href="role-manage.html" class="prototype-card">
+                <div class="card-icon">🎭</div>
+                <div class="card-title">角色管理</div>
+                <div class="card-desc">角色配置、菜单权限<br>权限控制</div>
+                <span class="status-badge">✓ 已完成</span>
+            </a>
+
+            <!-- <a href="data-query.html" class="prototype-card">
+                <div class="card-icon">🔍</div>
+                <div class="card-title">数据查询</div>
+                <div class="card-desc">历史数据查询<br>趋势分析</div>
+                <span class="status-badge">✓ 已完成</span>
+            </a> -->
+        </div>
+
+        <div class="footer">
+            <p>💡 这是可交互的 HTML 原型，确认后转为真实代码</p>
+            <p style="margin-top: 8px;">📅 2025-12-25</p>
+        </div>
+    </div>
+</body>
+</html>

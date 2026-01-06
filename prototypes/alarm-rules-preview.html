@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>告警阈值设置 - 原型预览</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f7fa;
+      padding: 24px;
+    }
+
+    .alarm-rules-container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* 顶部工具栏 */
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      background: white;
+      padding: 20px 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: #1d1d1f;
+    }
+
+    .stats-quick {
+      display: flex;
+      gap: 20px;
+    }
+
+    .stat-item {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .stat-item strong {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1d1d1f;
+      margin-left: 4px;
+    }
+
+    .stat-item.active strong {
+      color: #67c23a;
+    }
+
+    .toolbar-right {
+      display: flex;
+      gap: 12px;
+    }
+
+    /* 筛选栏 */
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    /* 规则表格 */
+    .rules-table {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: #f8f9fa;
+    }
+
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 14px;
+      font-weight: 600;
+      color: #606266;
+      border-bottom: 2px solid #e4e7ed;
+    }
+
+    td {
+      padding: 16px;
+      border-bottom: 1px solid #ebeef5;
+      font-size: 14px;
+      color: #606266;
+    }
+
+    tr:hover {
+      background: #f5f7fa;
+    }
+
+    .level-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+
+    .level-critical {
+      background: #fef0f0;
+      color: #f56c6c;
+    }
+
+    .level-warning {
+      background: #fdf6ec;
+      color: #e6a23c;
+    }
+
+    .level-info {
+      background: #ecf5ff;
+      color: #409eff;
+    }
+
+    .condition-text {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .condition-text .metric {
+      font-weight: 600;
+      color: #667eea;
+    }
+
+    .condition-text .operator {
+      color: #e6a23c;
+      font-weight: 600;
+    }
+
+    .condition-text .value {
+      font-weight: 600;
+      color: #f56c6c;
+    }
+
+    .condition-text .duration {
+      color: #999;
+      font-size: 12px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      background: #ecf5ff;
+      color: #409eff;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-right: 4px;
+    }
+
+    .notify-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .trigger-stats {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .trigger-stats .label {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .trigger-stats .count {
+      font-size: 16px;
+      font-weight: 600;
+      color: #667eea;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #dcdfe6;
+      transition: 0.3s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #409eff;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    .btn {
+      padding: 8px 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: #409eff;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #66b1ff;
+    }
+
+    .btn-default {
+      background: white;
+      border: 1px solid #dcdfe6;
+      color: #606266;
+    }
+
+    .btn-default:hover {
+      color: #409eff;
+      border-color: #c6e2ff;
+      background-color: #ecf5ff;
+    }
+
+    .btn-link {
+      background: transparent;
+      color: #409eff;
+      border: none;
+      padding: 4px 8px;
+    }
+
+    .btn-link:hover {
+      color: #66b1ff;
+    }
+
+    .btn-danger {
+      color: #f56c6c;
+    }
+
+    .btn-danger:hover {
+      color: #f78989;
+    }
+
+    .input {
+      padding: 8px 12px;
+      border: 1px solid #dcdfe6;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .input:focus {
+      border-color: #409eff;
+    }
+
+    .select {
+      padding: 8px 12px;
+      border: 1px solid #dcdfe6;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="alarm-rules-container">
+    <!-- 顶部操作栏 -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <h2 class="page-title">⚙️ 告警阈值设置</h2>
+        <div class="stats-quick">
+          <span class="stat-item">总规则 <strong>2</strong></span>
+          <span class="stat-item active">启用 <strong>2</strong></span>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-primary">+ 新建规则</button>
+        <button class="btn btn-default">批量设置</button>
+      </div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="filter-bar">
+      <input type="text" class="input" placeholder="搜索规则名称" style="width: 200px;">
+      <select class="select" style="width: 130px;">
+        <option value="">告警级别</option>
+        <option value="critical">🔴 严重</option>
+        <option value="warning">🟡 警告</option>
+        <option value="info">🔵 提示</option>
+      </select>
+      <select class="select" style="width: 130px;">
+        <option value="">适用范围</option>
+        <option value="single">单设备</option>
+        <option value="batch">批量设备</option>
+        <option value="product">按产品</option>
+        <option value="group">按分组</option>
+      </select>
+    </div>
+
+    <!-- 规则列表（表格形式） -->
+    <div class="rules-table">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 180px;">规则名称</th>
+            <th style="width: 280px;">触发条件</th>
+            <th style="width: 150px;">适用范围</th>
+            <th style="width: 200px;">通知设置</th>
+            <th style="width: 120px; text-align: center;">触发统计</th>
+            <th style="width: 80px; text-align: center;">状态</th>
+            <th style="width: 180px;">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <span class="level-badge level-critical">🔴</span>
+              <strong>温度过高告警</strong>
+            </td>
+            <td>
+              <div class="condition-text">
+                <span class="metric">温度</span>
+                <span class="operator">></span>
+                <span class="value">30℃</span>
+                <span class="duration">持续300s</span>
+              </div>
+            </td>
+            <td>
+              <span class="tag">单设备 (1台)</span>
+            </td>
+            <td>
+              <div class="notify-info">
+                <span style="font-size: 13px;">👥 2人</span>
+                <div>
+                  <span class="tag">system</span>
+                  <span class="tag">email</span>
+                </div>
+              </div>
+            </td>
+            <td style="text-align: center;">
+              <div class="trigger-stats">
+                <span class="label">今日</span>
+                <span class="count">5</span>
+              </div>
+            </td>
+            <td style="text-align: center;">
+              <label class="switch">
+                <input type="checkbox" checked>
+                <span class="slider"></span>
+              </label>
+            </td>
+            <td>
+              <button class="btn btn-link">编辑</button>
+              <button class="btn btn-link">复制</button>
+              <button class="btn btn-link btn-danger">删除</button>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <span class="level-badge level-warning">🟡</span>
+              <strong>设备离线告警</strong>
+            </td>
+            <td>
+              <div class="condition-text">
+                <span class="metric">离线时长</span>
+                <span class="operator">></span>
+                <span class="value">600秒</span>
+              </div>
+            </td>
+            <td>
+              <span class="tag">产品 (10台)</span>
+            </td>
+            <td>
+              <div class="notify-info">
+                <span style="font-size: 13px;">👥 1人</span>
+                <div>
+                  <span class="tag">system</span>
+                </div>
+              </div>
+            </td>
+            <td style="text-align: center;">
+              <div class="trigger-stats">
+                <span class="label">今日</span>
+                <span class="count">2</span>
+              </div>
+            </td>
+            <td style="text-align: center;">
+              <label class="switch">
+                <input type="checkbox" checked>
+                <span class="slider"></span>
+              </label>
+            </td>
+            <td>
+              <button class="btn btn-link">编辑</button>
+              <button class="btn btn-link">复制</button>
+              <button class="btn btn-link btn-danger">删除</button>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <span class="level-badge level-info">🔵</span>
+              <strong>湿度异常提醒</strong>
+            </td>
+            <td>
+              <div class="condition-text">
+                <span class="metric">湿度</span>
+                <span class="operator"><</span>
+                <span class="value">20%</span>
+              </div>
+            </td>
+            <td>
+              <span class="tag">分组 (5台)</span>
+            </td>
+            <td>
+              <div class="notify-info">
+                <span style="font-size: 13px;">👥 1人</span>
+                <div>
+                  <span class="tag">system</span>
+                </div>
+              </div>
+            </td>
+            <td style="text-align: center;">
+              <div class="trigger-stats">
+                <span class="label">今日</span>
+                <span class="count">0</span>
+              </div>
+            </td>
+            <td style="text-align: center;">
+              <label class="switch">
+                <input type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </td>
+            <td>
+              <button class="btn btn-link">编辑</button>
+              <button class="btn btn-link">复制</button>
+              <button class="btn btn-link btn-danger">删除</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,32 @@
+# 编译文件
+target/
+*.class
+*.jar
+*.war
+
+# 依赖
+node_modules/
+frontend/node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# 日志
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.bak
+*.swp
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 备份文件（但保留最新备份）
+backups/*.sql
+!backups/iot_platform_latest.sql
+

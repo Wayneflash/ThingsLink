@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>产品详情 - 物联网平台</title>
+    <link rel="stylesheet" href="common-style.css">
+    <style>
+        /* 面包屑导航 */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #86868b;
+        }
+        .breadcrumb a {
+            color: #0071e3;
+            text-decoration: none;
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        .breadcrumb-separator {
+            color: #d2d2d7;
+        }
+        
+        /* 页面头部 */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .page-header-actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        /* 信息卡片 */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .info-item {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            border: 0.5px solid rgba(0,0,0,0.08);
+        }
+        .info-label {
+            font-size: 13px;
+            color: #86868b;
+            margin-bottom: 6px;
+        }
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        
+        /* Tab区域 */
+        .detail-tabs {
+            background: white;
+            border-radius: 12px;
+            border: 0.5px solid rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .tabs-header {
+            display: flex;
+            border-bottom: 0.5px solid rgba(0,0,0,0.08);
+        }
+        .tab-item {
+            flex: 1;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-item:hover {
+            background: #f5f5f7;
+        }
+        .tab-item.active {
+            color: #0071e3;
+            border-bottom-color: #0071e3;
+            font-weight: 500;
+        }
+        .tab-content {
+            padding: 24px;
+        }
+        .tab-pane {
+            display: none;
+        }
+        .tab-pane.active {
+            display: block;
+        }
+        
+        /* 列表样式 */
+        .attr-list, .cmd-list {
+            display: grid;
+            gap: 12px;
+        }
+        .list-card {
+            background: #f5f5f7;
+            padding: 16px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .list-card-main {
+            flex: 1;
+        }
+        .list-card-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: #1d1d1f;
+            margin-bottom: 6px;
+        }
+        .list-card-desc {
+            font-size: 13px;
+            color: #86868b;
+        }
+        .list-card-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #86868b;
+        }
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+        
+        /* 弹窗样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        .modal-overlay.show { display: flex; }
+        
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 500px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s;
+        }
+        
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 0.5px solid rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        .modal-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: none;
+            background: #f5f5f7;
+            cursor: pointer;
+            font-size: 18px;
+            color: #86868b;
+        }
+        .modal-close:hover {
+            background: #e5e5e7;
+            color: #1d1d1f;
+        }
+        
+        .modal-body { padding: 24px; }
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 0.5px solid rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            background: #f5f5f7;
+        }
+        
+        .input-hint {
+            font-size: 12px;
+            color: #86868b;
+            margin-top: 4px;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        /* 内容布局 */
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 24px;
+        }
+        .content-main {
+            min-width: 0;
+        }
+        .content-sidebar {
+            position: sticky;
+            top: 76px;
+            height: fit-content;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">物联网平台</div>
+        <div class="user-info"><span>👤 admin</span><a href="login.html">退出</a></div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <a href="dashboard.html" class="menu-item"><span class="icon">📊</span> 数据监控</a>
+            <a href="device-group.html" class="menu-item"><span class="icon">🗂️</span> 设备分组</a>
+            <a href="device-list.html" class="menu-item"><span class="icon">📱</span> 设备管理</a>
+            <a href="product-manage.html" class="menu-item active"><span class="icon">📦</span> 产品管理</a>
+            <!-- <a href="data-query.html" class="menu-item"><span class="icon">🔍</span> 数据查询</a> -->
+            <div class="menu-divider"></div>
+            <a href="user-manage.html" class="menu-item"><span class="icon">👥</span> 用户管理</a>
+            <a href="role-manage.html" class="menu-item"><span class="icon">🎭</span> 角色管理</a>
+            <div class="menu-divider"></div>
+            <a href="index.html" class="menu-item"><span class="icon">🏠</span> 返回导航</a>
+        </div>
+
+        <div class="main-content">
+            <!-- 面包屑导航 -->
+            <div class="breadcrumb">
+                <a href="product-manage.html">产品管理</a>
+                <span class="breadcrumb-separator">›</span>
+                <span id="productName">产品详情</span>
+            </div>
+
+            <div class="content-wrapper">
+                <div class="content-main">
+                    <!-- 页面头部 -->
+                    <div class="page-header">
+                        <h1 class="page-title" id="pageTitle">产品详情</h1>
+                        <div class="page-header-actions">
+                            <button class="btn btn-default" onclick="goBack()">← 返回列表</button>
+                            <button class="btn btn-primary" onclick="editProduct()">编辑产品</button>
+                        </div>
+                    </div>
+
+                    <!-- 基本信息 -->
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">产品名称</div>
+                            <div class="info-value" id="info_name">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">产品型号</div>
+                            <div class="info-value" id="info_model">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">协议类型</div>
+                            <div class="info-value" id="info_protocol">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">创建时间</div>
+                            <div class="info-value" id="info_time">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">属性数量</div>
+                            <div class="info-value" id="info_attrs">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">命令数量</div>
+                            <div class="info-value" id="info_cmds">-</div>
+                        </div>
+                    </div>
+
+                    <!-- 产品描述 -->
+                    <div class="card" style="margin-bottom: 24px;">
+                        <div class="card-title">产品描述</div>
+                        <div id="info_desc" style="color: #86868b; font-size: 14px; line-height: 1.6;">-</div>
+                    </div>
+
+                    <!-- Tab切换区域 -->
+                    <div class="detail-tabs">
+                        <div class="tabs-header">
+                            <div class="tab-item active" onclick="switchTab('attr')">属性列表</div>
+                            <div class="tab-item" onclick="switchTab('cmd')">命令列表</div>
+                        </div>
+                        
+                        <div class="tab-content">
+                            <!-- 属性列表 -->
+                            <div class="tab-pane active" id="attrPane">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <div style="font-weight: 500;">设备属性定义</div>
+                                    <button class="btn btn-primary" onclick="addAttr()">+ 添加属性</button>
+                                </div>
+                                <div class="attr-list" id="attrList">
+                                    <!-- 动态生成 -->
+                                </div>
+                            </div>
+
+                            <!-- 命令列表 -->
+                            <div class="tab-pane" id="cmdPane">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <div style="font-weight: 500;">设备命令定义</div>
+                                    <button class="btn btn-primary" onclick="addCmd()">+ 添加命令</button>
+                                </div>
+                                <div class="cmd-list" id="cmdList">
+                                    <!-- 动态生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧备注 -->
+                <div class="content-sidebar">
+                    <div class="prototype-note">
+                        <strong>📌 页面说明</strong><br><br>
+                        这是产品的二级详情页，展示完整的产品物模型<br>
+                        <br>
+                        <strong>✅ 可操作功能：</strong><br>
+                        • 查看产品基本信息<br>
+                        • 查看属性和命令列表<br>
+                        • 点击"编辑产品"返回列表进行编辑<br>
+                        • 弹窗形式添加/删除属性和命令<br>
+                        • 点击"返回列表"回到产品管理<br>
+                        <br>
+                        <strong>💡 说明：</strong><br>
+                        • 属性：设备上报的数据点<br>
+                        • 命令：平台下发的控制指令<br>
+                        • 所有修改实时保存到 localStorage
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加属性弹窗 -->
+    <div class="modal-overlay" id="attrModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">添加产品属性</div>
+                <button class="modal-close" onclick="closeAttrModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>属性标识符 <span class="required">*</span></label>
+                    <input type="text" id="attr_identifier" placeholder="如：tem、hum、battery">
+                    <div class="input-hint">💡 英文标识符，用于数据上报的字段名，建议使用小写字母+下划线</div>
+                </div>
+                <div class="form-group">
+                    <label>属性名称 <span class="required">*</span></label>
+                    <input type="text" id="attr_name" placeholder="如：温度、湿度、电池电量">
+                    <div class="input-hint">💡 中文显示名称，方便理解属性含义</div>
+                </div>
+                <div class="form-group">
+                    <label>数据类型 <span class="required">*</span></label>
+                    <select id="attr_type">
+                        <option value="">请选择数据类型</option>
+                        <option value="int">整数 (int) - 如状态、计数</option>
+                        <option value="float">浮点数 (float) - 如温度、湿度</option>
+                        <option value="string">字符串 (string) - 如文本、描述</option>
+                        <option value="bool">布尔 (bool) - 如开关状态</option>
+                    </select>
+                    <div class="input-hint">💡 选择合适的数据类型，影响数据存储和处理方式</div>
+                </div>
+                <div class="form-group">
+                    <label>单位</label>
+                    <input type="text" id="attr_unit" placeholder="如：℃、%、m/s（可选）">
+                    <div class="input-hint">💡 数值属性可填写单位，非数值属性可留空</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="closeAttrModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveAttr()">确定添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加命令弹窗 -->
+    <div class="modal-overlay" id="cmdModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">添加产品命令</div>
+                <button class="modal-close" onclick="closeCmdModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>命令名称 <span class="required">*</span></label>
+                    <input type="text" id="cmd_name" placeholder="如：打开窗户、关闭灯光、设置模式">
+                    <div class="input-hint">💡 命令的显示名称，让用户知道这是什么操作</div>
+                </div>
+                <div class="form-group">
+                    <label>控制属性 <span class="required">*</span></label>
+                    <select id="cmd_attr">
+                        <option value="">请选择要控制的属性</option>
+                    </select>
+                    <div class="input-hint">💡 选择要控制的属性，命令会修改该属性的值</div>
+                </div>
+                <div class="form-group">
+                    <label>下发值 <span class="required">*</span></label>
+                    <input type="text" id="cmd_value" placeholder="如：1、0、ON、OFF">
+                    <div class="input-hint">💡 命令执行时会将该值下发给设备，设备根据该值进行操作</div>
+                </div>
+                <div class="prototype-note">
+                    <strong>💡 示例</strong><br>
+                    如果有一个属性叫 "window"，可以创建两个命令：<br>
+                    • 命令名：打开窗户 | 控制属性：window | 下发值：1<br>
+                    • 命令名：关闭窗户 | 控制属性：window | 下发值：0
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="closeCmdModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveCmd()">确定添加</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentProduct = null;
+
+        // 页面加载时获取产品ID并加载数据
+        window.onload = function() {
+            const params = new URLSearchParams(window.location.search);
+            const productId = parseInt(params.get('id'));
+            
+            if (!productId) {
+                alert('❌ 产品ID不存在');
+                window.location.href = 'product-manage.html';
+                return;
+            }
+            
+            loadProduct(productId);
+        };
+
+        // 加载产品数据
+        function loadProduct(id) {
+            const data = localStorage.getItem('iot_products');
+            if (!data) {
+                alert('❌ 未找到产品数据');
+                window.location.href = 'product-manage.html';
+                return;
+            }
+            
+            const products = JSON.parse(data);
+            currentProduct = products.find(p => p.id === id);
+            
+            if (!currentProduct) {
+                alert('❌ 产品不存在');
+                window.location.href = 'product-manage.html';
+                return;
+            }
+            
+            renderProduct();
+        }
+
+        // 渲染产品信息
+        function renderProduct() {
+            document.getElementById('productName').textContent = currentProduct.name;
+            document.getElementById('pageTitle').textContent = currentProduct.name;
+            document.getElementById('info_name').textContent = currentProduct.name;
+            document.getElementById('info_model').textContent = currentProduct.model;
+            document.getElementById('info_protocol').textContent = currentProduct.protocol;
+            document.getElementById('info_time').textContent = currentProduct.createTime;
+            document.getElementById('info_attrs').textContent = (currentProduct.attrs?.length || 0) + ' 个';
+            document.getElementById('info_cmds').textContent = (currentProduct.cmds?.length || 0) + ' 个';
+            document.getElementById('info_desc').textContent = currentProduct.desc || '暂无描述';
+            
+            renderAttrs();
+            renderCmds();
+        }
+
+        // 渲染属性列表
+        function renderAttrs() {
+            const container = document.getElementById('attrList');
+            
+            if (!currentProduct.attrs || currentProduct.attrs.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><div>暂无属性，点击上方"添加属性"开始定义数据点</div></div>';
+                return;
+            }
+            
+            container.innerHTML = currentProduct.attrs.map((attr, index) => `
+                <div class="list-card">
+                    <div class="list-card-main">
+                        <div class="list-card-title">${attr.identifier} - ${attr.name}</div>
+                        <div class="list-card-desc">类型：${attr.type} | 单位：${attr.unit || '无'}</div>
+                    </div>
+                    <div class="list-card-actions">
+                        <button class="btn btn-danger" onclick="deleteAttr(${index})">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 渲染命令列表
+        function renderCmds() {
+            const container = document.getElementById('cmdList');
+            
+            if (!currentProduct.cmds || currentProduct.cmds.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">🎮</div><div>暂无命令，点击上方"添加命令"开始定义控制指令</div></div>';
+                return;
+            }
+            
+            container.innerHTML = currentProduct.cmds.map((cmd, index) => `
+                <div class="list-card">
+                    <div class="list-card-main">
+                        <div class="list-card-title">${cmd.name}</div>
+                        <div class="list-card-desc">控制属性：${cmd.attr} | 下发值：${cmd.value}</div>
+                    </div>
+                    <div class="list-card-actions">
+                        <button class="btn btn-danger" onclick="deleteCmd(${index})">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Tab切换
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            
+            if (tab === 'attr') {
+                document.getElementById('attrPane').classList.add('active');
+            } else {
+                document.getElementById('cmdPane').classList.add('active');
+            }
+        }
+
+        // 返回列表
+        function goBack() {
+            window.location.href = 'product-manage.html';
+        }
+
+        // 编辑产品 - 回到列表页进行编辑
+        function editProduct() {
+            if (confirm('需要返回列表页进行编辑，确定继续吗？')) {
+                window.location.href = 'product-manage.html';
+            }
+        }
+
+        // 添加属性 - 弹窗形式
+        function addAttr() {
+            document.getElementById('attrModal').classList.add('show');
+        }
+        
+        // 关闭属性弹窗
+        function closeAttrModal() {
+            document.getElementById('attrModal').classList.remove('show');
+            document.getElementById('attr_identifier').value = '';
+            document.getElementById('attr_name').value = '';
+            document.getElementById('attr_type').value = '';
+            document.getElementById('attr_unit').value = '';
+        }
+        
+        // 保存属性
+        function saveAttr() {
+            const identifier = document.getElementById('attr_identifier').value.trim();
+            const name = document.getElementById('attr_name').value.trim();
+            const type = document.getElementById('attr_type').value;
+            const unit = document.getElementById('attr_unit').value.trim();
+            
+            if (!identifier) {
+                alert('❌ 请输入属性标识符');
+                return;
+            }
+            if (!name) {
+                alert('❌ 请输入属性名称');
+                return;
+            }
+            if (!type) {
+                alert('❌ 请选择数据类型');
+                return;
+            }
+            
+            if (!currentProduct.attrs) currentProduct.attrs = [];
+            
+            if (currentProduct.attrs.some(a => a.identifier === identifier)) {
+                alert('❌ 属性标识符已存在');
+                return;
+            }
+            
+            currentProduct.attrs.push({ identifier, name, type, unit });
+            saveProduct();
+            renderAttrs();
+            updateInfoCount();
+            closeAttrModal();
+            alert('✅ 属性添加成功');
+        }
+
+        // 添加命令 - 弹窗形式
+        function addCmd() {
+            if (!currentProduct.attrs || currentProduct.attrs.length === 0) {
+                alert('⚠️ 请先添加属性后再创建命令');
+                return;
+            }
+            
+            // 填充属性下拉选项
+            const attrSelect = document.getElementById('cmd_attr');
+            attrSelect.innerHTML = '<option value="">请选择要控制的属性</option>' +
+                currentProduct.attrs.map(a => `<option value="${a.identifier}">${a.name} (${a.identifier})</option>`).join('');
+            
+            document.getElementById('cmdModal').classList.add('show');
+        }
+        
+        // 关闭命令弹窗
+        function closeCmdModal() {
+            document.getElementById('cmdModal').classList.remove('show');
+            document.getElementById('cmd_name').value = '';
+            document.getElementById('cmd_attr').value = '';
+            document.getElementById('cmd_value').value = '';
+        }
+        
+        // 保存命令
+        function saveCmd() {
+            const name = document.getElementById('cmd_name').value.trim();
+            const attr = document.getElementById('cmd_attr').value;
+            const value = document.getElementById('cmd_value').value.trim();
+            
+            if (!name) {
+                alert('❌ 请输入命令名称');
+                return;
+            }
+            if (!attr) {
+                alert('❌ 请选择要控制的属性');
+                return;
+            }
+            if (!value) {
+                alert('❌ 请输入下发值');
+                return;
+            }
+            
+            if (!currentProduct.cmds) currentProduct.cmds = [];
+            currentProduct.cmds.push({ name, attr, value });
+            saveProduct();
+            renderCmds();
+            updateInfoCount();
+            closeCmdModal();
+            alert('✅ 命令添加成功');
+        }
+
+        // 删除属性
+        function deleteAttr(index) {
+            const attr = currentProduct.attrs[index];
+            if (!confirm(`确定要删除属性"${attr.name}"吗？`)) return;
+            
+            currentProduct.attrs.splice(index, 1);
+            saveProduct();
+            renderAttrs();
+            updateInfoCount();
+            alert('✅ 属性已删除');
+        }
+
+        // 删除命令
+        function deleteCmd(index) {
+            const cmd = currentProduct.cmds[index];
+            if (!confirm(`确定要删除命令"${cmd.name}"吗？`)) return;
+            
+            currentProduct.cmds.splice(index, 1);
+            saveProduct();
+            renderCmds();
+            updateInfoCount();
+            alert('✅ 命令已删除');
+        }
+
+        // 保存产品数据
+        function saveProduct() {
+            const data = localStorage.getItem('iot_products');
+            const products = JSON.parse(data);
+            const index = products.findIndex(p => p.id === currentProduct.id);
+            products[index] = currentProduct;
+            localStorage.setItem('iot_products', JSON.stringify(products));
+        }
+
+        // 更新数量显示
+        function updateInfoCount() {
+            document.getElementById('info_attrs').textContent = (currentProduct.attrs?.length || 0) + ' 个';
+            document.getElementById('info_cmds').textContent = (currentProduct.cmds?.length || 0) + ' 个';
+        }
+    </script>
+</body>
+</html>

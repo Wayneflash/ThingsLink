@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - 物联网平台</title>
+    <link rel="stylesheet" href="common-style.css">
+    <style>
+        .content-wrapper { display: grid; grid-template-columns: 1fr 320px; gap: 24px; }
+        .content-main { min-width: 0; }
+        .content-sidebar { position: sticky; top: 76px; height: fit-content; }
+        
+        /* 用户管理布局 */
+        .user-container { display: grid; grid-template-columns: 300px 1fr; gap: 20px; }
+        .tree-panel { background: white; border-radius: 12px; padding: 16px; border: 0.5px solid rgba(0,0,0,0.08); }
+        .tree-item { padding: 8px 12px; margin: 2px 0; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; }
+        .tree-item:hover { background: #f5f5f7; }
+        .tree-item.active { background: #0071e3; color: white; }
+        .tree-item.child { margin-left: 24px; }
+        .user-panel { background: white; border-radius: 12px; padding: 20px; border: 0.5px solid rgba(0,0,0,0.08); }
+        
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        .modal-overlay.show { display: flex; }
+        .modal-content { background: white; border-radius: 16px; width: 500px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s; }
+        .modal-header { padding: 20px 24px; border-bottom: 0.5px solid rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-size: 20px; font-weight: 600; color: #1d1d1f; }
+        .modal-close { width: 28px; height: 28px; border-radius: 50%; border: none; background: #f5f5f7; cursor: pointer; font-size: 18px; color: #86868b; }
+        .modal-close:hover { background: #e5e5e7; color: #1d1d1f; }
+        .modal-body { padding: 24px; }
+        .modal-footer { padding: 16px 24px; border-top: 0.5px solid rgba(0,0,0,0.08); display: flex; justify-content: flex-end; gap: 12px; background: #f5f5f7; }
+        .input-hint { font-size: 12px; color: #86868b; margin-top: 4px; }
+        .required { color: #ff3b30; }
+        
+        .role-select { background: #f5f5f7; padding: 12px; border-radius: 8px; max-height: 200px; overflow-y: auto; }
+        .role-option { padding: 8px; margin: 4px 0; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .role-option:hover { background: white; }
+        .role-option input { margin: 0; }
+        
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">物联网平台</div>
+        <div class="user-info"><span>👤 admin</span><a href="login.html">退出</a></div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <a href="dashboard.html" class="menu-item"><span class="icon">📊</span> 数据监控</a>
+            <a href="device-group.html" class="menu-item"><span class="icon">🗂️</span> 设备分组</a>
+            <a href="device-list.html" class="menu-item"><span class="icon">📱</span> 设备管理</a>
+            <a href="product-manage.html" class="menu-item"><span class="icon">📦</span> 产品管理</a>
+            <!-- <a href="data-query.html" class="menu-item"><span class="icon">🔍</span> 数据查询</a> -->
+            <div class="menu-divider"></div>
+            <a href="user-manage.html" class="menu-item active"><span class="icon">👥</span> 用户管理</a>
+            <a href="role-manage.html" class="menu-item"><span class="icon">🎭</span> 角色管理</a>
+            <div class="menu-divider"></div>
+            <a href="index.html" class="menu-item"><span class="icon">🏠</span> 返回导航</a>
+        </div>
+
+        <div class="main-content">
+            <h1 class="page-title">用户管理</h1>
+
+            <div class="content-wrapper">
+                <div class="content-main">
+                    <div class="user-container">
+                        <!-- 左侧分组树 -->
+                        <div class="tree-panel">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <strong>设备分组</strong>
+                            </div>
+                            
+                            <div id="groupTree">
+                                <!-- 动态生成 -->
+                            </div>
+                            
+                            <div class="prototype-note" style="margin-top: 16px; font-size: 12px;">
+                                💡 点击分组查看该分组下的用户
+                            </div>
+                        </div>
+
+                        <!-- 右侧用户列表 -->
+                        <div class="user-panel">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h3 id="groupTitle" style="margin: 0;">📁 全部用户</h3>
+                                <div style="display: flex; gap: 12px;">
+                                    <input type="text" id="searchInput" placeholder="🔍 搜索用户名或姓名..." onkeyup="searchUsers()" style="padding: 6px 12px; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; width: 200px;">
+                                    <button class="btn btn-primary" onclick="openUserModal()">+ 创建用户</button>
+                                </div>
+                            </div>
+
+                            <table id="userTable">
+                                <thead>
+                                    <tr>
+                                        <th>用户ID</th>
+                                        <th>用户名</th>
+                                        <th>姓名</th>
+                                        <th>所属分组</th>
+                                        <th>角色</th>
+                                        <th>状态</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userList">
+                                    <!-- 动态生成 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-sidebar">
+                    <div class="prototype-note">
+                        <strong>📌 高保真原型说明</strong><br><br>
+                        用户管理采用分组树+用户列表的布局<br>
+                        <br>
+                        <strong>✅ 已实现功能：</strong><br>
+                        • 分组树：显示所有设备分组<br>
+                        • 点击分组：查看该分组下的用户<br>
+                        • 创建用户：在指定分组下创建<br>
+                        • 数据权限：用户只能看到所属分组及子分组的设备<br>
+                        • 搜索用户：按用户名或姓名搜索<br>
+                        • 编辑用户：修改信息和角色<br>
+                        • 启用/禁用：控制登录权限<br>
+                        • 删除用户：移除账户<br>
+                        <br>
+                        <strong>💡 数据权限说明：</strong><br>
+                        • 超管：可以看到所有分组的设备<br>
+                        • 普通用户：只能看到所属分组及其子分组的设备<br>
+                        • 例如：属于“办公区域”的用户可以看到“A栋1楼”、“A栋2楼”的设备<br>
+                        • 属于“A栋1楼”的用户只能看到该楼层的设备<br>
+                        <br>
+                        <strong>🔒 超级管理员权限：</strong><br>
+                        • <span style="color: #ff3b30;">只有超级管理员角色才能创建/编辑/禁用用户</span><br>
+                        • 其他角色无法看到“创建用户”按钮和操作列<br>
+                        • 超级管理员用户自动归属最顶级分组<br>
+                        • 创建用户时，若选择超级管理员角色，分组自动设为根分组<br>
+                        <br>
+                        <strong>🔐 权限控制：</strong><br>
+                        • 用户 = 所属分组 + 角色<br>
+                        • 分组决定能看到哪些设备（数据权限）<br>
+                        • 角色决定能进行哪些操作（功能权限）
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑用户弹窗 -->
+    <div class="modal-overlay" id="userModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">创建用户</div>
+                <button class="modal-close" onclick="closeUserModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>用户名 <span class="required">*</span></label>
+                    <input type="text" id="username" placeholder="如：zhangsan、lisi">
+                    <div class="input-hint">💡 用于登录的账号，建议使用英文，创建后不可修改</div>
+                </div>
+                <div class="form-group" id="passwordGroup">
+                    <label>密码 <span class="required">*</span></label>
+                    <input type="password" id="password" placeholder="请输入密码">
+                    <div class="input-hint">💡 密码将采用 BCrypt 加密存储，建议 6 位以上</div>
+                </div>
+                <div class="form-group">
+                    <label>姓名 <span class="required">*</span></label>
+                    <input type="text" id="realname" placeholder="如：张三、李四">
+                    <div class="input-hint">💡 用户的真实姓名，用于显示和识别</div>
+                </div>
+                <div class="form-group">
+                    <label>所属分组 <span class="required">*</span></label>
+                    <select id="userGroup">
+                        <option value="">请选择所属分组</option>
+                    </select>
+                    <div class="input-hint" id="groupHint">💡 决定用户能看到哪些设备数据，用户可查看所属分组及其子分组的设备</div>
+                </div>
+                <div class="form-group">
+                    <label>角色 <span class="required">*</span></label>
+                    <div class="role-select" id="roleSelect">
+                        <!-- 动态生成 -->
+                    </div>
+                    <div class="input-hint">💡 选择用户的角色，角色决定了用户的菜单权限</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="closeUserModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveUser()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let users = [];
+        let groups = [];
+        let currentGroupId = 'all';
+        let editingUserId = null;
+        const availableRoles = [
+            { id: 1, name: '超级管理员', color: 'danger', isSuperAdmin: true },
+            { id: 2, name: '设备管理员', color: 'info', isSuperAdmin: false },
+            { id: 3, name: '数据查看员', color: 'info', isSuperAdmin: false },
+            { id: 4, name: '运维人员', color: 'warning', isSuperAdmin: false }
+        ];
+        
+        // 当前登录用户（模拟）
+        let currentUser = { id: 1, username: 'admin', roleIds: [1] }; // 默认超级管理员
+
+        window.onload = function() {
+            loadGroups();
+            loadUsers();
+            renderGroupTree();
+            renderUsers();
+            checkUserPermission();
+        };
+        
+        // 检查当前用户是否有用户管理权限
+        function checkUserPermission() {
+            const isSuperAdmin = currentUser.roleIds.some(roleId => {
+                const role = availableRoles.find(r => r.id === roleId);
+                return role && role.isSuperAdmin;
+            });
+            
+            // 非超级管理员隐藏创建按钮和操作列
+            if (!isSuperAdmin) {
+                const createBtn = document.querySelector('.btn-primary');
+                if (createBtn && createBtn.textContent.includes('创建用户')) {
+                    createBtn.style.display = 'none';
+                }
+                
+                // 隐藏操作列标题
+                const headers = document.querySelectorAll('#userTable th');
+                headers.forEach(th => {
+                    if (th.textContent === '操作') {
+                        th.style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        // 加载分组数据
+        function loadGroups() {
+            const data = localStorage.getItem('iot_groups');
+            if (data) {
+                groups = JSON.parse(data);
+            } else {
+                groups = [
+                    { id: 1, name: '办公区域', parentId: 0, icon: '🏢' },
+                    { id: 2, name: 'A栋1楼', parentId: 1, icon: '🏗️' },
+                    { id: 3, name: 'A栋2楼', parentId: 1, icon: '🏗️' },
+                    { id: 4, name: '生产区域', parentId: 0, icon: '🏭' },
+                    { id: 5, name: '车间1', parentId: 4, icon: '⚙️' },
+                    { id: 6, name: '车间2', parentId: 4, icon: '⚙️' }
+                ];
+            }
+        }
+
+        // 渲染分组树
+        function renderGroupTree() {
+            const container = document.getElementById('groupTree');
+            const totalUsers = users.length;
+            
+            let html = `
+                <div class="tree-item ${currentGroupId === 'all' ? 'active' : ''}" onclick="selectGroup('all')">
+                    <span>📁 全部用户</span>
+                    <span style="font-size: 12px; opacity: 0.7;">${totalUsers}</span>
+                </div>
+            `;
+            
+            const topGroups = groups.filter(g => g.parentId === 0);
+            topGroups.forEach(group => {
+                html += renderGroupItem(group, 0);
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function renderGroupItem(group, level) {
+            const childClass = level > 0 ? 'child' : '';
+            const activeClass = currentGroupId === group.id ? 'active' : '';
+            const userCount = users.filter(u => u.groupId === group.id).length;
+            
+            let html = `
+                <div class="tree-item ${childClass} ${activeClass}" onclick="selectGroup(${group.id})">
+                    <span>${group.icon} ${group.name}</span>
+                    <span style="font-size: 12px; opacity: 0.7;">${userCount}</span>
+                </div>
+            `;
+            
+            const children = groups.filter(g => g.parentId === group.id);
+            children.forEach(child => {
+                html += renderGroupItem(child, level + 1);
+            });
+            
+            return html;
+        }
+
+        // 选择分组
+        function selectGroup(id) {
+            currentGroupId = id;
+            renderGroupTree();
+            renderUsers();
+        }
+
+        function loadUsers() {
+            const data = localStorage.getItem('iot_users');
+            if (data) {
+                users = JSON.parse(data);
+            } else {
+                users = [
+                    { id: 1, username: 'admin', realname: '超级管理员', groupId: 0, roleIds: [1], status: 'active', createTime: '2025-01-01 00:00', isSuper: true },
+                    { id: 2, username: 'zhangsan', realname: '张三', groupId: 1, roleIds: [2], status: 'active', createTime: '2025-12-20 10:30' },
+                    { id: 3, username: 'lisi', realname: '李四', groupId: 2, roleIds: [3], status: 'disabled', createTime: '2025-12-22 14:20' },
+                    { id: 4, username: 'wangwu', realname: '王五', groupId: 4, roleIds: [2], status: 'active', createTime: '2025-12-23 09:15' }
+                ];
+                saveUsers();
+            }
+        }
+
+        function saveUsers() {
+            localStorage.setItem('iot_users', JSON.stringify(users));
+        }
+
+        function renderUsers(filteredUsers = null) {
+            let list = filteredUsers || users;
+            
+            // 按选中的分组筛选
+            if (currentGroupId !== 'all') {
+                // 获取当前分组及其所有子分组的ID
+                const groupIds = getGroupWithChildren(currentGroupId);
+                list = list.filter(u => groupIds.includes(u.groupId));
+            }
+            
+            const tbody = document.getElementById('userList');
+            const titleEle = document.getElementById('groupTitle');
+            
+            // 更新标题
+            if (currentGroupId === 'all') {
+                titleEle.textContent = `📁 全部用户 (${list.length}人)`;
+            } else {
+                const group = groups.find(g => g.id === currentGroupId);
+                if (group) {
+                    titleEle.textContent = `${group.icon} ${group.name} (${list.length}人)`;
+                }
+            }
+            
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 60px; color: #86868b;">👥 该分组暂无用户</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = list.map(u => {
+                const roles = u.roleIds.map(rid => availableRoles.find(r => r.id === rid)).filter(r => r);
+                const roleHtml = roles.map(r => `<span class="badge badge-${r.color}">${r.name}</span>`).join(' ');
+                const statusHtml = u.status === 'active' ? '<span class="badge badge-success">启用</span>' : '<span class="badge badge-warning">禁用</span>';
+                
+                // 获取分组名称
+                let groupName = '全部';
+                if (u.groupId) {
+                    const group = groups.find(g => g.id === u.groupId);
+                    if (group) groupName = group.name;
+                }
+                
+                // 检查当前用户是否为超级管理员
+                const isSuperAdmin = currentUser.roleIds.some(roleId => {
+                    const role = availableRoles.find(r => r.id === roleId);
+                    return role && role.isSuperAdmin;
+                });
+                
+                let actions = '';
+                if (!isSuperAdmin) {
+                    // 非超级管理员不显示操作按钮
+                    actions = '<td style="display:none;"></td>';
+                } else if (u.isSuper) {
+                    actions = '<td><button class="btn btn-default" disabled style="opacity: 0.5; font-size: 12px; padding: 4px 8px;">不可操作</button></td>';
+                } else {
+                    actions = `<td>
+                        <button class="btn btn-default" onclick="editUser(${u.id})" style="font-size: 12px; padding: 4px 8px;">编辑</button>
+                        ${u.status === 'active' ? 
+                            `<button class="btn btn-warning" onclick="toggleUserStatus(${u.id})" style="font-size: 12px; padding: 4px 8px;">禁用</button>` :
+                            `<button class="btn btn-success" onclick="toggleUserStatus(${u.id})" style="font-size: 12px; padding: 4px 8px;">启用</button>`
+                        }
+                        <button class="btn btn-danger" onclick="deleteUser(${u.id})" style="font-size: 12px; padding: 4px 8px;">删除</button>
+                    </td>`;
+                }
+                
+                return `
+                    <tr>
+                        <td>${u.id}</td>
+                        <td>${u.username}</td>
+                        <td>${u.realname}</td>
+                        <td>${groupName}</td>
+                        <td>${roleHtml}</td>
+                        <td>${statusHtml}</td>
+                        ${actions}
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 获取分组及其所有子分组的ID
+        function getGroupWithChildren(groupId) {
+            let result = [groupId];
+            const children = groups.filter(g => g.parentId === groupId);
+            children.forEach(child => {
+                result = result.concat(getGroupWithChildren(child.id));
+            });
+            return result;
+        }
+
+        function searchUsers() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+            if (!keyword) {
+                renderUsers();
+                return;
+            }
+            const filtered = users.filter(u => 
+                u.username.toLowerCase().includes(keyword) || 
+                u.realname.toLowerCase().includes(keyword)
+            );
+            renderUsers(filtered);
+        }
+
+        function openUserModal() {
+            editingUserId = null;
+            document.getElementById('modalTitle').textContent = '创建用户';
+            document.getElementById('username').value = '';
+            document.getElementById('username').disabled = false;
+            document.getElementById('password').value = '';
+            document.getElementById('passwordGroup').style.display = 'block';
+            document.getElementById('realname').value = '';
+            
+            // 填充分组下拉选项
+            const groupSelect = document.getElementById('userGroup');
+            groupSelect.innerHTML = '<option value="">请选择所属分组</option>' +
+                groups.map(g => `<option value="${g.id}">${g.icon} ${g.name}</option>`).join('');
+            
+            // 如果当前选中了某个分组，默认选中
+            if (currentGroupId !== 'all') {
+                groupSelect.value = currentGroupId;
+            }
+            
+            // 渲染角色选择
+            const roleSelect = document.getElementById('roleSelect');
+            roleSelect.innerHTML = availableRoles.map(role => `
+                <label class="role-option">
+                    <input type="checkbox" value="${role.id}" class="role-checkbox" onchange="handleRoleChange()">
+                    <span class="badge badge-${role.color}">${role.name}</span>
+                </label>
+            `).join('');
+            
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        function closeUserModal() {
+            document.getElementById('userModal').classList.remove('show');
+        }
+
+        function saveUser() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const realname = document.getElementById('realname').value.trim();
+            const groupId = parseInt(document.getElementById('userGroup').value);
+            const selectedRoles = Array.from(document.querySelectorAll('.role-checkbox:checked')).map(cb => parseInt(cb.value));
+            
+            if (!username) { alert('❌ 请输入用户名'); return; }
+            if (!editingUserId && !password) { alert('❌ 请输入密码'); return; }
+            if (!realname) { alert('❌ 请输入姓名'); return; }
+            if (!groupId) { alert('❌ 请选择所属分组'); return; }
+            if (selectedRoles.length === 0) { alert('❌ 请选择至少一个角色'); return; }
+            
+            if (editingUserId) {
+                const user = users.find(u => u.id === editingUserId);
+                if (user) {
+                    user.realname = realname;
+                    user.groupId = groupId;
+                    user.roleIds = selectedRoles;
+                    if (password) user.password = password;
+                }
+                alert('✅ 用户信息已更新');
+            } else {
+                if (users.some(u => u.username === username)) {
+                    alert('❌ 用户名已存在');
+                    return;
+                }
+                const newUser = {
+                    id: users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1,
+                    username,
+                    password,
+                    realname,
+                    groupId,
+                    roleIds: selectedRoles,
+                    status: 'active',
+                    createTime: new Date().toLocaleString('zh-CN', { hour12: false })
+                };
+                users.push(newUser);
+                alert('✅ 用户创建成功');
+            }
+            
+            saveUsers();
+            closeUserModal();
+            renderGroupTree();
+            renderUsers();
+        }
+
+        function editUser(id) {
+            const user = users.find(u => u.id === id);
+            if (!user) return;
+            
+            editingUserId = id;
+            document.getElementById('modalTitle').textContent = '编辑用户';
+            document.getElementById('username').value = user.username;
+            document.getElementById('username').disabled = true;
+            document.getElementById('passwordGroup').style.display = 'none';
+            document.getElementById('realname').value = user.realname;
+            
+            // 填充分组
+            const groupSelect = document.getElementById('userGroup');
+            groupSelect.innerHTML = '<option value="">请选择所属分组</option>' +
+                groups.map(g => `<option value="${g.id}">${g.icon} ${g.name}</option>`).join('');
+            groupSelect.value = user.groupId;
+            
+            // 渲染角色并选中
+            const roleSelect = document.getElementById('roleSelect');
+            roleSelect.innerHTML = availableRoles.map(role => `
+                <label class="role-option">
+                    <input type="checkbox" value="${role.id}" class="role-checkbox" ${user.roleIds.includes(role.id) ? 'checked' : ''} onchange="handleRoleChange()">
+                    <span class="badge badge-${role.color}">${role.name}</span>
+                </label>
+            `).join('');
+            
+            // 如果已经是超级管理员，触发一次角色变化处理
+            if (user.roleIds.some(rid => availableRoles.find(r => r.id === rid)?.isSuperAdmin)) {
+                handleRoleChange();
+            }
+            
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        function toggleUserStatus(id) {
+            const user = users.find(u => u.id === id);
+            if (!user) return;
+            
+            user.status = user.status === 'active' ? 'disabled' : 'active';
+            saveUsers();
+            renderUsers();
+            alert(`✅ 已${user.status === 'active' ? '启用' : '禁用'}用户`);
+        }
+
+        function deleteUser(id) {
+            const user = users.find(u => u.id === id);
+            if (!confirm(`确定要删除用户"${user.realname}"吗？`)) return;
+            
+            users = users.filter(u => u.id !== id);
+            saveUsers();
+            renderGroupTree();
+            renderUsers();
+            alert('✅ 用户已删除');
+        }
+        
+        // 角色选择变化时的处理
+        function handleRoleChange() {
+            const checkboxes = document.querySelectorAll('.role-checkbox');
+            const selectedRoleIds = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => parseInt(cb.value));
+            
+            // 检查是否选择了超级管理员角色
+            const hasSuperAdmin = selectedRoleIds.some(roleId => {
+                const role = availableRoles.find(r => r.id === roleId);
+                return role && role.isSuperAdmin;
+            });
+            
+            const groupSelect = document.getElementById('userGroup');
+            const groupHint = document.getElementById('groupHint');
+            
+            if (hasSuperAdmin) {
+                // 找到最顶级的分组（parentId为0的分组）
+                const rootGroup = groups.find(g => g.parentId === 0);
+                if (rootGroup) {
+                    groupSelect.value = rootGroup.id;
+                    groupSelect.disabled = true;
+                    groupHint.innerHTML = '🔒 超级管理员自动归属最顶级分组，拥有全局数据权限';
+                    groupHint.style.color = '#0071e3';
+                    groupHint.style.fontWeight = '500';
+                } else {
+                    // 如果没有找到根分组，自动选择第一个分组
+                    if (groups.length > 0) {
+                        groupSelect.value = groups[0].id;
+                        groupSelect.disabled = true;
+                        groupHint.innerHTML = '🔒 超级管理员自动归属顶级分组，拥有全局数据权限';
+                        groupHint.style.color = '#0071e3';
+                        groupHint.style.fontWeight = '500';
+                    }
+                }
+            } else {
+                groupSelect.disabled = false;
+                groupHint.innerHTML = '💡 决定用户能看到哪些设备数据，用户可查看所属分组及其子分组的设备';
+                groupHint.style.color = '#86868b';
+                groupHint.style.fontWeight = 'normal';
+            }
+        }
+    </script>
+</body>
+</html>
