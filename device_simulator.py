@@ -141,19 +141,28 @@ def generate_sample_data():
     if 'window' not in device_status:
         device_status['window'] = 0  # 默认关闭
     
+    # 报警阈值：温度 > 25℃，湿度 > 50%
+    # 模拟数据在阈值上下波动，用于测试抩警触发和恢复
+    
+    # 温度：在22-28℃波动，会超过25℃阈值
+    temperature = random.uniform(22.0, 28.0)
+    
+    # 湿度：在45-55%波动，会超过50%阈值
+    humidity = random.uniform(45.0, 55.0)
+    
     # 示例数据 - 可以根据实际的物模型调整
     data = {
         "did": DEVICE_CODE,
         "content": [
             {
                 "addr": "tem",      # 温度
-                "addrv": f"{random.uniform(18.0, 35.0):.2f}",  # 随机温度值
+                "addrv": f"{temperature:.2f}",
                 "ctime": now,
                 "pid": DEVICE_CODE
             },
             {
                 "addr": "hum",      # 湿度
-                "addrv": f"{random.uniform(30.0, 80.0):.2f}",  # 随机湿度值
+                "addrv": f"{humidity:.2f}",
                 "ctime": now,
                 "pid": DEVICE_CODE
             },
@@ -165,6 +174,11 @@ def generate_sample_data():
             }
         ]
     }
+    
+    # 打印当前数据情况，方便观察抩警触发/恢复
+    temp_status = "🔥 超阈" if temperature > 25.0 else "✅ 正常"
+    hum_status = "💧 超阈" if humidity > 50.0 else "✅ 正常"
+    print(f"   温度: {temperature:.2f}℃ {temp_status} | 湿度: {humidity:.2f}% {hum_status}")
     
     return data
 

@@ -17,11 +17,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 设备告警配置控制器
+ * 设备报警配置控制器
  * 
  * 数据权限说明：
- * - 超级管理员：可配置所有设备的告警阈值
- * - 普通用户：只能配置本分组及所有下级分组下的设备告警阈值
+ * - 超级管理员：可配置所有设备的报警阈值
+ * - 普通用户：只能配置本分组及所有下级分组下的设备报警阈值
  */
 @Slf4j
 @RestController
@@ -36,7 +36,7 @@ public class DeviceAlarmController {
     private PermissionUtil permissionUtil;
     
     /**
-     * 配置设备告警阈值（单个或批量）
+     * 配置设备报警阈值（单个或批量）
      * 
      * 数据权限验证：验证用户是否有权限操作这些设备
      */
@@ -63,20 +63,33 @@ public class DeviceAlarmController {
                 return Result.error("设备ID不能为空");
             }
             
-            // 验证告警配置
+            // 验证报警配置
             if (request.getAlarmConfig() == null) {
-                return Result.error("告警配置不能为空");
+                return Result.error("报警配置不能为空");
             }
             
-            // 验证：一个物模型属性只能有1个条件
-            if (request.getAlarmConfig().getConditions() != null && !request.getAlarmConfig().getConditions().isEmpty()) {
-                java.util.Set<String> metricSet = new java.util.HashSet<>();
-                for (AlarmConfigDTO.AlarmCondition condition : request.getAlarmConfig().getConditions()) {
-                    if (condition.getMetric() != null && !condition.getMetric().isEmpty()) {
-                        if (metricSet.contains(condition.getMetric())) {
-                            return Result.error("每个物模型属性只能配置一个条件，属性 " + condition.getMetric() + " 重复了");
-                        }
-                        metricSet.add(condition.getMetric());
+            // 验证处理人ID
+            if (request.getAlarmConfig().getNotifyUser() == null) {
+                return Result.error("请选择处理人");
+            }
+            
+            // 验证至少启用一个监控属性
+            if (request.getAlarmConfig().getMetrics() == null || request.getAlarmConfig().getMetrics().isEmpty()) {
+                return Result.error("请至少配置一个监控属性");
+            }
+            
+            // 验证启用的监控属性配置完整
+            for (Map.Entry<String, AlarmConfigDTO.MetricConfig> entry : request.getAlarmConfig().getMetrics().entrySet()) {
+                AlarmConfigDTO.MetricConfig config = entry.getValue();
+                if (config.getEnabled() != null && config.getEnabled()) {
+                    if (config.getOperator() == null || config.getOperator().isEmpty()) {
+                        return Result.error("启用的监控属性必须配置运算符");
+                    }
+                    if (config.getThreshold() == null) {
+                        return Result.error("启用的监控属性必须配置阈值");
+                    }
+                    if (config.getLevel() == null || config.getLevel().isEmpty()) {
+                        return Result.error("启用的监控属性必须配置报警级别");
                     }
                 }
             }
@@ -106,18 +119,18 @@ public class DeviceAlarmController {
             result.put("count", count);
             result.put("message", "成功配置 " + count + " 台设备");
             
-            log.info("用户 {} 配置了 {} 台设备的告警阈值", currentUser.getUsername(), count);
+            log.info("用户 {} 配置了 {} 台设备的报警阈值", currentUser.getUsername(), count);
             return Result.success(result);
         } catch (Exception e) {
-            log.error("配置设备告警阈值失败", e);
+            log.error("配置设备报警阈值失败", e);
             return Result.error("配置失败: " + e.getMessage());
         }
     }
     
     /**
-     * 获取设备告警配置
+     * 获取设备报警配置
      * 
-     * 数据权限验证：验证用户是否有权限查看该设备的告警配置
+     * 数据权限验证：验证用户是否有权限查看该设备的报警配置
      */
     @GetMapping("/config/{deviceId}")
     public Result<AlarmConfigDTO> getAlarmConfig(
@@ -139,19 +152,19 @@ public class DeviceAlarmController {
             // 数据权限验证：检查用户是否有权限查看该设备
             List<Long> allowedGroupIds = permissionUtil.getAllowedGroupIds(currentUser);
             if (allowedGroupIds != null && !allowedGroupIds.contains(device.getGroupId())) {
-                return Result.error("无权限查看该设备的告警配置");
+                return Result.error("无权限查看该设备的报警配置");
             }
             
             AlarmConfigDTO config = deviceService.getAlarmConfig(deviceId);
             return Result.success(config);
         } catch (Exception e) {
-            log.error("获取设备告警配置失败", e);
+            log.error("获取设备报警配置失败", e);
             return Result.error("获取配置失败: " + e.getMessage());
         }
     }
     
     /**
-     * 切换设备告警启用状态
+     * 切换设备报警启用状态
      * 
      * 数据权限验证：验证用户是否有权限操作该设备
      */
@@ -176,14 +189,14 @@ public class DeviceAlarmController {
             // 数据权限验证：检查用户是否有权限操作该设备
             List<Long> allowedGroupIds = permissionUtil.getAllowedGroupIds(currentUser);
             if (allowedGroupIds != null && !allowedGroupIds.contains(device.getGroupId())) {
-                return Result.error("无权限操作该设备的告警状态");
+                return Result.error("无权限操作该设备的报警状态");
             }
             
             deviceService.toggleAlarmEnabled(deviceId, enabled);
-            log.info("用户 {} {}了设备 {} 的告警", currentUser.getUsername(), enabled ? "启用" : "禁用", device.getDeviceName());
+            log.info("用户 {} {}了设备 {} 的报警", currentUser.getUsername(), enabled ? "启用" : "禁用", device.getDeviceName());
             return Result.success("切换成功");
         } catch (Exception e) {
-            log.error("切换设备告警状态失败", e);
+            log.error("切换设备报警状态失败", e);
             return Result.error("切换失败: " + e.getMessage());
         }
     }

@@ -17,7 +17,9 @@ import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -29,6 +31,9 @@ public class DeviceDataService extends ServiceImpl<DeviceDataMapper, DeviceData>
     
     @Resource
     private DeviceService deviceService;
+    
+    @Resource
+    private AlarmLogService alarmLogService;
     
     @Resource
     private StringRedisTemplate stringRedisTemplate;
@@ -92,6 +97,21 @@ public class DeviceDataService extends ServiceImpl<DeviceDataMapper, DeviceData>
         // 批量插入数据库
         this.saveBatch(dataList);
         log.info("设备 {} 数据保存成功，共 {} 条", deviceCode, dataList.size());
+        
+        // 触发告警检查（如果设备配置了告警）
+        try {
+            // 构造数据Map（key=属性标识符，value=属性值）
+            Map<String, String> dataMap = new HashMap<>();
+            for (DeviceReportDTO.ReportContent content : reportDTO.getContent()) {
+                dataMap.put(content.getAddr(), content.getAddrv());
+            }
+            
+            // 检查并记录告警
+            alarmLogService.checkAndRecordAlarm(device, dataMap);
+        } catch (Exception e) {
+            log.error("告警检查失败 - 设备: {}", deviceCode, e);
+            // 告警检查失败不影响数据保存，只记录日志
+        }
     }
     
     /**

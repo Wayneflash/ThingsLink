@@ -2,7 +2,7 @@
   <div class="alarm-config-page">
     <!-- 顶部标题栏 -->
     <div class="page-header">
-      <h2 class="page-title">⚙️ 设备告警阈值配置</h2>
+      <h2 class="page-title">⚙️ 设备报警阈值配置</h2>
       <div class="stats-quick">
         <span class="stat-item">总设备 <strong>{{ stats.total }}</strong></span>
         <span class="stat-item active">已配置 <strong>{{ stats.configured }}</strong></span>
@@ -29,7 +29,7 @@
         placeholder="产品型号" 
         clearable 
         class="filter-select"
-        style="width: 150px;"
+        style="width: 180px;"
       >
         <el-option v-for="product in products" :key="product.id" :label="product.productName" :value="product.id" />
       </el-select>
@@ -39,7 +39,7 @@
         placeholder="设备分组" 
         clearable 
         class="filter-select"
-        style="width: 150px;"
+        style="width: 180px;"
       />
 
       <el-select 
@@ -47,7 +47,7 @@
         placeholder="配置状态" 
         clearable 
         class="filter-select"
-        style="width: 130px;"
+        style="width: 140px;"
       >
         <el-option label="已配置" value="configured" />
         <el-option label="未配置" value="unconfigured" />
@@ -58,13 +58,13 @@
         placeholder="在线状态" 
         clearable 
         class="filter-select"
-        style="width: 130px;"
+        style="width: 140px;"
       >
         <el-option label="在线" :value="1" />
         <el-option label="离线" :value="0" />
       </el-select>
 
-      <el-button type="primary" @click="loadDevices" :icon="Search">查询</el-button>
+      <el-button type="primary" @click="loadDevices" :icon="Search" style="margin-left: 8px;">查询</el-button>
       <el-button type="primary" @click="openBatchModal" :icon="Plus">批量配置</el-button>
     </div>
 
@@ -99,7 +99,7 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="productName" label="产品型号" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="productName" label="产品名称" min-width="140" show-overflow-tooltip />
         <el-table-column prop="groupName" label="所属分组" min-width="110" show-overflow-tooltip />
         
         <el-table-column label="配置状态" width="100" align="center">
@@ -109,45 +109,11 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="告警条件" min-width="150" show-overflow-tooltip>
+        <el-table-column label="处理人" width="100" show-overflow-tooltip>
           <template #default="{ row }">
-            <div v-if="row.alarmConfigObj && row.alarmConfigObj.conditions && row.alarmConfigObj.conditions.length > 0" class="condition-text">
-              <template v-for="(condition, idx) in row.alarmConfigObj.conditions" :key="idx">
-                <span v-if="idx > 0" class="condition-separator">或</span>
-                <span class="metric">{{ getMetricLabel(condition.metric, row.productId) }}</span>
-                <span class="operator">{{ condition.operator }}</span>
-                <span class="value">{{ condition.threshold }}{{ getMetricUnit(condition.metric, row.productId) }}</span>
-              </template>
-            </div>
-            <span v-else class="empty-text">-</span>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="告警级别" width="90" align="center">
-          <template #default="{ row }">
-            <span v-if="row.alarmConfigObj" class="level-badge">
-              {{ getLevelIcon(row.alarmConfigObj.level) }}
+            <span v-if="row.alarmConfigObj && row.alarmConfigObj.notifyUser" class="handler-user-text">
+              {{ getUserName(row.alarmConfigObj.notifyUser) }}
             </span>
-            <span v-else class="empty-text">-</span>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="通知人员" width="100" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span v-if="row.alarmConfigObj && row.alarmConfigObj.notifyUsers && row.alarmConfigObj.notifyUsers.length > 0" class="notify-user-text">
-              {{ getUserNames(row.alarmConfigObj.notifyUsers) }}
-            </span>
-            <span v-else class="empty-text">-</span>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="启用" width="80" align="center">
-          <template #default="{ row }">
-            <el-switch
-              v-if="row.alarmConfig"
-              v-model="row.alarmEnabled"
-              @change="handleToggleAlarmEnabled(row)"
-            />
             <span v-else class="empty-text">-</span>
           </template>
         </el-table-column>
@@ -176,7 +142,7 @@
     <!-- 单设备配置弹窗 -->
     <el-dialog
       v-model="configModal.visible"
-      title="配置设备告警阈值"
+      title="阈值配置"
       width="900px"
       :close-on-click-modal="false"
       top="3vh"
@@ -206,106 +172,17 @@
           </div>
         </div>
 
-        <!-- 告警级别 -->
+        <!-- 全局配置 -->
         <div class="form-section">
-          <h3 class="section-title">
-            告警级别
-            <span class="required">*</span>
-          </h3>
-          <el-radio-group v-model="configModal.form.level" class="level-group">
-            <el-radio label="critical" class="level-option">
-              <span class="level-emoji">🔴</span>
-              <span>严重</span>
-            </el-radio>
-            <el-radio label="warning" class="level-option">
-              <span class="level-emoji">🟡</span>
-              <span>警告</span>
-            </el-radio>
-            <el-radio label="info" class="level-option">
-              <span class="level-emoji">🔵</span>
-              <span>提示</span>
-            </el-radio>
-          </el-radio-group>
-        </div>
-
-        <!-- 监控条件 -->
-        <div class="form-section">
-          <div class="section-header">
-            <h3 class="section-title">监控条件</h3>
-            <span class="section-note">每个物模型属性只能配置一个条件</span>
-          </div>
-          <div class="conditions-list">
-            <div v-for="(condition, index) in configModal.form.conditions" :key="index" class="condition-card">
-              <div class="condition-header">
-                <span class="condition-title">条件 {{ index + 1 }}</span>
-                <el-button 
-                  v-if="configModal.form.conditions.length > 1"
-                  type="danger" 
-                  link 
-                  size="small" 
-                  @click="removeCondition(index)"
-                >
-                  删除
-                </el-button>
-              </div>
-              <div class="condition-fields">
-                <el-select 
-                  v-model="condition.metric" 
-                  placeholder="选择监控指标" 
-                  class="field-select"
-                  @change="onMetricChange(index)"
-                >
-                  <el-option 
-                    v-for="attr in getAvailableMetrics(index)" 
-                    :key="attr.addr" 
-                    :label="attr.attrName" 
-                    :value="attr.addr"
-                  />
-                </el-select>
-                <el-select v-model="condition.operator" class="field-operator">
-                  <el-option label=">" value=">" />
-                  <el-option label="<" value="<" />
-                  <el-option label="=" value="=" />
-                </el-select>
-                <el-input-number 
-                  v-model="condition.threshold" 
-                  :precision="2" 
-                  :step="0.1"
-                  class="field-number"
-                />
-                <span v-if="condition.metric" class="field-unit">
-                  {{ getMetricUnit(condition.metric, configModal.device?.productId) }}
-                </span>
-              </div>
-            </div>
-          </div>
-          <el-button 
-            @click="addCondition" 
-            class="add-btn"
-            :icon="Plus"
-            plain
-            :disabled="!canAddCondition"
-          >
-            添加监控条件
-          </el-button>
-          <div v-if="!canAddCondition" class="field-hint" style="margin-top: 8px;">
-            所有可用的物模型属性已配置完成
-          </div>
-        </div>
-
-        <!-- 通知设置 -->
-        <div class="form-section">
-          <h3 class="section-title">
-            通知设置
-          </h3>
+          <h3 class="section-title">全局配置</h3>
           <div class="form-field">
             <label class="field-label">
-              通知人员
+              处理人
               <span class="required">*</span>
             </label>
             <el-select 
               v-model="configModal.form.notifyUser" 
-              placeholder="请选择通知人员"
+              placeholder="请选择处理人"
               class="field-select-full"
             >
               <el-option 
@@ -317,12 +194,76 @@
             </el-select>
           </div>
           <div class="form-field">
-            <label class="field-label">告警堆叠</label>
+            <label class="field-label">抩警堆叠</label>
             <div class="switch-field">
               <el-switch v-model="configModal.form.stackMode" />
-              <span class="switch-label">开启后，恢复前不会重复告警</span>
+              <span class="switch-label">开启后，恢复前不会重复抩警</span>
             </div>
           </div>
+        </div>
+
+        <!-- 物模型监控配置 -->
+        <div class="form-section">
+          <h3 class="section-title">物模型监控配置</h3>
+          <el-table 
+            :data="deviceAttributes" 
+            border
+            style="width: 100%"
+            max-height="300px"
+          >
+            <el-table-column prop="attrName" label="属性名称" width="120" />
+            <el-table-column label="启用" width="70" align="center">
+              <template #default="{ row }">
+                <el-switch 
+                  v-model="configModal.form.metrics[row.addr].enabled" 
+                  size="small"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column label="运算符" width="100">
+              <template #default="{ row }">
+                <el-select 
+                  v-model="configModal.form.metrics[row.addr].operator" 
+                  :disabled="!configModal.form.metrics[row.addr].enabled"
+                  size="small"
+                >
+                  <el-option label=">" value=">" />
+                  <el-option label="<" value="<" />
+                  <el-option label="=" value="=" />
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="阈值" width="140">
+              <template #default="{ row }">
+                <el-input-number 
+                  v-model="configModal.form.metrics[row.addr].threshold" 
+                  :disabled="!configModal.form.metrics[row.addr].enabled"
+                  :precision="2" 
+                  :step="0.1"
+                  size="small"
+                  style="width: 100%"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column label="单位" width="80" align="center">
+              <template #default="{ row }">
+                <span class="field-unit">{{ row.unit || '-' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="抩警级别" width="140">
+              <template #default="{ row }">
+                <el-select 
+                  v-model="configModal.form.metrics[row.addr].level" 
+                  :disabled="!configModal.form.metrics[row.addr].enabled"
+                  size="small"
+                >
+                  <el-option label="🔴 严重" value="critical" />
+                  <el-option label="🟡 警告" value="warning" />
+                  <el-option label="🔵 提示" value="info" />
+                </el-select>
+              </template>
+            </el-table-column>
+          </el-table>
         </div>
       </div>
 
@@ -371,7 +312,7 @@
             >
               <el-option v-for="product in products" :key="product.id" :label="product.productName" :value="product.id" />
             </el-select>
-            <div class="field-hint">选择产品后，监控条件将根据该产品物模型动态加载</div>
+            <div class="field-hint">选择产品后，监控配置将根据该产品物模型动态加载</div>
           </div>
 
           <div class="form-field">
@@ -421,10 +362,6 @@
                       <span :class="device.status === 1 ? 'text-success' : 'text-gray'">
                         {{ device.status === 1 ? '在线' : '离线' }}
                       </span>
-                      <span v-if="device.alarmConfig" class="text-primary">
-                        | 当前：{{ getConditionText(device) }}
-                      </span>
-                      <span v-else class="text-gray">| 未配置</span>
                     </div>
                   </div>
                 </div>
@@ -438,102 +375,15 @@
         <div class="form-section">
           <h3 class="section-title">统一配置</h3>
           
+          <!-- 全局配置 -->
           <div class="form-field">
             <label class="field-label">
-              告警级别
-              <span class="required">*</span>
-            </label>
-            <el-radio-group v-model="batchModal.form.level" class="level-group">
-              <el-radio label="critical" class="level-option">
-                <span class="level-emoji">🔴</span>
-                <span>严重</span>
-              </el-radio>
-              <el-radio label="warning" class="level-option">
-                <span class="level-emoji">🟡</span>
-                <span>警告</span>
-              </el-radio>
-              <el-radio label="info" class="level-option">
-                <span class="level-emoji">🔵</span>
-                <span>提示</span>
-              </el-radio>
-            </el-radio-group>
-          </div>
-
-          <div class="form-field">
-            <div class="section-header">
-              <label class="field-label">
-                监控条件
-                <span class="required">*</span>
-              </label>
-              <span class="section-note">每个物模型属性只能配置一个条件</span>
-            </div>
-            <div class="conditions-list">
-              <div v-for="(condition, index) in batchModal.form.conditions" :key="index" class="condition-card">
-                <div class="condition-header">
-                  <span class="condition-title">条件 {{ index + 1 }}</span>
-                  <el-button 
-                    v-if="batchModal.form.conditions.length > 1"
-                    type="danger" 
-                    link 
-                    size="small" 
-                    @click="removeBatchCondition(index)"
-                  >
-                    删除
-                  </el-button>
-                </div>
-                <div class="condition-fields">
-                  <el-select 
-                    v-model="condition.metric" 
-                    placeholder="选择监控指标" 
-                    class="field-select"
-                    @change="onBatchMetricChange(index)"
-                  >
-                    <el-option 
-                      v-for="attr in getAvailableBatchMetrics(index)" 
-                      :key="attr.addr" 
-                      :label="attr.attrName" 
-                      :value="attr.addr" 
-                    />
-                  </el-select>
-                  <el-select v-model="condition.operator" class="field-operator">
-                    <el-option label=">" value=">" />
-                    <el-option label="<" value="<" />
-                    <el-option label="=" value="=" />
-                  </el-select>
-                  <el-input-number 
-                    v-model="condition.threshold" 
-                    :precision="2" 
-                    :step="0.1"
-                    class="field-number"
-                  />
-                  <span v-if="condition.metric" class="field-unit">
-                    {{ getMetricUnit(condition.metric, batchModal.productId) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <el-button 
-              @click="addBatchCondition" 
-              class="add-btn"
-              :icon="Plus"
-              plain
-              :disabled="!canAddBatchCondition"
-            >
-              添加监控条件
-            </el-button>
-            <div v-if="!canAddBatchCondition" class="field-hint" style="margin-top: 8px;">
-              所有可用的物模型属性已配置完成
-            </div>
-          </div>
-
-          <div class="form-field">
-            <label class="field-label">
-              通知人员
+              处理人
               <span class="required">*</span>
             </label>
             <el-select 
               v-model="batchModal.form.notifyUser" 
-              placeholder="请选择通知人员"
+              placeholder="请选择处理人"
               class="field-select-full"
             >
               <el-option 
@@ -544,16 +394,80 @@
               />
             </el-select>
           </div>
-
+          
           <div class="form-field">
-            <label class="field-label">预览</label>
-            <el-input
-              :model-value="getBatchPreview()"
-              type="textarea"
-              :rows="4"
-              readonly
-              class="preview-area"
-            />
+            <label class="field-label">抩警堆叠</label>
+            <div class="switch-field">
+              <el-switch v-model="batchModal.form.stackMode" />
+              <span class="switch-label">开启后，恢复前不会重复抩警</span>
+            </div>
+          </div>
+
+          <!-- 物模型监控配置 -->
+          <div class="form-field">
+            <label class="field-label">
+              物模型监控配置
+              <span class="required">*</span>
+            </label>
+            <el-table 
+              :data="batchDeviceAttributes" 
+              border
+              style="width: 100%"
+              max-height="300px"
+            >
+              <el-table-column prop="attrName" label="属性名称" width="120" />
+              <el-table-column label="启用" width="70" align="center">
+                <template #default="{ row }">
+                  <el-switch 
+                    v-model="batchModal.form.metrics[row.addr].enabled" 
+                    size="small"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column label="运算符" width="100">
+                <template #default="{ row }">
+                  <el-select 
+                    v-model="batchModal.form.metrics[row.addr].operator" 
+                    :disabled="!batchModal.form.metrics[row.addr].enabled"
+                    size="small"
+                  >
+                    <el-option label=">" value=">" />
+                    <el-option label="<" value="<" />
+                    <el-option label="=" value="=" />
+                  </el-select>
+                </template>
+              </el-table-column>
+              <el-table-column label="阈值" width="140">
+                <template #default="{ row }">
+                  <el-input-number 
+                    v-model="batchModal.form.metrics[row.addr].threshold" 
+                    :disabled="!batchModal.form.metrics[row.addr].enabled"
+                    :precision="2" 
+                    :step="0.1"
+                    size="small"
+                    style="width: 100%"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column label="单位" width="80" align="center">
+                <template #default="{ row }">
+                  <span class="field-unit">{{ row.unit || '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="抩警级别" width="140">
+                <template #default="{ row }">
+                  <el-select 
+                    v-model="batchModal.form.metrics[row.addr].level" 
+                    :disabled="!batchModal.form.metrics[row.addr].enabled"
+                    size="small"
+                  >
+                    <el-option label="🔴 严重" value="critical" />
+                    <el-option label="🟡 警告" value="warning" />
+                    <el-option label="🔵 提示" value="info" />
+                  </el-select>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
         </div>
       </div>
@@ -679,7 +593,7 @@ const loadDevices = async () => {
       devices.value = deviceList
       pagination.total = res.total || 0
       
-      // 预加载所有产品的物模型属性，确保告警条件能正确显示名称
+      // 预加载所有产品的物模型属性，确保报警条件能正确显示名称
       const productIds = [...new Set(deviceList.map(d => d.productId).filter(Boolean))]
       await Promise.all(productIds.map(pid => loadProductAttributes(pid)))
       
@@ -781,111 +695,123 @@ const openConfigModal = async (device) => {
   configModal.device = device
   configModal.visible = true
   
+  // 加载产品的物模型属性
   const attrs = await loadProductAttributes(device.productId)
   deviceAttributes.value = attrs
   
-  if (device.alarmConfigObj) {
+  // 初始化 metrics Map，为每个属性创建配置对象
+  const metricsMap = {}
+  attrs.forEach(attr => {
+    metricsMap[attr.addr] = {
+      enabled: false,
+      operator: '>',
+      threshold: 0,
+      level: 'warning'
+    }
+  })
+  
+  // 如果设备已有配置，加载现有配置
+  if (device.alarmConfigObj && device.alarmConfigObj.metrics) {
+    // 新版Map结构
+    Object.keys(device.alarmConfigObj.metrics).forEach(metric => {
+      if (metricsMap[metric]) {
+        metricsMap[metric] = { ...device.alarmConfigObj.metrics[metric] }
+      }
+    })
+    
     configModal.form = {
-      level: device.alarmConfigObj.level || 'warning',
-      conditions: device.alarmConfigObj.conditions && device.alarmConfigObj.conditions.length > 0
-        ? [...device.alarmConfigObj.conditions]
-        : [{ metric: '', operator: '>', threshold: 0 }],
-      notifyUser: device.alarmConfigObj.notifyUsers && device.alarmConfigObj.notifyUsers.length > 0 
-        ? device.alarmConfigObj.notifyUsers[0] 
+      notifyUser: device.alarmConfigObj.notifyUser || null,
+      stackMode: device.alarmConfigObj.stackMode !== false,
+      metrics: metricsMap
+    }
+  } else if (device.alarmConfigObj && device.alarmConfigObj.conditions) {
+    // 兼容旧版条件数组结构
+    device.alarmConfigObj.conditions.forEach(condition => {
+      if (metricsMap[condition.metric]) {
+        metricsMap[condition.metric] = {
+          enabled: true,
+          operator: condition.operator,
+          threshold: condition.threshold,
+          level: device.alarmConfigObj.level || 'warning'
+        }
+      }
+    })
+    
+    configModal.form = {
+      notifyUser: device.alarmConfigObj.notifyUsers && device.alarmConfigObj.notifyUsers.length > 0
+        ? device.alarmConfigObj.notifyUsers[0]
         : null,
-      stackMode: device.alarmConfigObj.stackMode !== false
+      stackMode: device.alarmConfigObj.stackMode !== false,
+      metrics: metricsMap
     }
   } else {
+    // 未配置
     configModal.form = {
-      level: 'warning',
-      conditions: [{ metric: '', operator: '>', threshold: 0 }],
       notifyUser: null,
-      stackMode: true
+      stackMode: true,
+      metrics: metricsMap
     }
   }
 }
 
-// 获取可用的物模型属性（排除已选择的）
-const getAvailableMetrics = (currentIndex) => {
-  const usedMetrics = configModal.form.conditions
-    .map((c, idx) => idx !== currentIndex ? c.metric : null)
-    .filter(Boolean)
-  return deviceAttributes.value.filter(attr => !usedMetrics.includes(attr.addr))
-}
 
-// 检查是否可以添加条件
-const canAddCondition = computed(() => {
-  const usedMetrics = configModal.form.conditions.map(c => c.metric).filter(Boolean)
-  return usedMetrics.length < deviceAttributes.value.length
-})
-
-// 物模型属性变化时的处理
-const onMetricChange = (index) => {
-  // 如果选择了已使用的属性，提示用户
-  const currentMetric = configModal.form.conditions[index].metric
-  const duplicateIndex = configModal.form.conditions.findIndex((c, idx) => 
-    idx !== index && c.metric === currentMetric && currentMetric
-  )
-  if (duplicateIndex !== -1) {
-    ElMessage.warning('该物模型属性已被其他条件使用，请选择其他属性')
-    configModal.form.conditions[index].metric = ''
-  }
-}
-
-// 添加监控条件
-const addCondition = () => {
-  if (canAddCondition.value) {
-    configModal.form.conditions.push({ metric: '', operator: '>', threshold: 0 })
-  } else {
-    ElMessage.warning('所有可用的物模型属性已配置完成')
-  }
-}
-
-// 删除监控条件
-const removeCondition = (index) => {
-  if (configModal.form.conditions.length > 1) {
-    configModal.form.conditions.splice(index, 1)
-  } else {
-    ElMessage.warning('至少保留一个监控条件')
-  }
-}
 
 // 保存单设备配置
 const saveConfig = async () => {
-  if (!configModal.form.level) {
-    ElMessage.warning('请选择告警级别')
-    return
+  // 校验处理人（只有启用监控时才需要）
+  const enabledMetrics = Object.entries(configModal.form.metrics).filter(
+    ([_, config]) => config.enabled
+  )
+  
+  // 如果没有启用任何监控属性，表示要撤销该设备的所有抩警配置
+  if (enabledMetrics.length === 0) {
+    try {
+      await configureAlarm({
+        deviceId: configModal.device.id,
+        alarmConfig: {
+          notifyUser: configModal.form.notifyUser || null,
+          stackMode: configModal.form.stackMode,
+          metrics: configModal.form.metrics
+        },
+        enabled: false  // 全部关闭时设置为false
+      })
+      
+      ElMessage.success('已撤销该设备的所有抩警配置')
+      configModal.visible = false
+      loadDevices()
+      return
+    } catch (error) {
+      console.error('配置失败:', error)
+      ElMessage.error('配置失败：' + (error.response?.data?.message || error.message))
+      return
+    }
   }
-  if (configModal.form.conditions.length === 0 || !configModal.form.conditions[0].metric) {
-    ElMessage.warning('请配置至少一个监控条件')
-    return
-  }
-  const hasEmptyMetric = configModal.form.conditions.some(c => !c.metric)
-  if (hasEmptyMetric) {
-    ElMessage.warning('请为所有条件选择监控指标')
-    return
-  }
-  // 检查是否有重复的物模型属性
-  const metrics = configModal.form.conditions.map(c => c.metric).filter(Boolean)
-  const uniqueMetrics = new Set(metrics)
-  if (metrics.length !== uniqueMetrics.size) {
-    ElMessage.warning('每个物模型属性只能配置一个条件，请检查是否有重复')
+  
+  // 有启用的监控属性时，需要选择处理人
+  if (!configModal.form.notifyUser) {
+    ElMessage.warning('启用监控时必须选择处理人')
     return
   }
   
-  if (!configModal.form.notifyUser) {
-    ElMessage.warning('请选择通知人员')
-    return
+  // 校验启用的属性配置是否完整
+  for (const [metric, config] of enabledMetrics) {
+    if (!config.operator || config.threshold === null || config.threshold === undefined) {
+      ElMessage.warning(`监控属性 "${getMetricName(metric)}" 的配置不完整，请检查运算符和阈值`)
+      return
+    }
+    if (!config.level) {
+      ElMessage.warning(`监控属性 "${getMetricName(metric)}" 未设置抩警级别`)
+      return
+    }
   }
   
   try {
     await configureAlarm({
       deviceId: configModal.device.id,
       alarmConfig: {
-        level: configModal.form.level,
-        conditions: configModal.form.conditions,
-        notifyUsers: [configModal.form.notifyUser], // 转换为数组
-        stackMode: configModal.form.stackMode
+        notifyUser: configModal.form.notifyUser,
+        stackMode: configModal.form.stackMode,
+        metrics: configModal.form.metrics
       },
       enabled: true
     })
@@ -899,18 +825,15 @@ const saveConfig = async () => {
   }
 }
 
-// 切换告警启用状态
-const handleToggleAlarmEnabled = async (device) => {
-  try {
-    await toggleAlarmEnabled(device.id, device.alarmEnabled)
-    ElMessage.success(device.alarmEnabled ? '已启用告警' : '已禁用告警')
-  } catch (error) {
-    console.error('切换告警状态失败:', error)
-    device.alarmEnabled = !device.alarmEnabled
-    ElMessage.error('操作失败')
-  }
+// 获取属性名称
+const getMetricName = (addr) => {
+  const attr = deviceAttributes.value.find(a => a.addr === addr)
+  return attr ? attr.attrName : addr
 }
 
+// 切换抩警启用状态（已移除此功能）
+
+// 打开批量配置弹窗
 // 打开批量配置弹窗
 const openBatchModal = () => {
   batchModal.visible = true
@@ -921,62 +844,32 @@ const openBatchModal = () => {
   batchModal.selectAll = false
   batchModal.configuredCount = 0
   batchModal.form = {
-    level: 'warning',
-    conditions: [{ metric: '', operator: '>', threshold: 0 }],
     notifyUser: null,
-    stackMode: true
+    stackMode: true,
+    metrics: {}
   }
 }
 
-// 批量配置：获取可用的物模型属性（排除已选择的）
-const getAvailableBatchMetrics = (currentIndex) => {
-  const usedMetrics = batchModal.form.conditions
-    .map((c, idx) => idx !== currentIndex ? c.metric : null)
-    .filter(Boolean)
-  return batchDeviceAttributes.value.filter(attr => !usedMetrics.includes(attr.addr))
-}
 
-// 批量配置：检查是否可以添加条件
-const canAddBatchCondition = computed(() => {
-  const usedMetrics = batchModal.form.conditions.map(c => c.metric).filter(Boolean)
-  return usedMetrics.length < batchDeviceAttributes.value.length
-})
-
-// 批量配置：物模型属性变化时的处理
-const onBatchMetricChange = (index) => {
-  const currentMetric = batchModal.form.conditions[index].metric
-  const duplicateIndex = batchModal.form.conditions.findIndex((c, idx) => 
-    idx !== index && c.metric === currentMetric && currentMetric
-  )
-  if (duplicateIndex !== -1) {
-    ElMessage.warning('该物模型属性已被其他条件使用，请选择其他属性')
-    batchModal.form.conditions[index].metric = ''
-  }
-}
-
-// 批量配置：添加监控条件
-const addBatchCondition = () => {
-  if (canAddBatchCondition.value) {
-    batchModal.form.conditions.push({ metric: '', operator: '>', threshold: 0 })
-  } else {
-    ElMessage.warning('所有可用的物模型属性已配置完成')
-  }
-}
-
-// 批量配置：删除监控条件
-const removeBatchCondition = (index) => {
-  if (batchModal.form.conditions.length > 1) {
-    batchModal.form.conditions.splice(index, 1)
-  } else {
-    ElMessage.warning('至少保留一个监控条件')
-  }
-}
 
 // 产品切换时加载设备
 const onProductChange = async () => {
   if (batchModal.productId) {
     const attrs = await loadProductAttributes(batchModal.productId)
     batchDeviceAttributes.value = attrs
+    
+    // 初始化 metrics Map
+    const metricsMap = {}
+    attrs.forEach(attr => {
+      metricsMap[attr.addr] = {
+        enabled: false,
+        operator: '>',
+        threshold: 0,
+        level: 'warning'
+      }
+    })
+    batchModal.form.metrics = metricsMap
+    
     await loadBatchDevices()
   }
 }
@@ -1031,65 +924,76 @@ const updateSelectedDevices = () => {
   batchModal.selectAll = batchModal.selectedDeviceIds.length === batchModal.availableDevices.length && batchModal.availableDevices.length > 0
 }
 
-// 获取批量配置预览
-const getBatchPreview = () => {
-  const selectedDevices = batchModal.availableDevices.filter(d => d.selected)
-  let preview = `将为以下 ${selectedDevices.length} 台设备配置告警阈值：\n\n`
-  
-  selectedDevices.forEach(device => {
-    const status = device.alarmConfig ? '[已配置→将被覆盖]' : '[未配置→新增]'
-    preview += `• ${device.deviceName} (${device.deviceCode}) ${status}\n`
-  })
-  
-  const conditionsText = batchModal.form.conditions
-    .filter(c => c.metric)
-    .map(c => {
-      const metricLabel = batchDeviceAttributes.value.find(a => a.addr === c.metric)?.attrName || c.metric
-      const unit = getMetricUnit(c.metric, batchModal.productId)
-      return `${metricLabel} ${c.operator} ${c.threshold}${unit}`
-    })
-    .join(' 或 ')
-  
-  const notifyUser = users.value.find(u => u.id === batchModal.form.notifyUser)
-  const userName = notifyUser ? (notifyUser.realName || notifyUser.username) : '未选择'
-  
-  preview += `\n配置内容：告警级别=${getLevelLabel(batchModal.form.level)}，`
-  preview += `条件=${conditionsText || '未配置'}，`
-  preview += `通知人员=${userName}`
-  
-  return preview
-}
+
 
 // 保存批量配置
 const saveBatchConfig = async () => {
+  // 校验设备选择
   if (batchModal.selectedDeviceIds.length === 0) {
     ElMessage.warning('请至少选择一个设备')
     return
   }
-  if (batchModal.form.conditions.length === 0 || !batchModal.form.conditions[0].metric) {
-    ElMessage.warning('请配置至少一个监控条件')
-    return
+  
+  // 校验是否有启用的监控属性
+  const enabledMetrics = Object.entries(batchModal.form.metrics).filter(
+    ([_, config]) => config.enabled
+  )
+  
+  // 如果没有启用任何监控属性，表示要撤销这些设备的所有抩警配置
+  if (enabledMetrics.length === 0) {
+    try {
+      await ElMessageBox.confirm(
+        `确认撤销 ${batchModal.selectedDeviceIds.length} 台设备的所有抩警配置？`,
+        '确认操作',
+        { type: 'warning' }
+      )
+      
+      await configureAlarm({
+        deviceIds: batchModal.selectedDeviceIds,
+        alarmConfig: {
+          notifyUser: batchModal.form.notifyUser || null,
+          stackMode: batchModal.form.stackMode,
+          metrics: batchModal.form.metrics
+        },
+        enabled: false  // 全部关闭时设置为false
+      })
+      
+      ElMessage.success(`已撤销 ${batchModal.selectedDeviceIds.length} 台设备的抩警配置`)
+      batchModal.visible = false
+      loadDevices()
+      return
+    } catch (error) {
+      if (error !== 'cancel') {
+        console.error('配置失败:', error)
+        ElMessage.error('配置失败：' + (error.response?.data?.message || error.message))
+      }
+      return
+    }
   }
-  const hasEmptyMetric = batchModal.form.conditions.some(c => !c.metric)
-  if (hasEmptyMetric) {
-    ElMessage.warning('请为所有条件选择监控指标')
-    return
-  }
-  // 检查是否有重复的物模型属性
-  const metrics = batchModal.form.conditions.map(c => c.metric).filter(Boolean)
-  const uniqueMetrics = new Set(metrics)
-  if (metrics.length !== uniqueMetrics.size) {
-    ElMessage.warning('每个物模型属性只能配置一个条件，请检查是否有重复')
-    return
-  }
+  
+  // 有启用的监控属性时，需要选择处理人
   if (!batchModal.form.notifyUser) {
-    ElMessage.warning('请选择通知人员')
+    ElMessage.warning('启用监控时必须选择处理人')
     return
+  }
+  
+  // 校验启用的属性配置是否完整
+  for (const [metric, config] of enabledMetrics) {
+    if (!config.operator || config.threshold === null || config.threshold === undefined) {
+      const attrName = batchDeviceAttributes.value.find(a => a.addr === metric)?.attrName || metric
+      ElMessage.warning(`监控属性 "${attrName}" 的配置不完整，请检查运算符和阈值`)
+      return
+    }
+    if (!config.level) {
+      const attrName = batchDeviceAttributes.value.find(a => a.addr === metric)?.attrName || metric
+      ElMessage.warning(`监控属性 "${attrName}" 未设置抩警级别`)
+      return
+    }
   }
   
   try {
     await ElMessageBox.confirm(
-      `确认为 ${batchModal.selectedDeviceIds.length} 台设备批量配置告警阈值？\n\n注意：已配置设备的原有阈值将被覆盖！`,
+      `确认为 ${batchModal.selectedDeviceIds.length} 台设备批量配置抩警阈值？\n\n注意：已配置设备的原有阈值将被覆盖！`,
       '确认操作',
       { type: 'warning' }
     )
@@ -1097,10 +1001,9 @@ const saveBatchConfig = async () => {
     await configureAlarm({
       deviceIds: batchModal.selectedDeviceIds,
       alarmConfig: {
-        level: batchModal.form.level,
-        conditions: batchModal.form.conditions.filter(c => c.metric), // 过滤空条件
-        notifyUsers: [batchModal.form.notifyUser], // 转换为数组
-        stackMode: batchModal.form.stackMode
+        notifyUser: batchModal.form.notifyUser,
+        stackMode: batchModal.form.stackMode,
+        metrics: batchModal.form.metrics
       },
       enabled: true
     })
@@ -1141,23 +1044,13 @@ const getLevelLabel = (level) => {
   return labels[level] || level
 }
 
-const getUserNames = (userIds) => {
-  if (!userIds || userIds.length === 0) return '-'
-  // 只显示第一个用户（因为现在是单选）
-  const userId = userIds[0]
+// 获取用户名称（单个用户ID）
+const getUserName = (userId) => {
   const user = users.value.find(u => u.id === userId)
   return user ? (user.realName || user.username) : '-'
 }
 
-const getConditionText = (device) => {
-  if (!device.alarmConfigObj || !device.alarmConfigObj.conditions || device.alarmConfigObj.conditions.length === 0) {
-    return ''
-  }
-  const c = device.alarmConfigObj.conditions[0]
-  const metricLabel = getMetricLabel(c.metric, device.productId)
-  const unit = getMetricUnit(c.metric, device.productId)
-  return `${metricLabel}${c.operator}${c.threshold}${unit}`
-}
+
 
 // 初始化
 onMounted(() => {
@@ -1227,18 +1120,18 @@ onMounted(() => {
 /* 筛选栏 */
 .filter-bar {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 16px;
   align-items: center;
   flex-wrap: nowrap;
   background: white;
-  padding: 16px 20px;
+  padding: 18px 24px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .filter-bar .search-input {
-  width: 220px;
+  width: 240px;
   flex: 0 0 auto;
 }
 
@@ -1378,7 +1271,7 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.notify-user-text {
+.handler-user-text {
   font-size: 13px;
   color: #606266;
 }
