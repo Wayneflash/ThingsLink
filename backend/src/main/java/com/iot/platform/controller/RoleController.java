@@ -233,32 +233,42 @@ public class RoleController {
         alarms.put("children", null);
         permissions.add(alarms);
         
-        // 6. 数据查询
+        // 6. 告警阈值配置
+        Map<String, Object> alarmThreshold = new java.util.LinkedHashMap<>();
+        alarmThreshold.put("code", "alarm-threshold");
+        alarmThreshold.put("name", "告警阈值配置");
+        alarmThreshold.put("icon", "⚙️");
+        alarmThreshold.put("sort", 6);
+        alarmThreshold.put("granted", grantedSet.contains("alarm-threshold"));
+        alarmThreshold.put("children", null);
+        permissions.add(alarmThreshold);
+        
+        // 7. 数据查询
         Map<String, Object> dataQuery = new java.util.LinkedHashMap<>();
         dataQuery.put("code", "data-query");
         dataQuery.put("name", "数据查询");
         dataQuery.put("icon", "🔍");
-        dataQuery.put("sort", 6);
+        dataQuery.put("sort", 7);
         dataQuery.put("granted", grantedSet.contains("data-query"));
         dataQuery.put("children", null);
         permissions.add(dataQuery);
         
-        // 7. 用户管理（仅超级管理员）
+        // 9. 用户管理（仅超级管理员）
         Map<String, Object> users = new java.util.LinkedHashMap<>();
         users.put("code", "users");
         users.put("name", "用户管理");
         users.put("icon", "👥");
-        users.put("sort", 7);
+        users.put("sort", 8);
         users.put("granted", grantedSet.contains("users"));
         users.put("children", null);
         permissions.add(users);
         
-        // 8. 角色管理（仅超级管理员）
+        // 10. 角色管理（仅超级管理员）
         Map<String, Object> roles = new java.util.LinkedHashMap<>();
         roles.put("code", "roles");
         roles.put("name", "角色管理");
         roles.put("icon", "🎭");
-        roles.put("sort", 8);
+        roles.put("sort", 9);
         roles.put("granted", grantedSet.contains("roles"));
         roles.put("children", null);
         permissions.add(roles);

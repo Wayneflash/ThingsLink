@@ -1,7 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
+chcp 65001 >nul
 echo ========================================
-echo   Git Push Script (Backup+Commit+Push)
+echo   Git Push Script (Smart Sync - Source Code Only)
 echo ========================================
 echo.
 
@@ -78,7 +79,7 @@ if "%commit_msg%"=="" (
 
 REM Auto backup database (if Docker is running)
 echo.
-echo [0/4] Checking if database backup is needed...
+echo [0/5] Checking if database backup is needed...
 REM Check if Docker is available
 where docker >nul 2>&1
 if errorlevel 1 (
@@ -119,23 +120,86 @@ if not errorlevel 1 (
 :skip_backup
 
 echo.
-echo [1/4] Adding changes...
-git add .
+echo [1/5] Checking compiled files (ensuring they are not committed)...
+REM Check if there are compiled files that should not be committed
+git status --porcelain | findstr /C:"target/" /C:"node_modules/.vite/" >nul 2>&1
+if not errorlevel 1 (
+    echo [WARNING] Found compiled files modified, removing from Git tracking...
+    git rm -r --cached backend/target/ 2>nul
+    git rm -r --cached frontend/node_modules/.vite/ 2>nul
+    echo [OK] Compiled files removed from Git tracking
+)
+
+echo.
+echo [2/5] Adding source code files (excluding compiled files)...
+REM Add source files only (not compiled files)
+REM First, ensure .gitignore is up to date
+git add .gitignore 2>nul
+
+REM Add source directories explicitly
+git add frontend/src/ 2>nul
+git add backend/src/ 2>nul
+git add init.sql 2>nul
+git add .cursorrules 2>nul
+git add GIT_COMMIT_GUIDE.md 2>nul
+git add GIT_SYNC_GUIDE.md 2>nul
+git add *.bat 2>nul
+git add *.md 2>nul
+git add *.py 2>nul
+git add *.sql 2>nul
+git add prototypes/ 2>nul
+git add backups/iot_platform_latest.sql 2>nul
+
+REM Add any other important files
+git add README.md 2>nul
+git add package.json 2>nul
+git add pom.xml 2>nul
+
+REM Check if there are any untracked source files
+echo [INFO] Checking for untracked source files...
+git status --porcelain | findstr /R "^??" >nul 2>&1
+if not errorlevel 1 (
+    echo [INFO] Found untracked files, adding...
+    REM Add untracked files but exclude compiled files
+    for /f "tokens=2" %%f in ('git status --porcelain ^| findstr /R "^??"') do (
+        echo %%f | findstr /C:"target/" /C:"node_modules/" /C:".class" /C:".jar" /C:".log" >nul 2>&1
+        if errorlevel 1 (
+            git add "%%f" 2>nul
+        )
+    )
+)
+
 set GIT_ADD_ERROR=%errorlevel%
 if %GIT_ADD_ERROR% neq 0 (
-    echo [ERROR] Git add failed
-    echo Please check if you are in a valid Git repository
-    pause
-    exit /b 1
+    echo [WARNING] Some files may not have been added, but continuing...
 )
 
-echo [2/4] Committing...
+echo.
+echo [3/5] Checking files to be committed...
 git status --short >nul 2>&1
 if errorlevel 1 (
-    echo [INFO] Checking for changes...
-    git status
+    echo [INFO] Checking change status...
+    git status --short
 )
 
+REM Show what will be committed
+echo.
+echo [INFO] Files to be committed:
+git status --short
+echo.
+
+REM Check if there are changes to commit
+git diff --cached --quiet 2>nul
+if not errorlevel 1 (
+    git status --short | findstr /R "^[AMD]" >nul 2>&1
+    if errorlevel 1 (
+        echo [INFO] No changes to commit
+        set SKIP_PUSH=1
+        goto :skip_commit
+    )
+)
+
+echo [4/5] Committing changes...
 git commit -m "%commit_msg%"
 set GIT_COMMIT_ERROR=%errorlevel%
 if %GIT_COMMIT_ERROR% neq 0 (
@@ -147,14 +211,17 @@ if %GIT_COMMIT_ERROR% neq 0 (
     set SKIP_PUSH=1
 ) else (
     set SKIP_PUSH=0
+    echo [OK] Commit successful
 )
 
+:skip_commit
 if "%SKIP_PUSH%"=="1" (
     echo [INFO] Skipping push - no changes to commit
     goto :skip_push
 )
 
-echo [3/4] Pushing to GitHub...
+echo.
+echo [5/5] Pushing to GitHub...
 git push origin %CURRENT_BRANCH%
 set GIT_PUSH_ERROR=%errorlevel%
 
@@ -180,13 +247,17 @@ if %GIT_PUSH_ERROR% neq 0 (
 
 :skip_push
 echo.
-echo [4/4] Push completed!
-
-echo.
 echo ========================================
 echo   Done!
 echo ========================================
 echo.
+echo [Summary]
+echo - All source code files committed
+echo - Compiled files excluded (target/, node_modules/.vite/)
+echo - Code pushed to GitHub
+echo.
 echo Repository: https://github.com/Wayneflash/ThingsLink
+echo.
+echo [Tip] Run git-pull.bat on another computer to sync code
 echo.
 pause
