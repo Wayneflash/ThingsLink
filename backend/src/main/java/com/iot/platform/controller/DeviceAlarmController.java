@@ -25,7 +25,8 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/device-alarm")
+@RequestMapping("/device-alarm")
+@CrossOrigin
 public class DeviceAlarmController {
     
     @Resource
@@ -60,6 +61,24 @@ public class DeviceAlarmController {
                 deviceIds = Collections.singletonList(request.getDeviceId());
             } else {
                 return Result.error("设备ID不能为空");
+            }
+            
+            // 验证告警配置
+            if (request.getAlarmConfig() == null) {
+                return Result.error("告警配置不能为空");
+            }
+            
+            // 验证：一个物模型属性只能有1个条件
+            if (request.getAlarmConfig().getConditions() != null && !request.getAlarmConfig().getConditions().isEmpty()) {
+                java.util.Set<String> metricSet = new java.util.HashSet<>();
+                for (AlarmConfigDTO.AlarmCondition condition : request.getAlarmConfig().getConditions()) {
+                    if (condition.getMetric() != null && !condition.getMetric().isEmpty()) {
+                        if (metricSet.contains(condition.getMetric())) {
+                            return Result.error("每个物模型属性只能配置一个条件，属性 " + condition.getMetric() + " 重复了");
+                        }
+                        metricSet.add(condition.getMetric());
+                    }
+                }
             }
             
             // 数据权限验证：检查用户是否有权限操作这些设备

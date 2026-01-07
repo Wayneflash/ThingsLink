@@ -143,7 +143,8 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
             query.eq(Device::getStatus, status);
         }
         
-        // 按创建时间降序
+        // 排序：在线状态优先（在线在前），然后按创建时间降序
+        query.orderByDesc(Device::getStatus);  // 在线状态（1=在线）在前
         query.orderByDesc(Device::getCreateTime);
         
         return this.page(pageParam, query);

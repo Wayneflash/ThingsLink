@@ -283,6 +283,10 @@ public class DeviceController {
                     deviceMap.put("createTime", device.getCreateTime());
                     deviceMap.put("updateTime", device.getUpdateTime());
                     
+                    // 添加告警配置字段
+                    deviceMap.put("alarmConfig", device.getAlarmConfig());
+                    deviceMap.put("alarmEnabled", device.getAlarmEnabled() != null && device.getAlarmEnabled());
+                    
                     return deviceMap;
                 })
                 .collect(Collectors.toList());

@@ -233,10 +233,10 @@ public class RoleController {
         alarms.put("children", null);
         permissions.add(alarms);
         
-        // 6. 告警阈值配置
+        // 6. 报警配置
         Map<String, Object> alarmThreshold = new java.util.LinkedHashMap<>();
         alarmThreshold.put("code", "alarm-threshold");
-        alarmThreshold.put("name", "告警阈值配置");
+        alarmThreshold.put("name", "报警配置");
         alarmThreshold.put("icon", "⚙️");
         alarmThreshold.put("sort", 6);
         alarmThreshold.put("granted", grantedSet.contains("alarm-threshold"));

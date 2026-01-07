@@ -47,7 +47,7 @@ const routes = [
         path: 'alarm-threshold',
         name: 'AlarmThresholdConfig',
         component: () => import('../views/AlarmThresholdConfig.vue'),
-        meta: { title: '告警阈值配置' }
+        meta: { title: '报警配置' }
       },
       {
         path: 'products',

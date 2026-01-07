@@ -1,37 +1,23 @@
 <template>
   <div class="alarm-config-page">
-    <!-- 页面标题和统计 -->
+    <!-- 顶部标题栏 -->
     <div class="page-header">
-      <div class="header-left">
-        <h1 class="page-title">设备告警阈值配置</h1>
-        <div class="stats-bar">
-          <div class="stat-box">
-            <div class="stat-label">总设备</div>
-            <div class="stat-number">{{ stats.total }}</div>
-          </div>
-          <div class="stat-box stat-success">
-            <div class="stat-label">已配置</div>
-            <div class="stat-number">{{ stats.configured }}</div>
-          </div>
-          <div class="stat-box stat-warning">
-            <div class="stat-label">未配置</div>
-            <div class="stat-number">{{ stats.unconfigured }}</div>
-          </div>
-        </div>
+      <h2 class="page-title">⚙️ 设备告警阈值配置</h2>
+      <div class="stats-quick">
+        <span class="stat-item">总设备 <strong>{{ stats.total }}</strong></span>
+        <span class="stat-item active">已配置 <strong>{{ stats.configured }}</strong></span>
+        <span class="stat-item inactive">未配置 <strong>{{ stats.unconfigured }}</strong></span>
       </div>
-      <el-button type="primary" class="batch-btn" @click="openBatchModal">
-        批量配置
-      </el-button>
     </div>
 
     <!-- 筛选栏 -->
-    <div class="filter-section">
+    <div class="filter-bar">
       <el-input
         v-model="filters.keyword"
         placeholder="搜索设备名称/设备编码"
         class="search-input"
         clearable
-        @change="loadDevices"
+        @keyup.enter="loadDevices"
       >
         <template #prefix>
           <el-icon><Search /></el-icon>
@@ -42,8 +28,8 @@
         v-model="filters.productId" 
         placeholder="产品型号" 
         clearable 
-        @change="loadDevices" 
         class="filter-select"
+        style="width: 150px;"
       >
         <el-option v-for="product in products" :key="product.id" :label="product.productName" :value="product.id" />
       </el-select>
@@ -52,16 +38,16 @@
         v-model="filters.groupId" 
         placeholder="设备分组" 
         clearable 
-        @change="loadDevices" 
         class="filter-select"
+        style="width: 150px;"
       />
 
       <el-select 
         v-model="filters.configStatus" 
         placeholder="配置状态" 
         clearable 
-        @change="loadDevices" 
         class="filter-select"
+        style="width: 130px;"
       >
         <el-option label="已配置" value="configured" />
         <el-option label="未配置" value="unconfigured" />
@@ -71,73 +57,84 @@
         v-model="filters.onlineStatus" 
         placeholder="在线状态" 
         clearable 
-        @change="loadDevices" 
         class="filter-select"
+        style="width: 130px;"
       >
         <el-option label="在线" :value="1" />
         <el-option label="离线" :value="0" />
       </el-select>
+
+      <el-button type="primary" @click="loadDevices" :icon="Search">查询</el-button>
+      <el-button type="primary" @click="openBatchModal" :icon="Plus">批量配置</el-button>
     </div>
 
-    <!-- 设备列表表格 -->
-    <div class="table-card">
+    <!-- 设备列表 -->
+    <div class="table-container">
       <el-table 
         :data="devices" 
         v-loading="loading"
-        class="device-table"
         stripe
+        style="width: 100%"
       >
-        <el-table-column prop="deviceName" label="设备名称" width="200">
+        <el-table-column prop="deviceName" label="设备名称" min-width="130" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="device-name-cell">
-              <span :class="['status-indicator', row.status === 1 ? 'online' : 'offline']"></span>
+              <span :class="['status-dot', row.status === 1 ? 'online' : 'offline']"></span>
               <span class="device-name-text">{{ row.deviceName }}</span>
             </div>
           </template>
         </el-table-column>
         
-        <el-table-column prop="deviceCode" label="设备编码" width="160">
+        <el-table-column prop="deviceCode" label="设备编码" min-width="130" show-overflow-tooltip>
           <template #default="{ row }">
-            <code class="device-code-text">{{ row.deviceCode }}</code>
+            <span class="device-code-text">{{ row.deviceCode }}</span>
           </template>
         </el-table-column>
         
-        <el-table-column prop="productName" label="产品型号" width="140" />
-        <el-table-column prop="groupName" label="所属分组" width="120" />
+        <el-table-column label="在线状态" width="90" align="center">
+          <template #default="{ row }">
+            <span :class="['status-text', row.status === 1 ? 'status-online' : 'status-offline']">
+              {{ row.status === 1 ? '在线' : '离线' }}
+            </span>
+          </template>
+        </el-table-column>
+        
+        <el-table-column prop="productName" label="产品型号" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="groupName" label="所属分组" min-width="110" show-overflow-tooltip />
         
         <el-table-column label="配置状态" width="100" align="center">
           <template #default="{ row }">
-            <span v-if="row.alarmConfig" class="status-text status-success">已配置</span>
-            <span v-else class="status-text status-gray">未配置</span>
+            <span v-if="row.alarmConfig" class="tag configured">✓ 已配置</span>
+            <span v-else class="tag unconfigured">✗ 未配置</span>
           </template>
         </el-table-column>
         
-        <el-table-column label="告警条件" min-width="280">
+        <el-table-column label="告警条件" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">
-            <div v-if="row.alarmConfigObj && row.alarmConfigObj.conditions && row.alarmConfigObj.conditions.length > 0" class="condition-row">
+            <div v-if="row.alarmConfigObj && row.alarmConfigObj.conditions && row.alarmConfigObj.conditions.length > 0" class="condition-text">
               <template v-for="(condition, idx) in row.alarmConfigObj.conditions" :key="idx">
-                <span v-if="idx > 0" class="or-text">或</span>
-                <span class="metric-name">{{ getMetricLabel(condition.metric, row.productId) }}</span>
-                <span class="operator-symbol">{{ condition.operator }}</span>
-                <span class="threshold-value">{{ condition.threshold }}{{ getMetricUnit(condition.metric, row.productId) }}</span>
+                <span v-if="idx > 0" class="condition-separator">或</span>
+                <span class="metric">{{ getMetricLabel(condition.metric, row.productId) }}</span>
+                <span class="operator">{{ condition.operator }}</span>
+                <span class="value">{{ condition.threshold }}{{ getMetricUnit(condition.metric, row.productId) }}</span>
               </template>
             </div>
             <span v-else class="empty-text">-</span>
           </template>
         </el-table-column>
         
-        <el-table-column label="告警级别" width="80" align="center">
+        <el-table-column label="告警级别" width="90" align="center">
           <template #default="{ row }">
-            <span v-if="row.alarmConfigObj" class="level-icon-text">
+            <span v-if="row.alarmConfigObj" class="level-badge">
               {{ getLevelIcon(row.alarmConfigObj.level) }}
             </span>
             <span v-else class="empty-text">-</span>
           </template>
         </el-table-column>
         
-        <el-table-column label="通知人员" min-width="140">
+        <el-table-column label="通知人员" width="100" show-overflow-tooltip>
           <template #default="{ row }">
-            <span v-if="row.alarmConfigObj && row.alarmConfigObj.notifyUsers && row.alarmConfigObj.notifyUsers.length > 0" class="notify-text">
+            <span v-if="row.alarmConfigObj && row.alarmConfigObj.notifyUsers && row.alarmConfigObj.notifyUsers.length > 0" class="notify-user-text">
               {{ getUserNames(row.alarmConfigObj.notifyUsers) }}
             </span>
             <span v-else class="empty-text">-</span>
@@ -155,7 +152,7 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="80" fixed="right">
+        <el-table-column label="操作" width="90" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="openConfigModal(row)">配置</el-button>
           </template>
@@ -180,8 +177,10 @@
     <el-dialog
       v-model="configModal.visible"
       title="配置设备告警阈值"
-      width="640px"
+      width="900px"
       :close-on-click-modal="false"
+      top="3vh"
+      class="config-dialog"
     >
       <div class="dialog-body">
         <!-- 设备信息 -->
@@ -233,7 +232,7 @@
         <div class="form-section">
           <div class="section-header">
             <h3 class="section-title">监控条件</h3>
-            <span class="section-note">多个条件为OR关系</span>
+            <span class="section-note">每个物模型属性只能配置一个条件</span>
           </div>
           <div class="conditions-list">
             <div v-for="(condition, index) in configModal.form.conditions" :key="index" class="condition-card">
@@ -254,12 +253,13 @@
                   v-model="condition.metric" 
                   placeholder="选择监控指标" 
                   class="field-select"
+                  @change="onMetricChange(index)"
                 >
                   <el-option 
-                    v-for="attr in deviceAttributes" 
+                    v-for="attr in getAvailableMetrics(index)" 
                     :key="attr.addr" 
                     :label="attr.attrName" 
-                    :value="attr.addr" 
+                    :value="attr.addr"
                   />
                 </el-select>
                 <el-select v-model="condition.operator" class="field-operator">
@@ -284,9 +284,13 @@
             class="add-btn"
             :icon="Plus"
             plain
+            :disabled="!canAddCondition"
           >
             添加监控条件
           </el-button>
+          <div v-if="!canAddCondition" class="field-hint" style="margin-top: 8px;">
+            所有可用的物模型属性已配置完成
+          </div>
         </div>
 
         <!-- 通知设置 -->
@@ -300,8 +304,7 @@
               <span class="required">*</span>
             </label>
             <el-select 
-              v-model="configModal.form.notifyUsers" 
-              multiple 
+              v-model="configModal.form.notifyUser" 
               placeholder="请选择通知人员"
               class="field-select-full"
             >
@@ -312,7 +315,6 @@
                 :value="user.id" 
               />
             </el-select>
-            <div class="field-hint">按住Ctrl键可多选</div>
           </div>
           <div class="form-field">
             <label class="field-label">告警堆叠</label>
@@ -335,9 +337,11 @@
     <!-- 批量配置弹窗 -->
     <el-dialog 
       v-model="batchModal.visible" 
-      title="批量配置告警阈值" 
-      width="680px"
+      title="批量配置" 
+      width="1100px"
       :close-on-click-modal="false"
+      top="2vh"
+      class="batch-dialog"
     >
       <div class="dialog-body">
         <el-alert 
@@ -456,37 +460,69 @@
           </div>
 
           <div class="form-field">
-            <label class="field-label">
-              监控条件
-              <span class="required">*</span>
-            </label>
-            <div class="condition-fields">
-              <el-select 
-                v-model="batchModal.condition.metric" 
-                placeholder="选择监控指标" 
-                class="field-select"
-              >
-                <el-option 
-                  v-for="attr in batchDeviceAttributes" 
-                  :key="attr.addr" 
-                  :label="attr.attrName" 
-                  :value="attr.addr" 
-                />
-              </el-select>
-              <el-select v-model="batchModal.condition.operator" class="field-operator">
-                <el-option label=">" value=">" />
-                <el-option label="<" value="<" />
-                <el-option label="=" value="=" />
-              </el-select>
-              <el-input-number 
-                v-model="batchModal.condition.threshold" 
-                :precision="2" 
-                :step="0.1"
-                class="field-number"
-              />
-              <span v-if="batchModal.condition.metric" class="field-unit">
-                {{ getMetricUnit(batchModal.condition.metric, batchModal.productId) }}
-              </span>
+            <div class="section-header">
+              <label class="field-label">
+                监控条件
+                <span class="required">*</span>
+              </label>
+              <span class="section-note">每个物模型属性只能配置一个条件</span>
+            </div>
+            <div class="conditions-list">
+              <div v-for="(condition, index) in batchModal.form.conditions" :key="index" class="condition-card">
+                <div class="condition-header">
+                  <span class="condition-title">条件 {{ index + 1 }}</span>
+                  <el-button 
+                    v-if="batchModal.form.conditions.length > 1"
+                    type="danger" 
+                    link 
+                    size="small" 
+                    @click="removeBatchCondition(index)"
+                  >
+                    删除
+                  </el-button>
+                </div>
+                <div class="condition-fields">
+                  <el-select 
+                    v-model="condition.metric" 
+                    placeholder="选择监控指标" 
+                    class="field-select"
+                    @change="onBatchMetricChange(index)"
+                  >
+                    <el-option 
+                      v-for="attr in getAvailableBatchMetrics(index)" 
+                      :key="attr.addr" 
+                      :label="attr.attrName" 
+                      :value="attr.addr" 
+                    />
+                  </el-select>
+                  <el-select v-model="condition.operator" class="field-operator">
+                    <el-option label=">" value=">" />
+                    <el-option label="<" value="<" />
+                    <el-option label="=" value="=" />
+                  </el-select>
+                  <el-input-number 
+                    v-model="condition.threshold" 
+                    :precision="2" 
+                    :step="0.1"
+                    class="field-number"
+                  />
+                  <span v-if="condition.metric" class="field-unit">
+                    {{ getMetricUnit(condition.metric, batchModal.productId) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <el-button 
+              @click="addBatchCondition" 
+              class="add-btn"
+              :icon="Plus"
+              plain
+              :disabled="!canAddBatchCondition"
+            >
+              添加监控条件
+            </el-button>
+            <div v-if="!canAddBatchCondition" class="field-hint" style="margin-top: 8px;">
+              所有可用的物模型属性已配置完成
             </div>
           </div>
 
@@ -496,8 +532,7 @@
               <span class="required">*</span>
             </label>
             <el-select 
-              v-model="batchModal.form.notifyUsers" 
-              multiple 
+              v-model="batchModal.form.notifyUser" 
               placeholder="请选择通知人员"
               class="field-select-full"
             >
@@ -508,7 +543,6 @@
                 :value="user.id" 
               />
             </el-select>
-            <div class="field-hint">按住Ctrl键可多选</div>
           </div>
 
           <div class="form-field">
@@ -516,7 +550,7 @@
             <el-input
               :model-value="getBatchPreview()"
               type="textarea"
-              :rows="6"
+              :rows="4"
               readonly
               class="preview-area"
             />
@@ -535,7 +569,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import { getDeviceList } from '@/api/device'
@@ -584,7 +618,7 @@ const configModal = reactive({
   form: {
     level: 'warning',
     conditions: [{ metric: '', operator: '>', threshold: 0 }],
-    notifyUsers: [],
+    notifyUser: null,
     stackMode: true
   }
 })
@@ -598,10 +632,10 @@ const batchModal = reactive({
   selectedDeviceIds: [],
   selectAll: false,
   configuredCount: 0,
-  condition: { metric: '', operator: '>', threshold: 0 },
   form: {
     level: 'warning',
-    notifyUsers: [],
+    conditions: [{ metric: '', operator: '>', threshold: 0 }],
+    notifyUser: null,
     stackMode: true
   }
 })
@@ -644,6 +678,11 @@ const loadDevices = async () => {
       
       devices.value = deviceList
       pagination.total = res.total || 0
+      
+      // 预加载所有产品的物模型属性，确保告警条件能正确显示名称
+      const productIds = [...new Set(deviceList.map(d => d.productId).filter(Boolean))]
+      await Promise.all(productIds.map(pid => loadProductAttributes(pid)))
+      
       updateStats()
     } else {
       devices.value = []
@@ -652,7 +691,13 @@ const loadDevices = async () => {
     }
   } catch (error) {
     console.error('加载设备列表失败:', error)
-    ElMessage.error('加载设备列表失败')
+    const errorMsg = error?.response?.data?.message || error?.message || '加载设备列表失败'
+    ElMessage.error(errorMsg)
+    devices.value = []
+    pagination.total = 0
+    stats.total = 0
+    stats.configured = 0
+    stats.unconfigured = 0
   } finally {
     loading.value = false
   }
@@ -745,22 +790,55 @@ const openConfigModal = async (device) => {
       conditions: device.alarmConfigObj.conditions && device.alarmConfigObj.conditions.length > 0
         ? [...device.alarmConfigObj.conditions]
         : [{ metric: '', operator: '>', threshold: 0 }],
-      notifyUsers: device.alarmConfigObj.notifyUsers || [],
+      notifyUser: device.alarmConfigObj.notifyUsers && device.alarmConfigObj.notifyUsers.length > 0 
+        ? device.alarmConfigObj.notifyUsers[0] 
+        : null,
       stackMode: device.alarmConfigObj.stackMode !== false
     }
   } else {
     configModal.form = {
       level: 'warning',
       conditions: [{ metric: '', operator: '>', threshold: 0 }],
-      notifyUsers: [],
+      notifyUser: null,
       stackMode: true
     }
   }
 }
 
+// 获取可用的物模型属性（排除已选择的）
+const getAvailableMetrics = (currentIndex) => {
+  const usedMetrics = configModal.form.conditions
+    .map((c, idx) => idx !== currentIndex ? c.metric : null)
+    .filter(Boolean)
+  return deviceAttributes.value.filter(attr => !usedMetrics.includes(attr.addr))
+}
+
+// 检查是否可以添加条件
+const canAddCondition = computed(() => {
+  const usedMetrics = configModal.form.conditions.map(c => c.metric).filter(Boolean)
+  return usedMetrics.length < deviceAttributes.value.length
+})
+
+// 物模型属性变化时的处理
+const onMetricChange = (index) => {
+  // 如果选择了已使用的属性，提示用户
+  const currentMetric = configModal.form.conditions[index].metric
+  const duplicateIndex = configModal.form.conditions.findIndex((c, idx) => 
+    idx !== index && c.metric === currentMetric && currentMetric
+  )
+  if (duplicateIndex !== -1) {
+    ElMessage.warning('该物模型属性已被其他条件使用，请选择其他属性')
+    configModal.form.conditions[index].metric = ''
+  }
+}
+
 // 添加监控条件
 const addCondition = () => {
-  configModal.form.conditions.push({ metric: '', operator: '>', threshold: 0 })
+  if (canAddCondition.value) {
+    configModal.form.conditions.push({ metric: '', operator: '>', threshold: 0 })
+  } else {
+    ElMessage.warning('所有可用的物模型属性已配置完成')
+  }
 }
 
 // 删除监控条件
@@ -787,7 +865,15 @@ const saveConfig = async () => {
     ElMessage.warning('请为所有条件选择监控指标')
     return
   }
-  if (configModal.form.notifyUsers.length === 0) {
+  // 检查是否有重复的物模型属性
+  const metrics = configModal.form.conditions.map(c => c.metric).filter(Boolean)
+  const uniqueMetrics = new Set(metrics)
+  if (metrics.length !== uniqueMetrics.size) {
+    ElMessage.warning('每个物模型属性只能配置一个条件，请检查是否有重复')
+    return
+  }
+  
+  if (!configModal.form.notifyUser) {
     ElMessage.warning('请选择通知人员')
     return
   }
@@ -798,7 +884,7 @@ const saveConfig = async () => {
       alarmConfig: {
         level: configModal.form.level,
         conditions: configModal.form.conditions,
-        notifyUsers: configModal.form.notifyUsers,
+        notifyUsers: [configModal.form.notifyUser], // 转换为数组
         stackMode: configModal.form.stackMode
       },
       enabled: true
@@ -836,10 +922,54 @@ const openBatchModal = () => {
   batchModal.configuredCount = 0
   batchModal.form = {
     level: 'warning',
-    notifyUsers: [],
+    conditions: [{ metric: '', operator: '>', threshold: 0 }],
+    notifyUser: null,
     stackMode: true
   }
-  batchModal.condition = { metric: '', operator: '>', threshold: 0 }
+}
+
+// 批量配置：获取可用的物模型属性（排除已选择的）
+const getAvailableBatchMetrics = (currentIndex) => {
+  const usedMetrics = batchModal.form.conditions
+    .map((c, idx) => idx !== currentIndex ? c.metric : null)
+    .filter(Boolean)
+  return batchDeviceAttributes.value.filter(attr => !usedMetrics.includes(attr.addr))
+}
+
+// 批量配置：检查是否可以添加条件
+const canAddBatchCondition = computed(() => {
+  const usedMetrics = batchModal.form.conditions.map(c => c.metric).filter(Boolean)
+  return usedMetrics.length < batchDeviceAttributes.value.length
+})
+
+// 批量配置：物模型属性变化时的处理
+const onBatchMetricChange = (index) => {
+  const currentMetric = batchModal.form.conditions[index].metric
+  const duplicateIndex = batchModal.form.conditions.findIndex((c, idx) => 
+    idx !== index && c.metric === currentMetric && currentMetric
+  )
+  if (duplicateIndex !== -1) {
+    ElMessage.warning('该物模型属性已被其他条件使用，请选择其他属性')
+    batchModal.form.conditions[index].metric = ''
+  }
+}
+
+// 批量配置：添加监控条件
+const addBatchCondition = () => {
+  if (canAddBatchCondition.value) {
+    batchModal.form.conditions.push({ metric: '', operator: '>', threshold: 0 })
+  } else {
+    ElMessage.warning('所有可用的物模型属性已配置完成')
+  }
+}
+
+// 批量配置：删除监控条件
+const removeBatchCondition = (index) => {
+  if (batchModal.form.conditions.length > 1) {
+    batchModal.form.conditions.splice(index, 1)
+  } else {
+    ElMessage.warning('至少保留一个监控条件')
+  }
 }
 
 // 产品切换时加载设备
@@ -911,19 +1041,21 @@ const getBatchPreview = () => {
     preview += `• ${device.deviceName} (${device.deviceCode}) ${status}\n`
   })
   
-  const metricLabel = batchDeviceAttributes.value.find(a => a.addr === batchModal.condition.metric)?.attrName || batchModal.condition.metric
-  const unit = getMetricUnit(batchModal.condition.metric, batchModal.productId)
-  const userNames = batchModal.form.notifyUsers
-    .map(id => {
-      const user = users.value.find(u => u.id === id)
-      return user ? (user.realName || user.username) : null
+  const conditionsText = batchModal.form.conditions
+    .filter(c => c.metric)
+    .map(c => {
+      const metricLabel = batchDeviceAttributes.value.find(a => a.addr === c.metric)?.attrName || c.metric
+      const unit = getMetricUnit(c.metric, batchModal.productId)
+      return `${metricLabel} ${c.operator} ${c.threshold}${unit}`
     })
-    .filter(Boolean)
-    .join(', ')
+    .join(' 或 ')
+  
+  const notifyUser = users.value.find(u => u.id === batchModal.form.notifyUser)
+  const userName = notifyUser ? (notifyUser.realName || notifyUser.username) : '未选择'
   
   preview += `\n配置内容：告警级别=${getLevelLabel(batchModal.form.level)}，`
-  preview += `条件=${metricLabel} ${batchModal.condition.operator} ${batchModal.condition.threshold}${unit}，`
-  preview += `通知人员=${userNames || '未选择'}`
+  preview += `条件=${conditionsText || '未配置'}，`
+  preview += `通知人员=${userName}`
   
   return preview
 }
@@ -934,11 +1066,23 @@ const saveBatchConfig = async () => {
     ElMessage.warning('请至少选择一个设备')
     return
   }
-  if (!batchModal.condition.metric) {
-    ElMessage.warning('请配置监控条件')
+  if (batchModal.form.conditions.length === 0 || !batchModal.form.conditions[0].metric) {
+    ElMessage.warning('请配置至少一个监控条件')
     return
   }
-  if (batchModal.form.notifyUsers.length === 0) {
+  const hasEmptyMetric = batchModal.form.conditions.some(c => !c.metric)
+  if (hasEmptyMetric) {
+    ElMessage.warning('请为所有条件选择监控指标')
+    return
+  }
+  // 检查是否有重复的物模型属性
+  const metrics = batchModal.form.conditions.map(c => c.metric).filter(Boolean)
+  const uniqueMetrics = new Set(metrics)
+  if (metrics.length !== uniqueMetrics.size) {
+    ElMessage.warning('每个物模型属性只能配置一个条件，请检查是否有重复')
+    return
+  }
+  if (!batchModal.form.notifyUser) {
     ElMessage.warning('请选择通知人员')
     return
   }
@@ -954,8 +1098,8 @@ const saveBatchConfig = async () => {
       deviceIds: batchModal.selectedDeviceIds,
       alarmConfig: {
         level: batchModal.form.level,
-        conditions: [batchModal.condition],
-        notifyUsers: batchModal.form.notifyUsers,
+        conditions: batchModal.form.conditions.filter(c => c.metric), // 过滤空条件
+        notifyUsers: [batchModal.form.notifyUser], // 转换为数组
         stackMode: batchModal.form.stackMode
       },
       enabled: true
@@ -999,13 +1143,10 @@ const getLevelLabel = (level) => {
 
 const getUserNames = (userIds) => {
   if (!userIds || userIds.length === 0) return '-'
-  return userIds
-    .map(id => {
-      const user = users.value.find(u => u.id === id)
-      return user ? (user.realName || user.username) : null
-    })
-    .filter(Boolean)
-    .join(', ')
+  // 只显示第一个用户（因为现在是单选）
+  const userId = userIds[0]
+  const user = users.value.find(u => u.id === userId)
+  return user ? (user.realName || user.username) : '-'
 }
 
 const getConditionText = (device) => {
@@ -1035,87 +1176,75 @@ onMounted(() => {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* 页面标题和统计 */
+/* 页面标题栏 */
 .page-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 16px;
   background: white;
-  padding: 28px 32px;
+  padding: 18px 24px;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-.header-left {
-  flex: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .page-title {
-  font-size: 32px;
+  margin: 0;
+  font-size: 20px;
   font-weight: 600;
   color: #1d1d1f;
-  margin: 0 0 20px 0;
-  letter-spacing: -0.03em;
+  white-space: nowrap;
 }
 
-.stats-bar {
+.stats-quick {
   display: flex;
-  gap: 32px;
+  gap: 20px;
+  align-items: center;
 }
 
-.stat-box {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.stat-item {
+  font-size: 14px;
+  color: #666;
+  white-space: nowrap;
 }
 
-.stat-label {
-  font-size: 13px;
-  color: #86868b;
-  font-weight: 500;
-}
-
-.stat-number {
-  font-size: 24px;
+.stat-item strong {
+  font-size: 18px;
   font-weight: 600;
   color: #1d1d1f;
-  line-height: 1.2;
+  margin-left: 4px;
 }
 
-.stat-success .stat-number {
-  color: #34c759;
+.stat-item.active strong {
+  color: #67c23a;
 }
 
-.stat-warning .stat-number {
-  color: #ff9500;
+.stat-item.inactive strong {
+  color: #e6a23c;
 }
 
-.batch-btn {
-  padding: 10px 24px;
-  font-size: 15px;
-  font-weight: 500;
-  border-radius: 10px;
-  background: #007AFF;
-  border: none;
-  height: auto;
-}
-
-.batch-btn:hover {
-  background: #0051D5;
-}
 
 /* 筛选栏 */
-.filter-section {
+.filter-bar {
   display: flex;
   gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
+  margin-bottom: 16px;
+  align-items: center;
+  flex-wrap: nowrap;
+  background: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.filter-bar .search-input {
+  width: 220px;
+  flex: 0 0 auto;
 }
 
 .search-input,
 .filter-select {
-  height: 40px;
+  height: 36px;
 }
 
 .search-input :deep(.el-input__wrapper) {
@@ -1149,141 +1278,180 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
-/* 表格卡片 */
-.table-card {
+/* 表格容器 */
+.table-container {
   background: white;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  width: 100%;
 }
 
-.device-table :deep(.el-table__header) {
-  background: #fafafa;
+:deep(.el-table) {
+  width: 100%;
 }
 
-.device-table :deep(.el-table__header th) {
-  background: #fafafa;
-  color: #1d1d1f;
-  font-weight: 600;
+:deep(.el-table__body-wrapper) {
+  overflow-x: auto;
+}
+
+:deep(.el-table thead) {
+  background: #f8f9fa;
+}
+
+:deep(.el-table th) {
+  padding: 14px 12px;
+  text-align: left;
   font-size: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid #e5e5e7;
+  font-weight: 600;
+  color: #606266;
+  border-bottom: 2px solid #e4e7ed;
+  white-space: nowrap;
 }
 
-.device-table :deep(.el-table__body td) {
-  padding: 16px 0;
-  border-bottom: 1px solid #f5f5f7;
+:deep(.el-table th .cell) {
+  white-space: nowrap;
+  padding: 0;
 }
 
-.device-table :deep(.el-table__row:hover) {
-  background: #fafafa;
+:deep(.el-table td) {
+  padding: 14px 12px;
+  border-bottom: 1px solid #ebeef5;
+  font-size: 14px;
+  color: #606266;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.6;
 }
 
-.device-table :deep(.el-table__row--striped) {
-  background: #fafafa;
+:deep(.el-table td .cell) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0;
+}
+
+:deep(.el-table tr:hover) {
+  background: #f5f7fa;
 }
 
 /* 设备名称单元格 */
 .device-name-cell {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  white-space: nowrap;
 }
 
-.status-indicator {
+.device-name-text {
+  font-weight: 500;
+  color: #1d1d1f;
+}
+
+.device-code-text {
+  color: #909399;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 13px;
+}
+
+.status-text {
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.status-online {
+  color: #67c23a;
+  background: #f0f9ff;
+}
+
+.status-offline {
+  color: #e6a23c;
+  background: #fef0f0;
+}
+
+.empty-text {
+  color: #999;
+  font-size: 14px;
+}
+
+.notify-user-text {
+  font-size: 13px;
+  color: #606266;
+}
+
+/* 状态指示器 */
+.status-dot {
+  display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.status-indicator.online {
-  background: #34c759;
+.status-dot.online {
+  background: #67c23a;
 }
 
-.status-indicator.offline {
-  background: #86868b;
+.status-dot.offline {
+  background: #e6a23c;
 }
 
-.device-name-text {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1d1d1f;
+/* 标签 */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #ecf5ff;
+  color: #409eff;
+  border-radius: 4px;
+  font-size: 12px;
 }
 
-.device-code-text {
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-  font-size: 13px;
-  color: #86868b;
-  background: #f5f5f7;
-  padding: 4px 8px;
-  border-radius: 6px;
+.tag.configured {
+  background: #f0f9ff;
+  color: #409eff;
 }
 
-/* 状态文本 */
-.status-text {
-  font-size: 13px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 6px;
-}
-
-.status-success {
-  color: #34c759;
-  background: #f0f9f4;
-}
-
-.status-gray {
-  color: #86868b;
-  background: #f5f5f7;
+.tag.unconfigured {
+  background: #fef0f0;
+  color: #f56c6c;
 }
 
 /* 告警条件 */
-.condition-row {
+.condition-text {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 14px;
-}
-
-.or-text {
-  color: #86868b;
+  gap: 4px;
   font-size: 13px;
-  margin: 0 4px;
+  white-space: nowrap;
 }
 
-.metric-name {
+.condition-separator {
+  margin: 0 6px;
+  color: #909399;
+}
+
+.condition-text .metric {
+  font-weight: 500;
+  color: #667eea;
+}
+
+.condition-text .operator {
+  color: #e6a23c;
   font-weight: 600;
-  color: #007AFF;
+  margin: 0 2px;
 }
 
-.operator-symbol {
-  color: #ff9500;
-  font-weight: 600;
+.condition-text .value {
+  font-weight: 500;
+  color: #f56c6c;
 }
 
-.threshold-value {
-  font-weight: 600;
-  color: #1d1d1f;
-}
-
-.empty-text {
-  color: #86868b;
+.level-badge {
   font-size: 14px;
-}
-
-/* 告警级别图标 */
-.level-icon-text {
-  font-size: 18px;
-  line-height: 1;
-}
-
-/* 通知人员 */
-.notify-text {
-  font-size: 14px;
-  color: #1d1d1f;
 }
 
 /* 分页 */
@@ -1294,12 +1462,29 @@ onMounted(() => {
 }
 
 /* 弹窗样式 */
+.config-dialog :deep(.el-dialog),
+.batch-dialog :deep(.el-dialog) {
+  max-height: 96vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.config-dialog :deep(.el-dialog__body),
+.batch-dialog :deep(.el-dialog__body) {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+  max-height: calc(96vh - 80px);
+}
+
 .dialog-body {
   padding: 0;
+  max-height: calc(96vh - 140px);
+  overflow-y: auto;
 }
 
 .info-section {
-  margin-bottom: 32px;
+  margin-bottom: 16px;
 }
 
 .section-title {
@@ -1351,7 +1536,20 @@ onMounted(() => {
 
 /* 表单区域 */
 .form-section {
-  margin-bottom: 32px;
+  margin-bottom: 16px;
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+}
+
+.batch-dialog .form-section {
+  margin-bottom: 12px;
+}
+
+.batch-dialog .conditions-list {
+  max-height: 150px;
+  overflow-y: auto;
 }
 
 .section-header {
@@ -1401,8 +1599,10 @@ onMounted(() => {
 .conditions-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 12px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .condition-card {
@@ -1486,11 +1686,24 @@ onMounted(() => {
 
 /* 表单项 */
 .form-field {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .form-field:last-child {
   margin-bottom: 0;
+}
+
+.batch-dialog .form-field {
+  margin-bottom: 10px;
+}
+
+.batch-dialog .warning-box {
+  margin-bottom: 16px;
+  padding: 12px;
+}
+
+.batch-dialog .preview-area {
+  margin-top: 8px;
 }
 
 .field-label {
@@ -1584,7 +1797,7 @@ onMounted(() => {
 }
 
 .device-list {
-  max-height: 320px;
+  max-height: 140px;
   overflow-y: auto;
   border: 1px solid #e5e5e7;
   border-radius: 8px;

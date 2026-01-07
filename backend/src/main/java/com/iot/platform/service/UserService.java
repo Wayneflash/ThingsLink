@@ -158,9 +158,9 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             menus.add(createMenu("alarms", "报警日志", "/alarms", "BellFilled", null, sort++));
         }
         
-        // 6. 告警阈值配置
+        // 6. 报警配置
         if (isSuperAdmin || permissions.contains("alarm-threshold")) {
-            menus.add(createMenu("alarm-threshold", "告警阈值配置", "/alarm-threshold", "Warning", null, sort++));
+            menus.add(createMenu("alarm-threshold", "报警配置", "/alarm-threshold", "Warning", null, sort++));
         }
         
         // 7. 数据查询
