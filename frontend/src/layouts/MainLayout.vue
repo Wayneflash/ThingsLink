@@ -89,11 +89,7 @@
 
         <div class="header-right">
           <!-- 通知图标 -->
-          <el-badge :value="notificationCount" :hidden="notificationCount === 0" class="header-icon">
-            <el-button text @click="handleNotification">
-              <el-icon :size="20"><Bell /></el-icon>
-            </el-button>
-          </el-badge>
+          <NotificationPanel ref="notificationPanelRef" />
 
           <!-- 用户下拉菜单 -->
           <el-dropdown @command="handleCommand" trigger="click">
@@ -157,6 +153,7 @@ import {
   BellFilled,
   Warning
 } from '@element-plus/icons-vue'
+import NotificationPanel from '@/components/NotificationPanel.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -167,8 +164,8 @@ const isCollapsed = ref(false)
 // 用户信息
 const userInfo = ref({})
 
-// 通知数量
-const notificationCount = ref(0)
+// 通知面板引用
+const notificationPanelRef = ref(null)
 
 // 菜单列表
 const menuList = ref([])
@@ -210,7 +207,6 @@ const pageTitleMap = {
   '/products/list': '产品列表',
   '/products/attributes': '产品属性',
   '/groups': '设备分组',
-  '/data-query': '数据查询',
   '/users': '用户管理',
   '/roles': '角色管理',
   '/system': '系统管理'
@@ -235,17 +231,21 @@ const loadUserInfo = () => {
     userInfo.value = JSON.parse(userInfoData)
   }
 
-  // 加载菜单数据
+  // 加载菜单数据（从后端API获取，不硬编码）
   const menusData = localStorage.getItem('menus')
   if (menusData) {
-    menuList.value = JSON.parse(menusData)
+    try {
+      const menus = JSON.parse(menusData)
+      // 过滤掉"数据查询"菜单项（兼容旧数据）
+      menuList.value = menus.filter(menu => menu.code !== 'data-query' && menu.path !== '/data-query')
+    } catch (e) {
+      console.error('解析菜单数据失败:', e)
+      menuList.value = []
+    }
   }
 }
 
-// 处理通知
-const handleNotification = () => {
-  ElMessage.info('暂无新通知')
-}
+// 处理通知（已由NotificationPanel组件处理）
 
 // 下拉菜单命令处理
 const handleCommand = async (command) => {

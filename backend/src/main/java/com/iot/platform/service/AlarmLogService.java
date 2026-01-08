@@ -9,11 +9,13 @@ import com.iot.platform.entity.AlarmLog;
 import com.iot.platform.entity.Attribute;
 import com.iot.platform.entity.Device;
 import com.iot.platform.mapper.AlarmLogMapper;
+import com.iot.platform.service.NotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +29,9 @@ public class AlarmLogService extends ServiceImpl<AlarmLogMapper, AlarmLog> {
     
     @Resource
     private ProductService productService;
+    
+    @Resource
+    private NotificationService notificationService;
     
     /**
      * 检查设备数据是否触发报警，如果触发则记录报警日志
@@ -87,6 +92,7 @@ public class AlarmLogService extends ServiceImpl<AlarmLogMapper, AlarmLog> {
                 String level = config.getLevel();
                 
                 // 尝试将当前值转换为数字进行比较
+                // 注意：目前只支持数字类型的比较，字符串类型（如"open"/"close"）暂不支持
                 try {
                     Double currentValue = Double.parseDouble(currentValueStr);
                     
@@ -116,11 +122,18 @@ public class AlarmLogService extends ServiceImpl<AlarmLogMapper, AlarmLog> {
                             checkWrapper.eq(AlarmLog::getDeviceId, device.getId())
                                        .eq(AlarmLog::getMetric, metric)
                                        .eq(AlarmLog::getRecovered, 0);
-                            long existingAlarmCount = this.count(checkWrapper);
+                            List<AlarmLog> existingAlarms = this.list(checkWrapper);
                             
-                            if (existingAlarmCount > 0) {
-                                log.debug("堆叠模式 - 跳过重复报警: 设备={}, 指标={}", device.getDeviceName(), metric);
-                                shouldRecord = false;
+                            if (!existingAlarms.isEmpty()) {
+                                // 检查是否有相同或更高级别的未恢复报警
+                                boolean hasSameOrHigherLevel = existingAlarms.stream()
+                                    .anyMatch(a -> isSameOrHigherLevel(level, a.getAlarmLevel()));
+                                
+                                if (hasSameOrHigherLevel) {
+                                    log.debug("堆叠模式 - 跳过重复报警: 设备={}, 指标={}, 级别={}", 
+                                            device.getDeviceName(), metric, level);
+                                    shouldRecord = false;
+                                }
                             }
                         }
                         
@@ -137,6 +150,9 @@ public class AlarmLogService extends ServiceImpl<AlarmLogMapper, AlarmLog> {
                             alarmLog.setDeviceCode(device.getDeviceCode());
                             alarmLog.setDeviceName(device.getDeviceName());
                             alarmLog.setMetric(metric);
+                            // 保存触发时的配置信息（用于恢复判断）
+                            alarmLog.setTriggerOperator(operator);
+                            alarmLog.setTriggerThreshold(threshold);
                             // 记录处理人：单个ID转为JSON字符串（保持兼容性）
                             if (alarmConfig.getNotifyUser() != null) {
                                 alarmLog.setNotifyUsers("[" + alarmConfig.getNotifyUser() + "]");
@@ -152,6 +168,25 @@ public class AlarmLogService extends ServiceImpl<AlarmLogMapper, AlarmLog> {
                             
                             log.info("触发报警 - 设备: {}, 指标: {}, 级别: {}, 消息: {}",
                                     device.getDeviceName(), metric, level, alarmMessage);
+                            
+                            // 创建通知消息（给处理人发送通知）
+                            if (alarmConfig.getNotifyUser() != null) {
+                                try {
+                                    notificationService.createNotification(
+                                        alarmConfig.getNotifyUser(),
+                                        alarmLog.getId(),
+                                        device.getId(),
+                                        device.getDeviceCode(),
+                                        device.getDeviceName(),
+                                        level,
+                                        alarmMessage
+                                    );
+                                } catch (Exception e) {
+                                    log.error("创建通知消息失败 - 报警ID: {}, 用户ID: {}", 
+                                            alarmLog.getId(), alarmConfig.getNotifyUser(), e);
+                                    // 通知创建失败不影响报警记录
+                                }
+                            }
                         }
                     } else {
                         // 未触发报警：检查是否需要恢复之前的报警
@@ -166,24 +201,52 @@ public class AlarmLogService extends ServiceImpl<AlarmLogMapper, AlarmLog> {
                             AlarmLog existingAlarm = this.getOne(recoverWrapper);
                             
                             if (existingAlarm != null) {
-                                // 判断当前值是否不满足报警条件（即已恢复）
-                                boolean recovered = false;
-                                switch (operator) {
-                                    case ">":
-                                        recovered = currentValue <= threshold;
-                                        break;
-                                    case "<":
-                                        recovered = currentValue >= threshold;
-                                        break;
-                                    case "=":
-                                        recovered = Math.abs(currentValue - threshold) >= 0.0001;
-                                        break;
-                                }
+                                // 使用报警触发时保存的配置信息判断是否恢复（而不是当前配置）
+                                String savedOperator = existingAlarm.getTriggerOperator();
+                                Double savedThreshold = existingAlarm.getTriggerThreshold();
                                 
-                                if (recovered) {
-                                    existingAlarm.setRecovered(1);
-                                    this.updateById(existingAlarm);
-                                    log.info("报警恢复 - 设备: {}, 指标: {}", device.getDeviceName(), metric);
+                                if (savedOperator != null && savedThreshold != null) {
+                                    // 判断当前值是否不满足报警条件（即已恢复）
+                                    boolean recovered = false;
+                                    switch (savedOperator) {
+                                        case ">":
+                                            recovered = currentValue <= savedThreshold;
+                                            break;
+                                        case "<":
+                                            recovered = currentValue >= savedThreshold;
+                                            break;
+                                        case "=":
+                                            recovered = Math.abs(currentValue - savedThreshold) >= 0.0001;
+                                            break;
+                                    }
+                                    
+                                    if (recovered) {
+                                        existingAlarm.setRecovered(1);
+                                        this.updateById(existingAlarm);
+                                        log.info("报警恢复 - 设备: {}, 指标: {}, 触发配置: {} {}", 
+                                                device.getDeviceName(), metric, savedOperator, savedThreshold);
+                                    }
+                                } else {
+                                    // 兼容旧数据：如果没有保存触发配置，使用当前配置判断
+                                    boolean recovered = false;
+                                    switch (operator) {
+                                        case ">":
+                                            recovered = currentValue <= threshold;
+                                            break;
+                                        case "<":
+                                            recovered = currentValue >= threshold;
+                                            break;
+                                        case "=":
+                                            recovered = Math.abs(currentValue - threshold) >= 0.0001;
+                                            break;
+                                    }
+                                    
+                                    if (recovered) {
+                                        existingAlarm.setRecovered(1);
+                                        this.updateById(existingAlarm);
+                                        log.info("报警恢复 - 设备: {}, 指标: {} (使用当前配置)", 
+                                                device.getDeviceName(), metric);
+                                    }
                                 }
                             }
                         }
@@ -256,6 +319,23 @@ public class AlarmLogService extends ServiceImpl<AlarmLogMapper, AlarmLog> {
         alarmLog.setHandleTime(LocalDateTime.now());
         
         return this.updateById(alarmLog);
+    }
+    
+    /**
+     * 判断报警级别是否相同或更高
+     * critical(3) > warning(2) > info(1)
+     */
+    private boolean isSameOrHigherLevel(String newLevel, String existingLevel) {
+        Map<String, Integer> levelMap = new HashMap<>();
+        levelMap.put("info", 1);
+        levelMap.put("warning", 2);
+        levelMap.put("critical", 3);
+        
+        int newLevelValue = levelMap.getOrDefault(newLevel, 0);
+        int existingLevelValue = levelMap.getOrDefault(existingLevel, 0);
+        
+        // 新报警级别 >= 已存在报警级别时，返回true（应该触发新报警）
+        return newLevelValue >= existingLevelValue;
     }
     
     /**

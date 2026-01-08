@@ -46,7 +46,7 @@ class ApiClient {
       // 处理 token 过期
       if (data.code === 401) {
         this.setToken(null);
-        window.location.href = '/login.html';
+        window.location.href = '/login';
         throw new Error('登录已过期，请重新登录');
       }
 
@@ -99,7 +99,7 @@ export const authApi = {
   logout: () => {
     api.setToken(null);
     localStorage.removeItem('userInfo');
-    window.location.href = '/login.html';
+    window.location.href = '/login';
   },
 };
 

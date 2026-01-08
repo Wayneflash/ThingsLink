@@ -85,10 +85,13 @@
     <!-- 报警列表 -->
     <el-card class="table-card">
       <el-table 
+        ref="alarmTableRef"
         :data="alarmList" 
         v-loading="loading"
         border
         stripe
+        row-key="id"
+        highlight-current-row
       >
         <el-table-column prop="deviceName" label="设备名称" width="180" />
         <el-table-column prop="deviceCode" label="设备编码" width="140" />
@@ -258,11 +261,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import { getAlarmLogList, handleAlarm, getAlarmStatistics } from '@/api/alarm'
 import { getUserList } from '@/api/user'
+
+const route = useRoute()
 
 // 统计数据
 const statistics = ref({
@@ -311,6 +317,7 @@ const pagination = ref({
 // 告警列表
 const alarmList = ref([])
 const loading = ref(false)
+const alarmTableRef = ref(null)
 
 // 用户列表（用于显示处理人名字）
 const users = ref([])
@@ -519,11 +526,34 @@ const getLevelText = (level) => {
   return texts[level] || '未知'
 }
 
+// 定位到指定的报警记录
+const scrollToAlarm = async (alarmId) => {
+  if (!alarmId || !alarmTableRef.value) return
+  
+  await nextTick()
+  
+  // 查找对应的行
+  const row = alarmList.value.find(item => item.id === Number(alarmId))
+  if (row && alarmTableRef.value) {
+    // 设置当前行
+    alarmTableRef.value.setCurrentRow(row)
+    // 滚动到该行
+    alarmTableRef.value.scrollTo({ row: row })
+  }
+}
+
 // 页面加载时
-onMounted(() => {
-  loadUsers()
-  loadStatistics()
-  loadAlarmLogs()
+onMounted(async () => {
+  await loadUsers()
+  await loadStatistics()
+  await loadAlarmLogs()
+  
+  // 如果URL中有alarmId参数，定位到该记录
+  const alarmId = route.query.alarmId
+  if (alarmId) {
+    await nextTick()
+    scrollToAlarm(alarmId)
+  }
 })
 </script>
 

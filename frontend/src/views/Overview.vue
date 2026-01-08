@@ -268,7 +268,8 @@ const onlineRate = computed(() => {
 // 加载统计数据
 const loadStatistics = async () => {
   try {
-    const data = await axios.get('/devices/statistics')
+    // 使用POST方法调用统计接口（符合API规范）
+    const data = await axios.post('/devices/statistics')
     console.log('统计数据:', data)
     
     if (data) {

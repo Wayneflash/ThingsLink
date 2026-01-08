@@ -205,6 +205,29 @@ CREATE TABLE `tb_command_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='命令下发记录表';
 
 -- ----------------------------
+-- Table: 消息通知表
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_notification`;
+CREATE TABLE `tb_notification` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '通知ID',
+  `user_id` bigint NOT NULL COMMENT '接收用户ID',
+  `alarm_id` bigint NOT NULL COMMENT '关联报警ID',
+  `device_id` bigint NOT NULL COMMENT '设备ID',
+  `device_code` varchar(50) NOT NULL COMMENT '设备编码',
+  `device_name` varchar(100) NOT NULL COMMENT '设备名称',
+  `alarm_level` varchar(20) NOT NULL COMMENT '报警级别：critical/warning/info',
+  `alarm_message` text NOT NULL COMMENT '报警消息',
+  `is_read` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已读：0-未读，1-已读',
+  `read_time` datetime DEFAULT NULL COMMENT '阅读时间',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_alarm_id` (`alarm_id`),
+  KEY `idx_is_read` (`is_read`),
+  KEY `idx_user_read_time` (`user_id`, `is_read`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息通知表';
+
+-- ----------------------------
 -- Table: 告警日志表
 -- ----------------------------
 DROP TABLE IF EXISTS `tb_alarm_log`;
@@ -214,6 +237,8 @@ CREATE TABLE `tb_alarm_log` (
   `device_code` varchar(50) NOT NULL COMMENT '设备编码',
   `device_name` varchar(100) NOT NULL COMMENT '设备名称',
   `metric` varchar(50) DEFAULT NULL COMMENT '监控指标（属性标识符）',
+  `trigger_operator` varchar(10) DEFAULT NULL COMMENT '触发时的运算符（用于恢复判断）',
+  `trigger_threshold` double DEFAULT NULL COMMENT '触发时的阈值（用于恢复判断）',
   `notify_users` text DEFAULT NULL COMMENT '通知人员ID列表（JSON格式）',
   `alarm_level` varchar(20) NOT NULL COMMENT '告警级别：critical/warning/info',
   `alarm_message` text NOT NULL COMMENT '告警消息（描述触发的条件和实际值）',

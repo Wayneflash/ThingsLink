@@ -449,7 +449,7 @@ public class DeviceController {
     /**
      * 获取设备统计数据
      */
-    @GetMapping("/statistics")
+    @PostMapping("/statistics")
     public Result<Map<String, Object>> getStatistics(
             @RequestHeader(value = "Authorization", required = false) String token) {
         try {

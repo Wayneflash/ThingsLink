@@ -1,5 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
+chcp 65001 >nul
 echo ========================================
 echo   Start All Services (Docker+Backend+Frontend)
 echo ========================================
@@ -10,7 +11,8 @@ set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
 if errorlevel 1 (
     echo [ERROR] Cannot change to script directory: %SCRIPT_DIR%
-    pause
+    echo Press any key to exit...
+    pause >nul
     exit /b 1
 )
 
@@ -118,7 +120,9 @@ if exist "%BACKEND_DIR%\target\iot-platform.jar" (
         if errorlevel 1 (
             echo [WARNING] Java not found, skipping backend startup
         ) else (
-            start "IOT Backend" cmd /k "java -jar target\iot-platform.jar"
+            echo [INFO] Starting backend service in new window...
+            start "IOT Backend" cmd /k "cd /d %BACKEND_DIR% && java -jar target\iot-platform.jar"
+            timeout /t 2 /nobreak >nul
             echo [OK] Backend service started in new window
         )
     )
@@ -156,7 +160,9 @@ if exist "%FRONTEND_DIR%\package.json" (
                 call npm install >nul 2>&1
             )
             
-            start "IOT Frontend" cmd /k "npm run dev"
+            echo [INFO] Starting frontend service in new window...
+            start "IOT Frontend" cmd /k "cd /d %FRONTEND_DIR% && npm run dev"
+            timeout /t 2 /nobreak >nul
             echo [OK] Frontend service started in new window
         )
     )
@@ -180,4 +186,8 @@ echo   EMQX Web: http://localhost:18083 (admin/public)
 echo   Backend:  http://localhost:8080
 echo   Frontend: http://localhost:5173
 echo.
-pause
+echo [INFO] Services are starting in separate windows...
+echo [INFO] Please check the new windows for service status.
+echo.
+echo Press any key to close this window...
+pause >nul

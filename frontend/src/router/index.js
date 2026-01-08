@@ -79,12 +79,6 @@ const routes = [
         meta: { title: '设备分组' }
       },
       {
-        path: 'data-query',
-        name: 'DataQuery',
-        component: () => import('../views/DataQuery.vue'),
-        meta: { title: '数据查询' }
-      },
-      {
         path: 'system',
         redirect: '/users',
         meta: { title: '系统管理' }

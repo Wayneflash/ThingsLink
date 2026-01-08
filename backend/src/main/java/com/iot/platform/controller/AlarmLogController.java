@@ -150,11 +150,10 @@ public class AlarmLogController {
                 return Result.error("设备不存在");
             }
             
-            // 检查权限：只有通知人员才能处理
+            // 检查权限：超级管理员或有数据权限的通知人员可以处理
+            boolean isSuperAdmin = permissionUtil.isSuperAdmin(currentUser);
             List<Long> allowedGroupIds = permissionUtil.getAllowedGroupIds(currentUser);
-            if (allowedGroupIds != null && !allowedGroupIds.contains(device.getGroupId())) {
-                return Result.error("无权限处理该报警");
-            }
+            boolean hasDataPermission = allowedGroupIds == null || allowedGroupIds.contains(device.getGroupId());
             
             // 检查是否为通知人员
             boolean isNotifyUser = false;
@@ -169,8 +168,16 @@ public class AlarmLogController {
                 }
             }
             
-            if (!isNotifyUser) {
-                return Result.error("只有配置的处理人才能处理此报警");
+            // 权限判断：超级管理员可以处理所有报警，普通用户需要有数据权限且是通知人员
+            // 如果通知人员列表为空，允许有数据权限的用户处理（兼容旧数据）
+            if (!isSuperAdmin) {
+                if (!hasDataPermission) {
+                    return Result.error("无权限处理该报警");
+                }
+                // 如果配置了通知人员，则必须是通知人员才能处理
+                if (alarmLog.getNotifyUsers() != null && !alarmLog.getNotifyUsers().isEmpty() && !isNotifyUser) {
+                    return Result.error("只有配置的处理人才能处理此报警");
+                }
             }
             
             // 处理图片数据：转换为JSON字符串
@@ -188,8 +195,11 @@ public class AlarmLogController {
                 }
             }
             
-            // 处理报警
-            boolean success = alarmLogService.handleAlarm(alarmId, currentUser.getUsername(), 
+            // 处理报警（使用真实姓名，如果为空则使用账号）
+            String handlerName = currentUser.getRealName() != null && !currentUser.getRealName().trim().isEmpty() 
+                ? currentUser.getRealName() 
+                : currentUser.getUsername();
+            boolean success = alarmLogService.handleAlarm(alarmId, handlerName, 
                 handleDescription, handleImagesJson);
             
             if (success) {

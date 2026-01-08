@@ -42,6 +42,18 @@ public class AlarmLog implements Serializable {
     private String metric;
     
     /**
+     * 触发时的运算符（用于恢复判断）
+     */
+    @TableField("trigger_operator")
+    private String triggerOperator;
+    
+    /**
+     * 触发时的阈值（用于恢复判断）
+     */
+    @TableField("trigger_threshold")
+    private Double triggerThreshold;
+    
+    /**
      * 通知人员ID列表（JSON格式）
      */
     @TableField("notify_users")
