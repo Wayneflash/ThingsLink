@@ -1,7 +1,7 @@
 services:
   # MySQL 8.0
   mysql:
-    image: mysql:8.0
+    image: registry.cn-hangzhou.aliyuncs.com/library/mysql:8.0
     container_name: iot-mysql
     restart: always
     environment:
@@ -23,7 +23,7 @@ services:
   
   # Redis 6.2
   redis:
-    image: redis:6.2-alpine
+    image: registry.cn-hangzhou.aliyuncs.com/library/redis:6.2-alpine
     container_name: iot-redis
     restart: always
     ports:
@@ -34,7 +34,7 @@ services:
   
   # EMQX 5.3
   emqx:
-    image: emqx/emqx:5.3
+    image: registry.cn-hangzhou.aliyuncs.com/library/emqx:5.3
     container_name: iot-emqx
     restart: always
     environment:
