@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # IoT物联网设备管理平台 - 一键部署脚本
-# 版本: 1.0.0
+# 版本: 1.1.0
 # 说明: 自动化部署整个IoT平台（MySQL + Redis + EMQX + 后端 + 前端）
 
 set -e  # 遇到错误立即退出
@@ -52,6 +52,32 @@ check_port() {
     fi
 }
 
+# 配置Docker镜像加速（国内）
+configure_docker_mirror() {
+    print_info "配置Docker镜像加速..."
+    
+    # 创建Docker配置目录
+    sudo mkdir -p /etc/docker
+    
+    # 配置Docker使用阿里云镜像
+    cat <<EOF | sudo tee /etc/docker/daemon.json > /dev/null
+{
+  "registry-mirrors": [
+    "https://docker.mirrors.ustc.edu.cn",
+    "https://hub-mirror.c.163.com",
+    "https://mirror.ccs.tencentyun.com"
+  ]
+}
+EOF
+    
+    # 重启Docker服务
+    print_info "重启Docker服务使镜像配置生效..."
+    sudo systemctl restart docker
+    sleep 3
+    
+    print_success "Docker镜像配置完成"
+}
+
 # 主函数
 main() {
     print_separator
@@ -64,7 +90,10 @@ main() {
     check_command "docker"
     check_command "docker-compose"
     
-    # 2. 检查端口占用
+    # 2. 配置Docker镜像加速（国内服务器）
+    configure_docker_mirror
+    
+    # 3. 检查端口占用
     print_info "检查端口占用情况..."
     check_port 3306   # MySQL
     check_port 6379   # Redis
@@ -72,15 +101,15 @@ main() {
     check_port 8083   # EMQX WebSocket
     check_port 8883   # EMQX Dashboard
     
-    # 3. 停止并删除旧容器
+    # 4. 停止并删除旧容器
     print_info "停止并删除旧容器..."
     docker-compose down 2>/dev/null || true
     
-    # 4. 创建必要的目录
+    # 5. 创建必要的目录
     print_info "创建必要的目录..."
     mkdir -p mysql-data emqx-data emqx-log
     
-    # 5. 启动所有服务
+    # 6. 使用docker-compose启动服务
     print_separator
     print_info "启动所有服务..."
     print_separator
@@ -88,7 +117,7 @@ main() {
     # 使用docker-compose启动服务
     docker-compose up -d
     
-    # 6. 等待服务启动
+    # 等待服务启动
     print_info "等待服务启动..."
     sleep 5
     
@@ -132,6 +161,7 @@ main() {
     print_separator
     print_info "初始化数据库..."
     print_separator
+    
     docker exec iot-mysql mysql -uroot -proot123456 iot_platform < /docker-entrypoint-initdb.d/init.sql 2>/dev/null
     
     if [ $? -eq 0 ]; then
@@ -153,12 +183,10 @@ main() {
     print_info "  - Redis: localhost:6379 (redis123456)"
     print_info "  - EMQX MQTT: localhost:1883"
     print_info "  - EMQX Dashboard: http://localhost:18083"
-    print_info "  - 后端API: http://localhost:8080"
-    print_info "  - 前端页面: http://localhost:8080"
     print_separator
     echo ""
     print_info "查看容器日志命令："
-    print_info "  docker-compose logs -f [mysql|redis|emqx]"
+    print_info "  docker-compose logs -f"
     print_info "  docker-compose logs mysql"
     print_info "  docker-compose logs redis"
     print_info "  docker-compose logs emqx"
