@@ -27,6 +27,26 @@ newgrp docker
 - ✅ Docker Compose
 - ✅ 配置当前用户使用 Docker（无需 sudo）
 
+### 配置 Docker 镜像加速器（国内服务器推荐）
+
+如果服务器在国内，建议配置 Docker 镜像加速器以加快镜像下载速度：
+
+```bash
+# 1. 给镜像加速配置脚本添加执行权限
+chmod +x setup-docker-mirror.sh
+
+# 2. 执行配置脚本（需要 sudo 权限）
+sudo ./setup-docker-mirror.sh
+```
+
+配置脚本会自动：
+- ✅ 备份现有 Docker 配置
+- ✅ 配置多个镜像加速器（DaoCloud、1Panel、DockerHub.icu 等）
+- ✅ 重启 Docker 服务
+- ✅ 验证配置是否生效
+
+> **详细配置方法**: 请查看 [DOCKER_MIRROR_GUIDE.md](./DOCKER_MIRROR_GUIDE.md)
+
 ### 下载代码（推荐使用 Gitee）
 
 #### 方法一：使用 Gitee（国内速度最快，推荐）
