@@ -27,6 +27,40 @@ newgrp docker
 - ✅ Docker Compose
 - ✅ 配置当前用户使用 Docker（无需 sudo）
 
+### 下载代码（推荐使用 Gitee）
+
+#### 方法一：使用 Gitee（国内速度最快，推荐）
+
+```bash
+# 直接从 Gitee 克隆
+git clone https://gitee.com/WayneFlash/things-link.git
+cd things-link
+chmod +x deploy.sh
+./deploy.sh
+```
+
+#### 方法二：使用 GitHub（如果需要最新代码）
+
+```bash
+# 从 GitHub 克隆
+git clone https://github.com/Wayneflash/ThingsLink.git
+cd ThingsLink
+chmod +x deploy.sh
+./deploy.sh
+```
+
+#### 方法三：使用 FastGit 镜像
+
+```bash
+# 从 FastGit 镜像克隆
+git clone https://hub.fastgit.xyz/Wayneflash/ThingsLink.git
+cd ThingsLink
+chmod +x deploy.sh
+./deploy.sh
+```
+
+> **详细加速方法**: 请查看 [GITHUB_ACCELERATE_GUIDE.md](./GITHUB_ACCELERATE_GUIDE.md)
+
 ### 方法一：使用一键部署脚本（推荐）
 
 ```bash
