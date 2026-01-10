@@ -327,15 +327,14 @@ newgrp docker
 
 本平台提供一键部署脚本，用户无需任何操作即可完成部署。
 
-#### 方法一：使用 Git 克隆（推荐）
+#### 方法一：使用 Gitee 克隆（国内推荐）
 
 ```bash
-# 1. 克隆项目代码到服务器
-# 替换 YOUR_USERNAME 为你的GitHub用户名，REPO_NAME 为仓库名称
-git clone https://github.com/YOUR_USERNAME/REPO_NAME.git
+# 1. 从 Gitee 克隆项目代码（国内速度最快）
+git clone https://gitee.com/WayneFlash/things-link.git
 
 # 2. 进入项目目录
-cd REPO_NAME
+cd things-link
 
 # 3. 给脚本添加执行权限
 chmod +x deploy.sh
@@ -344,28 +343,51 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
-**示例**（假设仓库地址为 `https://github.com/username/iot-platform.git`）：
+#### 方法二：使用 GitHub 克隆
 
 ```bash
-git clone https://github.com/username/iot-platform.git
-cd iot-platform
+# 1. 克隆项目代码到服务器
+git clone https://github.com/Wayneflash/ThingsLink.git
+
+# 2. 进入项目目录
+cd ThingsLink
+
+# 3. 给脚本添加执行权限
 chmod +x deploy.sh
+
+# 4. 执行一键部署脚本
 ./deploy.sh
 ```
 
-#### 方法二：直接下载压缩包
+#### 方法三：使用 FastGit 镜像
+
+```bash
+# 1. 从 FastGit 镜像克隆
+git clone https://hub.fastgit.xyz/Wayneflash/ThingsLink.git
+
+# 2. 进入项目目录
+cd ThingsLink
+
+# 3. 给脚本添加执行权限
+chmod +x deploy.sh
+
+# 4. 执行一键部署脚本
+./deploy.sh
+```
+
+#### 方法四：直接下载压缩包
 
 如果不需要 Git，也可以直接下载压缩包：
 
 ```bash
-# 1. 下载项目压缩包
-wget https://github.com/YOUR_USERNAME/REPO_NAME/archive/refs/heads/main.zip
+# 1. 从 Gitee 下载项目压缩包
+wget https://gitee.com/WayneFlash/things-link/archive/main.zip
 
 # 2. 解压
 unzip main.zip
 
 # 3. 进入项目目录
-cd REPO_NAME-main
+cd things-link
 
 # 4. 执行部署
 chmod +x deploy.sh
