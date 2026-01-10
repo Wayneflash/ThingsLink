@@ -327,14 +327,48 @@ newgrp docker
 
 本平台提供一键部署脚本，用户无需任何操作即可完成部署。
 
-```bash
-# 1. 克隆或下载项目代码到服务器
-cd /path/to/project
+#### 方法一：使用 Git 克隆（推荐）
 
-# 2. 给脚本添加执行权限
+```bash
+# 1. 克隆项目代码到服务器
+# 替换 YOUR_USERNAME 为你的GitHub用户名，REPO_NAME 为仓库名称
+git clone https://github.com/YOUR_USERNAME/REPO_NAME.git
+
+# 2. 进入项目目录
+cd REPO_NAME
+
+# 3. 给脚本添加执行权限
 chmod +x deploy.sh
 
-# 3. 执行一键部署脚本
+# 4. 执行一键部署脚本
+./deploy.sh
+```
+
+**示例**（假设仓库地址为 `https://github.com/username/iot-platform.git`）：
+
+```bash
+git clone https://github.com/username/iot-platform.git
+cd iot-platform
+chmod +x deploy.sh
+./deploy.sh
+```
+
+#### 方法二：直接下载压缩包
+
+如果不需要 Git，也可以直接下载压缩包：
+
+```bash
+# 1. 下载项目压缩包
+wget https://github.com/YOUR_USERNAME/REPO_NAME/archive/refs/heads/main.zip
+
+# 2. 解压
+unzip main.zip
+
+# 3. 进入项目目录
+cd REPO_NAME-main
+
+# 4. 执行部署
+chmod +x deploy.sh
 ./deploy.sh
 ```
 
