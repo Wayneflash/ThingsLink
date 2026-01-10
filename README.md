@@ -216,12 +216,16 @@ cd frontend
 # 安装依赖
 npm install
 
-# 启动开发服务器
+# 启动开发服务器（运行在 5173 端口）
 npm run dev
 
 # 构建生产版本
 npm run build
 ```
+
+> **端口说明**：
+> - **生产环境**：前端和后端都通过8080端口访问（前后端部署在一起）
+> - **开发环境**：前端开发服务器运行在5173端口，后端运行在8080端口（分开运行便于开发调试）
 
 ### 默认账号
 
@@ -298,7 +302,54 @@ mqtt:
 
 ## 部署说明
 
-### Docker 部署
+### 前置准备（全新服务器）
+
+如果是全新服务器，需要先安装 Docker 和 Docker Compose：
+
+```bash
+# 1. 给安装脚本添加执行权限
+chmod +x install-docker.sh
+
+# 2. 执行安装脚本
+sudo ./install-docker.sh
+
+# 3. 使权限生效（重要！）
+newgrp docker
+# 或者注销后重新登录
+```
+
+安装脚本会自动检测操作系统并安装：
+- ✅ Docker Engine
+- ✅ Docker Compose
+- ✅ 配置当前用户使用 Docker（无需 sudo）
+
+### 🚀 一键部署（推荐）
+
+本平台提供一键部署脚本，用户无需任何操作即可完成部署。
+
+```bash
+# 1. 克隆或下载项目代码到服务器
+cd /path/to/project
+
+# 2. 给脚本添加执行权限
+chmod +x deploy.sh
+
+# 3. 执行一键部署脚本
+./deploy.sh
+```
+
+部署脚本会自动完成以下操作：
+- ✅ 检查 Docker 和 Docker Compose 是否已安装
+- ✅ 检查并清理端口占用
+- ✅ 停止并删除旧容器
+- ✅ 创建必要的目录（mysql-data, emqx-data, emqx-log）
+- ✅ 启动所有服务（MySQL + Redis + EMQX）
+- ✅ 初始化数据库
+- ✅ 显示服务访问地址
+
+**详细部署指南**: 请查看 [DEPLOY.md](./DEPLOY.md)
+
+### Docker 部署（手动）
 
 ```bash
 # 构建后端镜像

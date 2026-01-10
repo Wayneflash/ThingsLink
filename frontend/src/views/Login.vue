@@ -48,6 +48,7 @@
               placeholder="请输入用户名"
               size="large"
               clearable
+              autocomplete="off"
             >
               <template #prefix>
                 <el-icon><User /></el-icon>
@@ -63,6 +64,7 @@
               size="large"
               show-password
               clearable
+              autocomplete="new-password"
             >
               <template #prefix>
                 <el-icon><Lock /></el-icon>
