@@ -61,6 +61,8 @@ chmod +x deploy.sh
 
 > **详细加速方法**: 请查看 [GITHUB_ACCELERATE_GUIDE.md](./GITHUB_ACCELERATE_GUIDE.md)
 
+> **Docker镜像说明**: 本项目已配置使用阿里云镜像源，大幅提升国内镜像下载速度
+
 ### 方法一：使用一键部署脚本（推荐）
 
 ```bash
