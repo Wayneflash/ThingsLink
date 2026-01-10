@@ -1,0 +1,1 @@
+import{r as t}from"./index-6eb9f70f.js";function n(){return t({url:"/system/config",method:"get"})}function r(){return t({url:"/system/mqtt-config",method:"get"})}function s(e){return t({url:"/system/device-mqtt-config",method:"post",data:e})}function m(e){return t({url:"/system/platform-mqtt-config",method:"post",data:e})}export{n as a,m as b,r as g,s as u};
