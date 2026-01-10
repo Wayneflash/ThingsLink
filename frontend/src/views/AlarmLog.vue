@@ -103,7 +103,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="alarmMessage" label="报警内容" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="triggerTime" label="触发时间" width="170" />
+        <el-table-column prop="triggerTime" label="触发时间" width="170">
+          <template #default="{ row }">
+            {{ formatTime(row.triggerTime) }}
+          </template>
+        </el-table-column>
         <el-table-column label="处理状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 0 ? 'warning' : 'success'">
@@ -134,7 +138,11 @@
             <span v-else class="empty-text">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="handleTime" label="处理时间" width="170" />
+        <el-table-column prop="handleTime" label="处理时间" width="170">
+          <template #default="{ row }">
+            {{ formatTime(row.handleTime) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="100" fixed="right" align="center">
           <template #default="{ row }">
             <el-tooltip
@@ -261,7 +269,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
@@ -269,6 +277,10 @@ import { getAlarmLogList, handleAlarm, getAlarmStatistics } from '@/api/alarm'
 import { getUserList } from '@/api/user'
 
 const route = useRoute()
+
+// 定时刷新
+let refreshTimer = null
+const REFRESH_INTERVAL = 10000  // 10秒刷新一次
 
 // 统计数据
 const statistics = ref({
@@ -526,6 +538,22 @@ const getLevelText = (level) => {
   return texts[level] || '未知'
 }
 
+// 格式化时间 - 统一使用 yyyy-MM-dd HH:mm:ss 格式
+const formatTime = (time) => {
+  if (!time) return '-'
+  const date = new Date(time)
+  if (isNaN(date.getTime())) return '-'
+  
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
 // 定位到指定的报警记录
 const scrollToAlarm = async (alarmId) => {
   if (!alarmId || !alarmTableRef.value) return
@@ -546,15 +574,96 @@ const scrollToAlarm = async (alarmId) => {
 onMounted(async () => {
   await loadUsers()
   await loadStatistics()
-  await loadAlarmLogs()
   
-  // 如果URL中有alarmId参数，定位到该记录
+  // 如果URL中有alarmId参数，只查询这一条记录
   const alarmId = route.query.alarmId
   if (alarmId) {
-    await nextTick()
-    scrollToAlarm(alarmId)
+    // 设置筛选条件为该报警ID
+    await loadAlarmLogById(alarmId)
+  } else {
+    // 正常加载所有报警日志
+    await loadAlarmLogs()
   }
+  
+  // 启动定时刷新
+  startAutoRefresh()
 })
+
+// 页面卸载时清除定时器
+onUnmounted(() => {
+  stopAutoRefresh()
+})
+
+// 启动自动刷新
+const startAutoRefresh = () => {
+  // 清除旧的定时器
+  stopAutoRefresh()
+  
+  // 设置新的定时器
+  refreshTimer = setInterval(() => {
+    // 只在报警日志页面时刷新（不是在查看单条记录时）
+    if (!route.query.alarmId) {
+      loadAlarmLogs()
+      loadStatistics()
+    }
+  }, REFRESH_INTERVAL)
+}
+
+// 停止自动刷新
+const stopAutoRefresh = () => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+// 根据报警ID加载单条记录（精准定位）
+const loadAlarmLogById = async (alarmId) => {
+  loading.value = true
+  try {
+    // 先加载所有数据，然后筛选出匹配的记录
+    const params = {
+      page: 1,
+      pageSize: 1000  // 加载足够多的数据以确保能找到目标记录
+    }
+    
+    const res = await getAlarmLogList(params)
+    if (res && res.list) {
+      // 筛选出匹配的记录
+      const targetAlarm = res.list.find(item => item.id === Number(alarmId))
+      
+      if (targetAlarm) {
+        // 只显示这一条记录
+        alarmList.value = [targetAlarm]
+        pagination.value.total = 1
+        pagination.value.page = 1
+        pagination.value.pageSize = 20
+        
+        // 高亮显示该行
+        await nextTick()
+        if (alarmTableRef.value) {
+          alarmTableRef.value.setCurrentRow(targetAlarm)
+        }
+      } else {
+        // 没有找到记录，显示空列表
+        alarmList.value = []
+        pagination.value.total = 0
+        ElMessage.warning('未找到该报警记录')
+      }
+    } else {
+      alarmList.value = []
+      pagination.value.total = 0
+    }
+  } catch (error) {
+    console.error('加载报警记录失败:', error)
+    const errorMsg = error?.response?.data?.message || error?.message || '加载报警记录失败'
+    ElMessage.error(errorMsg)
+    alarmList.value = []
+    pagination.value.total = 0
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <style scoped>

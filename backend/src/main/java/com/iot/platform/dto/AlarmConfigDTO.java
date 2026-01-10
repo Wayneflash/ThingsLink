@@ -22,6 +22,16 @@ public class AlarmConfigDTO {
     private Boolean stackMode;
     
     /**
+     * 邮件通知是否启用（默认关闭）
+     */
+    private Boolean mailEnabled;
+    
+    /**
+     * 短信通知是否启用（默认关闭）
+     */
+    private Boolean smsEnabled;
+    
+    /**
      * 物模型属性监控配置（Map结构）
      * key: 物模型属性标识符（如：temperature）
      * value: 该属性的报警配置

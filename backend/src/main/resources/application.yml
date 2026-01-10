@@ -34,6 +34,26 @@ spring:
       connection-timeout: 30000
       connection-init-sql: SET NAMES utf8mb4
   
+  # 邮件配置（网易邮箱）
+  mail:
+    host: smtp.yeah.net
+    port: 465
+    username: thingslinks@yeah.net
+    password: TQUMqFEEyMjCRFsS
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          socketFactory:
+            class: javax.net.ssl.SSLSocketFactory
+            fallback: false
+            port: 465
+        debug: false
+  
   # Redis 配置
   redis:
     host: ${SPRING_REDIS_HOST:localhost}
@@ -47,6 +67,12 @@ spring:
         max-idle: 10
         min-idle: 2
         max-wait: 1000ms
+  
+  # 短信宝配置
+  smsbao:
+    username: waynewyq
+    password: 500a7f062bd94dc1881742c0d1b7850e
+    api-url: https://api.smsbao.com/sms
 
 # MyBatis Plus 配置
 mybatis-plus:

@@ -468,13 +468,34 @@ public class DeviceController {
             
             Map<String, Object> statistics = deviceService.getDeviceStatistics(allowedGroupIds);
             
-            // 补充今日数据量统计
+            // 补充今日数据量统计（应用数据权限过滤）
             try {
                 java.time.LocalDateTime todayStart = java.time.LocalDateTime.now()
                     .withHour(0).withMinute(0).withSecond(0);
-                com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.iot.platform.entity.DeviceData> query = 
+                com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.iot.platform.entity.DeviceData> query =
                     new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
                 query.ge(com.iot.platform.entity.DeviceData::getReceiveTime, todayStart);
+                
+                // 数据权限过滤：如果有限制分组，需要通过设备表关联过滤
+                if (allowedGroupIds != null && !allowedGroupIds.isEmpty()) {
+                    // 获取权限范围内的设备编码列表
+                    com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Device> deviceQuery =
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+                    deviceQuery.in(Device::getGroupId, allowedGroupIds);
+                    List<Device> allowedDevices = deviceService.list(deviceQuery);
+                    List<String> allowedDeviceCodes = new ArrayList<>();
+                    for (Device device : allowedDevices) {
+                        allowedDeviceCodes.add(device.getDeviceCode());
+                    }
+                    if (!allowedDeviceCodes.isEmpty()) {
+                        query.in(com.iot.platform.entity.DeviceData::getDeviceCode, allowedDeviceCodes);
+                    } else {
+                        // 如果没有权限范围内的设备，返回0
+                        statistics.put("todayDataCount", 0L);
+                        return Result.success(statistics);
+                    }
+                }
+                
                 long todayDataCount = deviceDataService.count(query);
                 statistics.put("todayDataCount", todayDataCount);
             } catch (Exception e) {

@@ -74,6 +74,8 @@
           <el-table-column type="index" label="序号" width="80" :index="indexMethod" />
           <el-table-column prop="username" label="用户名" min-width="120" />
           <el-table-column prop="realName" label="姓名" min-width="120" />
+          <el-table-column prop="phone" label="手机号码" min-width="130" />
+          <el-table-column prop="email" label="邮箱" min-width="180" />
           <el-table-column prop="groupName" label="所属分组" min-width="120" />
           <el-table-column prop="roleName" label="角色" min-width="120">
             <template #default="{ row }">
@@ -142,8 +144,8 @@
         </el-form-item>
         
         <el-form-item label="姓名" prop="realName">
-          <el-input 
-            v-model.trim="userForm.realName" 
+          <el-input
+            v-model.trim="userForm.realName"
             placeholder="如：张三、李四"
             autocomplete="off"
             clearable
@@ -167,6 +169,27 @@
             <el-option v-for="role in roles" :key="role.id" :label="role.name" :value="role.id" />
           </el-select>
           <div class="form-hint">💡 选择用户的角色，角色决定了用户的菜单权限</div>
+        </el-form-item>
+        
+        <el-form-item label="手机号码" prop="phone">
+          <el-input
+            v-model.trim="userForm.phone"
+            placeholder="请输入手机号码"
+            autocomplete="tel"
+            clearable
+            maxlength="11"
+          />
+          <div class="form-hint">💡 用于短信推送通知，请填写真实有效的手机号码</div>
+        </el-form-item>
+        
+        <el-form-item label="邮箱" prop="email">
+          <el-input
+            v-model.trim="userForm.email"
+            placeholder="请输入邮箱地址"
+            autocomplete="email"
+            clearable
+          />
+          <div class="form-hint">💡 用于邮件推送通知，请填写真实有效的邮箱地址</div>
         </el-form-item>
       </el-form>
       
@@ -226,6 +249,8 @@ const userForm = reactive({
   id: null,
   username: '',
   realName: '',
+  phone: '',
+  email: '',
   password: '',
   groupId: null,
   roleId: null,
@@ -241,6 +266,34 @@ const rules = {
   realName: [
     { required: true, message: '姓名不能为空', trigger: 'blur' },
     { min: 2, max: 20, message: '姓名长度在 2 到 20 个字符', trigger: 'blur' }
+  ],
+  phone: [
+    {
+      validator: (rule, value, callback) => {
+        if (!value) {
+          callback() // 手机号码可选，不填不报错
+        } else if (!/^1[3-9]\d{9}$/.test(value)) {
+          callback(new Error('请输入正确的手机号码'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  email: [
+    {
+      validator: (rule, value, callback) => {
+        if (!value) {
+          callback() // 邮箱可选，不填不报错
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          callback(new Error('请输入正确的邮箱地址'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
@@ -366,6 +419,8 @@ const openAddDialog = () => {
   userForm.id = null
   userForm.username = ''
   userForm.realName = ''
+  userForm.phone = ''
+  userForm.email = ''
   userForm.password = ''
   // 默认选中当前分组，如果没有则默认总分组（动态获取）
   if (currentGroupId.value) {
@@ -398,6 +453,8 @@ const editUser = (user) => {
     id: user.id,
     username: user.username,
     realName: user.realName,
+    phone: user.phone || '',
+    email: user.email || '',
     groupId: user.groupId,
     roleId: user.roleId,
     status: user.status
@@ -466,6 +523,8 @@ const saveUser = async () => {
         await updateUser({
           id: userForm.id,
           realname: userForm.realName,  // 后端字段名是realname
+          phone: userForm.phone,  // 手机号码
+          email: userForm.email,  // 邮箱
           groupId: userForm.groupId,
           roleId: userForm.roleId,
           status: userForm.status
@@ -479,6 +538,8 @@ const saveUser = async () => {
           username: userForm.username,
           password: userForm.password,
           realname: userForm.realName,  // 后端字段名是realname，不是realName
+          phone: userForm.phone,  // 手机号码
+          email: userForm.email,  // 邮箱
           groupId: userForm.groupId,
           roleId: userForm.roleId,
           status: userForm.status
@@ -517,6 +578,8 @@ const resetForm = () => {
     id: null,
     username: '',
     realName: '',
+    phone: '',
+    email: '',
     password: '',
     groupId: null,
     roleId: null,

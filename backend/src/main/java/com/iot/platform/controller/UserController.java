@@ -106,8 +106,10 @@ public class UserController {
                 userMap.put("id", user.getId());
                 userMap.put("username", user.getUsername());
                 userMap.put("realName", user.getRealName());  // 改为realName驼峰命名
+                userMap.put("phone", user.getPhone());  // 添加手机号码字段
+                userMap.put("email", user.getEmail());  // 添加邮箱字段
                 userMap.put("groupId", user.getGroupId());
-                
+                 
                 // 查询分组名称
                 String groupName = "默认分组";  // 默认值
                 if (user.getGroupId() != null && user.getGroupId() != 0) {
@@ -117,7 +119,7 @@ public class UserController {
                     }
                 }
                 userMap.put("groupName", groupName);
-                
+                 
                 // 查询用户角色
                 Long roleId = user.getRoleId();
                 String roleName = null;
@@ -131,10 +133,10 @@ public class UserController {
                 userMap.put("roleName", roleName);
                 userMap.put("status", user.getStatus()); // 0=禁用, 1=启用
                 userMap.put("createTime", user.getCreateTime());
-                
+                 
                 // 标记是否为超级管理员（admin用户）
                 userMap.put("isSuper", "admin".equals(user.getUsername()));
-                
+                 
                 userList.add(userMap);
             });
             
@@ -480,6 +482,116 @@ public class UserController {
             log.error("重置密码失败", e);
             return Result.error(e.getMessage());
         }
+    }
+    
+    /**
+     * 获取当前用户个人资料
+     */
+    @GetMapping("/profile")
+    public Result<Map<String, Object>> getProfile(
+            @RequestHeader(value = "Authorization", required = false) String token) {
+        try {
+            // 获取当前用户
+            User currentUser = permissionUtil.getCurrentUser(token);
+            if (currentUser == null) {
+                return Result.error("未授权，请先登录");
+            }
+            
+            // 查询分组名称
+            String groupName = "默认分组";
+            if (currentUser.getGroupId() != null && currentUser.getGroupId() != 0) {
+                com.iot.platform.entity.DeviceGroup group = deviceGroupMapper.selectById(currentUser.getGroupId());
+                if (group != null) {
+                    groupName = group.getGroupName();
+                }
+            }
+            
+            // 查询角色名称
+            String roleName = null;
+            if (currentUser.getRoleId() != null) {
+                Role role = roleMapper.selectById(currentUser.getRoleId());
+                if (role != null) {
+                    roleName = role.getRoleName();
+                }
+            }
+            
+            // 构造返回数据
+            Map<String, Object> result = new java.util.LinkedHashMap<>();
+            result.put("id", currentUser.getId());
+            result.put("username", currentUser.getUsername());
+            result.put("realName", currentUser.getRealName());
+            result.put("phone", currentUser.getPhone());
+            result.put("email", currentUser.getEmail());
+            result.put("groupId", currentUser.getGroupId());
+            result.put("groupName", groupName);
+            result.put("roleId", currentUser.getRoleId());
+            result.put("roleName", roleName);
+            result.put("status", currentUser.getStatus());
+            result.put("createTime", currentUser.getCreateTime());
+            result.put("updateTime", currentUser.getUpdateTime());
+            result.put("isSuper", "admin".equals(currentUser.getUsername()));
+            
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("获取个人资料失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    /**
+     * 更新当前用户个人资料
+     */
+    @PostMapping("/profile")
+    public Result<Map<String, Object>> updateProfile(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @RequestBody UpdateProfileRequest request) {
+        try {
+            // 获取当前用户
+            User currentUser = permissionUtil.getCurrentUser(token);
+            if (currentUser == null) {
+                return Result.error("未授权，请先登录");
+            }
+            
+            // 参数验证
+            if (request.getRealName() == null || request.getRealName().trim().isEmpty()) {
+                return Result.error("姓名不能为空");
+            }
+            
+            // 更新用户信息
+            if (request.getRealName() != null) {
+                currentUser.setRealName(request.getRealName().trim());
+            }
+            if (request.getPhone() != null) {
+                currentUser.setPhone(request.getPhone().trim());
+            }
+            if (request.getEmail() != null) {
+                currentUser.setEmail(request.getEmail().trim());
+            }
+            currentUser.setUpdateTime(java.time.LocalDateTime.now());
+            
+            userMapper.updateById(currentUser);
+            
+            // 构造返回数据
+            Map<String, Object> result = new java.util.LinkedHashMap<>();
+            result.put("id", currentUser.getId());
+            result.put("username", currentUser.getUsername());
+            result.put("realName", currentUser.getRealName());
+            result.put("phone", currentUser.getPhone());
+            result.put("email", currentUser.getEmail());
+            result.put("updateTime", currentUser.getUpdateTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            
+            return Result.success(result, "个人资料更新成功");
+        } catch (Exception e) {
+            log.error("更新个人资料失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    @Data
+    public static class UpdateProfileRequest {
+        private String realName;  // 姓名（必填）
+        private String phone;     // 手机号（可选）
+        private String email;     // 邮箱（可选）
     }
     
     /**

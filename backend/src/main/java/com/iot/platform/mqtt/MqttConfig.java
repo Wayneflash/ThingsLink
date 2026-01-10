@@ -38,6 +38,47 @@ public class MqttConfig {
     private MqttMessageHandler mqttMessageHandler;
     
     /**
+     * 获取MQTT配置信息（供系统设置页面显示）
+     */
+    public static class MqttConfigInfo {
+        private String broker;
+        private int port;
+        private String username;
+        private String password;
+        
+        public MqttConfigInfo(String broker, int port, String username, String password) {
+            this.broker = broker;
+            this.port = port;
+            this.username = username;
+            this.password = password;
+        }
+        
+        public String getBroker() { return broker; }
+        public int getPort() { return port; }
+        public String getUsername() { return username; }
+        public String getPassword() { return password; }
+    }
+    
+    /**
+     * 获取MQTT配置信息
+     */
+    public MqttConfigInfo getMqttConfigInfo() {
+        // 从brokerUrl中提取地址和端口
+        String broker = brokerUrl.replace("tcp://", "").split(":")[0];
+        int port = 1883;
+        try {
+            String[] parts = brokerUrl.split(":");
+            if (parts.length > 1) {
+                port = Integer.parseInt(parts[parts.length - 1]);
+            }
+        } catch (Exception e) {
+            port = 1883;
+        }
+        
+        return new MqttConfigInfo(broker, port, username, password);
+    }
+    
+    /**
      * 创建 MQTT 客户端（延迟连接，避免阻塞应用启动）
      */
     @Bean

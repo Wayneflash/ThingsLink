@@ -400,9 +400,20 @@ const loadRealtimeData = async () => {
     
     const data = await getDeviceLatestData({ deviceCode: deviceInfo.deviceCode })
     if (data) {
-      // 格式化时间，确保显示为 YYYY-MM-DD HH:mm:ss 格式
+      // 格式化时间，确保显示为 yyyy-MM-dd HH:mm:ss 格式
       const reportTime = data.reportTime;
-      updateTime.value = reportTime ? reportTime.replace('T', ' ') : new Date().toLocaleString('zh-CN')
+      if (reportTime) {
+        updateTime.value = reportTime.includes('T') ? reportTime.replace('T', ' ') : reportTime;
+      } else {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        updateTime.value = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      }
       
       const dataMap = data.data || {}
       realtimeData.value = productAttributes.value.map(attr => {
@@ -470,8 +481,11 @@ const queryHistory = async () => {
       const dataMap = new Map()
       
       data.forEach(item => {
-        // 确保时间格式没有T
-        const time = item.ctime ? item.ctime.replace('T', ' ') : ''
+        // 确保时间格式为 yyyy-MM-dd HH:mm:ss
+        let time = '';
+        if (item.ctime) {
+          time = item.ctime.includes('T') ? item.ctime.replace('T', ' ') : item.ctime;
+        }
         if (!dataMap.has(time)) {
           dataMap.set(time, { reportTime: time })
         }

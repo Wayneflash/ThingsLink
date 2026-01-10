@@ -19,7 +19,6 @@
 
     <!-- 产品列表表格 -->
     <el-card>
-      <div style="margin-bottom: 10px; color: #999;">Debug: 产品数量 = {{ products.length }}</div>
       <el-table :data="products" border stripe>
         <el-table-column prop="id" label="产品ID" width="80" />
         <el-table-column prop="productName" label="产品名称" />

@@ -106,7 +106,7 @@
                   <el-icon><User /></el-icon>
                   个人资料
                 </el-dropdown-item>
-                <el-dropdown-item command="settings">
+                <el-dropdown-item command="system-settings">
                   <el-icon><Setting /></el-icon>
                   系统设置
                 </el-dropdown-item>
@@ -151,7 +151,8 @@ import {
   FolderOpened,
   TrendCharts,
   BellFilled,
-  Warning
+  Warning,
+  Tools
 } from '@element-plus/icons-vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
 
@@ -180,7 +181,8 @@ const iconMap = {
   BellFilled,
   Warning,
   Setting,
-  User
+  User,
+  Tools
 }
 
 // 获取图标组件
@@ -209,7 +211,8 @@ const pageTitleMap = {
   '/groups': '设备分组',
   '/users': '用户管理',
   '/roles': '角色管理',
-  '/system': '系统管理'
+  '/system': '系统管理',
+  '/profile': '个人资料'
 }
 
 // 动态页面标题
@@ -251,10 +254,23 @@ const loadUserInfo = () => {
 const handleCommand = async (command) => {
   switch (command) {
     case 'profile':
-      ElMessage.info('个人资料功能开发中...')
+      router.push('/profile')
       break
-    case 'settings':
-      ElMessage.info('系统设置功能开发中...')
+    case 'system-settings':
+      // 检查是否为admin
+      const userInfoStr = localStorage.getItem('userInfo')
+      if (userInfoStr) {
+        try {
+          const userInfo = JSON.parse(userInfoStr)
+          if (userInfo.username === 'admin') {
+            router.push('/system-settings')
+          } else {
+            ElMessage.error('无权限访问系统设置页面')
+          }
+        } catch (e) {
+          console.error('解析用户信息失败:', e)
+        }
+      }
       break
     case 'logout':
       await handleLogout()

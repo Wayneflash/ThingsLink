@@ -180,24 +180,38 @@
               处理人
               <span class="required">*</span>
             </label>
-            <el-select 
-              v-model="configModal.form.notifyUser" 
+            <el-select
+              v-model="configModal.form.notifyUser"
               placeholder="请选择处理人"
               class="field-select-full"
             >
-              <el-option 
-                v-for="user in users" 
-                :key="user.id" 
-                :label="user.realName || user.username" 
-                :value="user.id" 
+              <el-option
+                v-for="user in users"
+                :key="user.id"
+                :label="user.realName || user.username"
+                :value="user.id"
               />
             </el-select>
           </div>
           <div class="form-field">
-            <label class="field-label">抩警堆叠</label>
+            <label class="field-label">报警堆叠</label>
             <div class="switch-field">
               <el-switch v-model="configModal.form.stackMode" />
-              <span class="switch-label">开启后，恢复前不会重复抩警</span>
+              <span class="switch-label">开启后，恢复前不会重复报警</span>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="field-label">邮件通知</label>
+            <div class="switch-field">
+              <el-switch v-model="configModal.form.mailEnabled" />
+              <span class="switch-label">开启后，报警时将发送邮件通知处理人</span>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="field-label">短信通知</label>
+            <div class="switch-field">
+              <el-switch v-model="configModal.form.smsEnabled" />
+              <span class="switch-label">开启后，报警时将发送短信通知处理人（暂未实现）</span>
             </div>
           </div>
         </div>
@@ -250,7 +264,7 @@
                 <span class="field-unit">{{ row.unit || '-' }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="抩警级别" width="140">
+            <el-table-column label="报警级别" width="140">
               <template #default="{ row }">
                 <el-select 
                   v-model="configModal.form.metrics[row.addr].level" 
@@ -381,25 +395,39 @@
               处理人
               <span class="required">*</span>
             </label>
-            <el-select 
-              v-model="batchModal.form.notifyUser" 
+            <el-select
+              v-model="batchModal.form.notifyUser"
               placeholder="请选择处理人"
               class="field-select-full"
             >
-              <el-option 
-                v-for="user in users" 
-                :key="user.id" 
-                :label="user.realName || user.username" 
-                :value="user.id" 
+              <el-option
+                v-for="user in users"
+                :key="user.id"
+                :label="user.realName || user.username"
+                :value="user.id"
               />
             </el-select>
           </div>
           
           <div class="form-field">
-            <label class="field-label">抩警堆叠</label>
+            <label class="field-label">报警堆叠</label>
             <div class="switch-field">
               <el-switch v-model="batchModal.form.stackMode" />
-              <span class="switch-label">开启后，恢复前不会重复抩警</span>
+              <span class="switch-label">开启后，恢复前不会重复报警</span>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="field-label">邮件通知</label>
+            <div class="switch-field">
+              <el-switch v-model="batchModal.form.mailEnabled" />
+              <span class="switch-label">开启后，报警时将发送邮件通知处理人</span>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="field-label">短信通知</label>
+            <div class="switch-field">
+              <el-switch v-model="batchModal.form.smsEnabled" />
+              <span class="switch-label">开启后，报警时将发送短信通知处理人（暂未实现）</span>
             </div>
           </div>
 
@@ -454,7 +482,7 @@
                   <span class="field-unit">{{ row.unit || '-' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="抩警级别" width="140">
+              <el-table-column label="报警级别" width="140">
                 <template #default="{ row }">
                   <el-select 
                     v-model="batchModal.form.metrics[row.addr].level" 
@@ -533,7 +561,9 @@ const configModal = reactive({
     level: 'warning',
     conditions: [{ metric: '', operator: '>', threshold: 0 }],
     notifyUser: null,
-    stackMode: true
+    stackMode: true,
+    mailEnabled: false,
+    smsEnabled: false
   }
 })
 
@@ -550,7 +580,9 @@ const batchModal = reactive({
     level: 'warning',
     conditions: [{ metric: '', operator: '>', threshold: 0 }],
     notifyUser: null,
-    stackMode: true
+    stackMode: true,
+    mailEnabled: false,
+    smsEnabled: false
   }
 })
 
@@ -722,6 +754,8 @@ const openConfigModal = async (device) => {
     configModal.form = {
       notifyUser: device.alarmConfigObj.notifyUser || null,
       stackMode: device.alarmConfigObj.stackMode !== false,
+      mailEnabled: device.alarmConfigObj.mailEnabled || false,
+      smsEnabled: device.alarmConfigObj.smsEnabled || false,
       metrics: metricsMap
     }
   } else if (device.alarmConfigObj && device.alarmConfigObj.conditions) {
@@ -742,6 +776,8 @@ const openConfigModal = async (device) => {
         ? device.alarmConfigObj.notifyUsers[0]
         : null,
       stackMode: device.alarmConfigObj.stackMode !== false,
+      mailEnabled: device.alarmConfigObj.mailEnabled || false,
+      smsEnabled: device.alarmConfigObj.smsEnabled || false,
       metrics: metricsMap
     }
   } else {
@@ -749,6 +785,8 @@ const openConfigModal = async (device) => {
     configModal.form = {
       notifyUser: null,
       stackMode: true,
+      mailEnabled: false,
+      smsEnabled: false,
       metrics: metricsMap
     }
   }
@@ -763,7 +801,7 @@ const saveConfig = async () => {
     ([_, config]) => config.enabled
   )
   
-  // 如果没有启用任何监控属性，表示要撤销该设备的所有抩警配置
+  // 如果没有启用任何监控属性，表示要撤销该设备的所有报警配置
   if (enabledMetrics.length === 0) {
     try {
       await configureAlarm({
@@ -776,7 +814,7 @@ const saveConfig = async () => {
         enabled: false  // 全部关闭时设置为false
       })
       
-      ElMessage.success('已撤销该设备的所有抩警配置')
+      ElMessage.success('已撤销该设备的所有报警配置')
       configModal.visible = false
       loadDevices()
       return
@@ -800,7 +838,7 @@ const saveConfig = async () => {
       return
     }
     if (!config.level) {
-      ElMessage.warning(`监控属性 "${getMetricName(metric)}" 未设置抩警级别`)
+      ElMessage.warning(`监控属性 "${getMetricName(metric)}" 未设置报警级别`)
       return
     }
   }
@@ -811,6 +849,8 @@ const saveConfig = async () => {
       alarmConfig: {
         notifyUser: configModal.form.notifyUser,
         stackMode: configModal.form.stackMode,
+        mailEnabled: configModal.form.mailEnabled,
+        smsEnabled: configModal.form.smsEnabled,
         metrics: configModal.form.metrics
       },
       enabled: true
@@ -831,7 +871,7 @@ const getMetricName = (addr) => {
   return attr ? attr.attrName : addr
 }
 
-// 切换抩警启用状态（已移除此功能）
+// 切换报警启用状态（已移除此功能）
 
 // 打开批量配置弹窗
 // 打开批量配置弹窗
@@ -846,6 +886,8 @@ const openBatchModal = () => {
   batchModal.form = {
     notifyUser: null,
     stackMode: true,
+    mailEnabled: false,
+    smsEnabled: false,
     metrics: {}
   }
 }
@@ -939,11 +981,11 @@ const saveBatchConfig = async () => {
     ([_, config]) => config.enabled
   )
   
-  // 如果没有启用任何监控属性，表示要撤销这些设备的所有抩警配置
+  // 如果没有启用任何监控属性，表示要撤销这些设备的所有报警配置
   if (enabledMetrics.length === 0) {
     try {
       await ElMessageBox.confirm(
-        `确认撤销 ${batchModal.selectedDeviceIds.length} 台设备的所有抩警配置？`,
+        `确认撤销 ${batchModal.selectedDeviceIds.length} 台设备的所有报警配置？`,
         '确认操作',
         { type: 'warning' }
       )
@@ -958,7 +1000,7 @@ const saveBatchConfig = async () => {
         enabled: false  // 全部关闭时设置为false
       })
       
-      ElMessage.success(`已撤销 ${batchModal.selectedDeviceIds.length} 台设备的抩警配置`)
+      ElMessage.success(`已撤销 ${batchModal.selectedDeviceIds.length} 台设备的报警配置`)
       batchModal.visible = false
       loadDevices()
       return
@@ -986,14 +1028,14 @@ const saveBatchConfig = async () => {
     }
     if (!config.level) {
       const attrName = batchDeviceAttributes.value.find(a => a.addr === metric)?.attrName || metric
-      ElMessage.warning(`监控属性 "${attrName}" 未设置抩警级别`)
+      ElMessage.warning(`监控属性 "${attrName}" 未设置报警级别`)
       return
     }
   }
   
   try {
     await ElMessageBox.confirm(
-      `确认为 ${batchModal.selectedDeviceIds.length} 台设备批量配置抩警阈值？\n\n注意：已配置设备的原有阈值将被覆盖！`,
+      `确认为 ${batchModal.selectedDeviceIds.length} 台设备批量配置报警阈值？\n\n注意：已配置设备的原有阈值将被覆盖！`,
       '确认操作',
       { type: 'warning' }
     )
@@ -1003,6 +1045,8 @@ const saveBatchConfig = async () => {
       alarmConfig: {
         notifyUser: batchModal.form.notifyUser,
         stackMode: batchModal.form.stackMode,
+        mailEnabled: batchModal.form.mailEnabled,
+        smsEnabled: batchModal.form.smsEnabled,
         metrics: batchModal.form.metrics
       },
       enabled: true

@@ -532,6 +532,29 @@
    - 任何Dialog组件
 ```
 
+### 13. 时间格式统一规则 ⚠️⚠️⚠️
+```
+⚠️ 所有时间格式必须统一使用以下格式，禁止使用ISO 8601格式（带T的格式）：
+   格式：yyyy-MM-dd HH:mm:ss
+   示例：2026-01-10 08:42:49
+⚠️ 此规则适用于：
+   - 后端Java代码：使用 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+   - 前端JavaScript：使用 dayjs().format("YYYY-MM-DD HH:mm:ss")
+   - 数据库查询结果：格式化时间字段时使用上述格式
+   - API接口返回：所有时间字段统一使用此格式
+   - 前端显示：所有时间显示统一使用此格式
+⚠️ 禁止使用的时间格式：
+   - ❌ ISO 8601格式：2026-01-10T08:42:49
+   - ❌ ISO 8601带时区：2026-01-10T08:42:49+08:00
+   - ❌ 其他非标准格式
+⚠️ 后端Java格式化示例：
+   DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+   String formattedTime = localDateTime.format(formatter);
+⚠️ 前端JavaScript格式化示例：
+   import dayjs from 'dayjs'
+   const formattedTime = dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+```
+
 ---
 
 ## 📚 参考文件

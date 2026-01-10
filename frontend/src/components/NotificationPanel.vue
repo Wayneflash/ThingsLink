@@ -449,12 +449,12 @@ defineExpose({
 .notification-message {
   color: #6e6e73;
   font-size: 13px;
-  line-height: 1.5;
-  margin-bottom: 6px;
+  line-height: 1.4;
+  margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
 }
 

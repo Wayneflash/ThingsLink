@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import MainLayout from '../layouts/MainLayout.vue'
 
 const routes = [
@@ -84,6 +85,18 @@ const routes = [
         meta: { title: '系统管理' }
       },
       {
+        path: 'system-settings',
+        name: 'SystemSettings',
+        component: () => import('../views/SystemSettings.vue'),
+        meta: { title: '系统设置', adminOnly: true }
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: () => import('../views/Profile.vue'),
+        meta: { title: '个人资料' }
+      },
+      {
         path: 'users',
         name: 'Users',
         component: () => import('../views/UserManagement.vue'),
@@ -131,6 +144,24 @@ router.beforeEach((to, from, next) => {
   if (to.meta.noAuth) {
     next()
     return
+  }
+  
+  // admin权限检查
+  if (to.meta.adminOnly) {
+    const userInfoStr = localStorage.getItem('userInfo')
+    if (userInfoStr) {
+      try {
+        const userInfo = JSON.parse(userInfoStr)
+        if (userInfo.username !== 'admin') {
+          // 非admin用户访问adminOnly页面，重定向到首页
+          ElMessage.error('无权限访问此页面')
+          next('/overview')
+          return
+        }
+      } catch (e) {
+        console.error('解析用户信息失败:', e)
+      }
+    }
   }
   
   // 登录页逻辑

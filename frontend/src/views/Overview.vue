@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard-container">
-    <!-- 统计卡片区域 - 4个核心指标 -->
+    <!-- 统计卡片区域 - 6个核心指标 -->
     <div class="stats-cards">
       <!-- 设备总数 -->
       <div class="stat-card stat-card-primary" @click="goToDevices">
@@ -87,6 +87,46 @@
           </div>
         </div>
       </div>
+
+      <!-- 今日报警 -->
+      <div class="stat-card stat-card-danger">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #f56c6c 0%, #ff8a80 100%);">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z" fill="white"/>
+            </svg>
+          </div>
+          <div class="stat-badge" v-if="stats.unhandledAlarmCount > 0">
+            {{ stats.unhandledAlarmCount }}
+          </div>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">今日报警</div>
+          <div class="stat-value">{{ formatNumber(stats.todayAlarmCount || 0) }}</div>
+          <div class="stat-detail">
+            <span class="critical">严重 {{ stats.todayCriticalCount || 0 }}</span>
+            <span class="warning">警告 {{ stats.todayWarningCount || 0 }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 未处理报警 -->
+      <div class="stat-card stat-card-warning-alt">
+        <div class="stat-icon-wrapper">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" fill="white"/>
+            </svg>
+          </div>
+        </div>
+        <div class="stat-info">
+          <div class="stat-label">未处理</div>
+          <div class="stat-value">{{ formatNumber(stats.unhandledAlarmCount || 0) }}</div>
+          <div class="stat-detail">
+            <span style="color: #999;">待处理报警</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 图表区域 - 第一行：数据趋势和产品分布 -->
@@ -164,8 +204,51 @@
       </div>
     </div>
 
-    <!-- 底部区域：最近活跃设备 -->
+
+    <!-- 底部区域：最近报警和最近活跃设备 -->
     <div class="bottom-row">
+      <!-- 最近报警 -->
+      <div class="info-card">
+        <div class="card-header">
+          <div class="card-title-wrapper">
+            <span class="card-icon">🔔</span>
+            <span class="card-title">最近报警</span>
+          </div>
+          <el-button type="text" @click="goToAlarms">查看全部 →</el-button>
+        </div>
+        <div class="alarm-list">
+          <div v-for="alarm in recentAlarms" :key="alarm.id" class="alarm-item" :class="`alarm-level-${alarm.alarmLevel}`" @click="goToAlarmDetail(alarm.id)">
+            <div class="alarm-icon-wrapper">
+              <div class="alarm-icon">
+                <svg v-if="alarm.alarmLevel === 'critical'" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" fill="currentColor"/>
+                </svg>
+                <svg v-else-if="alarm.alarmLevel === 'warning'" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" fill="currentColor"/>
+                </svg>
+                <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/>
+                </svg>
+              </div>
+            </div>
+            <div class="alarm-content">
+              <div class="alarm-title">{{ alarm.deviceName || alarm.deviceCode }}</div>
+              <div class="alarm-desc">{{ alarm.alarmMessage }}</div>
+              <div class="alarm-time">{{ formatTime(alarm.triggerTime) }}</div>
+            </div>
+            <div class="alarm-status">
+              <el-tag :type="alarm.status === 0 ? 'warning' : 'success'" size="small">
+                {{ alarm.status === 0 ? '未处理' : '已处理' }}
+              </el-tag>
+            </div>
+          </div>
+          <div v-if="recentAlarms.length === 0" class="empty-state">
+            <span style="font-size: 48px; opacity: 0.3;">🔔</span>
+            <p>暂无报警数据</p>
+          </div>
+        </div>
+      </div>
+
       <!-- 最近活跃设备 -->
       <div class="info-card">
         <div class="card-header">
@@ -231,7 +314,10 @@ const stats = ref({
   dataTrend: 0,
   productDistribution: [],
   recentDevices: [],
-  productCount: 0
+  productCount: 0,
+  todayAlarmCount: 0,
+  todayCriticalCount: 0,
+  todayWarningCount: 0
 })
 
 // 图表相关
@@ -253,7 +339,7 @@ const timeRange = ref('24h')
 // 分组统计
 const groupStats = ref([])
 
-// 最近告警
+// 最近报警
 const recentAlarms = ref([])
 
 // 刷新定时器
@@ -289,19 +375,29 @@ const loadStatistics = async () => {
         return device
       })
       
+      // 获取报警统计数据
+      const alarmStats = await loadAlarmStatistics()
+      
       stats.value = {
         totalDevices: data.totalDevices || 0,
         onlineDevices: data.onlineDevices || 0,
         offlineDevices: data.offlineDevices || 0,
         todayDataCount: data.todayDataCount || 0,
         yesterdayDataCount: 0, // 后端暂无此字段，设为0
-        alarmCount: 0, // 后端返回0，告警功能待实现
+        alarmCount: alarmStats.total || 0,
+        unhandledAlarmCount: alarmStats.unhandled || 0,
+        criticalCount: alarmStats.critical || 0,
+        warningCount: alarmStats.warning || 0,
+        infoCount: alarmStats.info || 0,
         onlineRate: onlineRate,
         deviceTrend: 0, // 后端暂无此字段
         dataTrend: 0, // 需要计算昨日数据后才能得出
         productDistribution: data.productDistribution || [],
         recentDevices: recentDevices,
-        productCount: data.productCount || 0
+        productCount: data.productCount || 0,
+        todayAlarmCount: alarmStats.todayAlarmCount || 0,
+        todayCriticalCount: alarmStats.todayCriticalCount || 0,
+        todayWarningCount: alarmStats.todayWarningCount || 0
       }
     }
   } catch (error) {
@@ -560,10 +656,59 @@ const loadGroupStats = async () => {
   }
 }
 
-// 加载最近告警（暂时禁用）
+// 加载报警统计数据
+const loadAlarmStatistics = async () => {
+  try {
+    const res = await axios.post('/alarm-log/statistics')
+    console.log('报警统计数据:', res)
+    
+    // 加载今日报警数据
+    const today = new Date()
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0)
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+    
+    const todayRes = await axios.post('/alarm-log/list', {
+      page: 1,
+      pageSize: 10000,
+      startTime: formatDateTime(todayStart),
+      endTime: formatDateTime(todayEnd)
+    })
+    
+    const todayAlarms = todayRes?.list || []
+    const todayCriticalCount = todayAlarms.filter(a => a.alarmLevel === 'critical').length
+    const todayWarningCount = todayAlarms.filter(a => a.alarmLevel === 'warning').length
+    
+    return {
+      total: res?.total || 0,
+      unhandled: res?.unhandled || 0,
+      critical: res?.critical || 0,
+      warning: res?.warning || 0,
+      info: res?.info || 0,
+      todayAlarmCount: todayAlarms.length,
+      todayCriticalCount: todayCriticalCount,
+      todayWarningCount: todayWarningCount
+    }
+  } catch (error) {
+    console.error('加载报警统计失败:', error)
+    return { total: 0, unhandled: 0, critical: 0, warning: 0, info: 0, todayAlarmCount: 0, todayCriticalCount: 0, todayWarningCount: 0 }
+  }
+}
+
+
+// 加载最近报警
 const loadRecentAlarms = async () => {
-  // 告警功能暂未实现，隐藏该模块
-  recentAlarms.value = []
+  try {
+    const res = await axios.post('/alarm-log/list', {
+      page: 1,
+      pageSize: 5,
+      status: 0 // 只显示未处理的
+    })
+    console.log('最近报警数据:', res)
+    recentAlarms.value = res?.list || []
+  } catch (error) {
+    console.error('加载最近报警失败:', error)
+    recentAlarms.value = []
+  }
 }
 
 // 获取分组百分比
@@ -593,18 +738,20 @@ const formatPercent = (num) => {
   return num > 0 ? `+${num}%` : `${num}%`
 }
 
-// 格式化时间
+// 格式化时间 - 统一使用 yyyy-MM-dd HH:mm:ss 格式
 const formatTime = (time) => {
   if (!time) return '-'
-  const now = new Date()
-  const target = new Date(time)
-  const diff = Math.floor((now - target) / 1000)
+  const date = new Date(time)
+  if (isNaN(date.getTime())) return '-'
   
-  if (diff < 60) return '刚刚'
-  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`
-  if (diff < 604800) return `${Math.floor(diff / 86400)}天前`
-  return target.toLocaleDateString()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
 // 导航方法
@@ -618,6 +765,13 @@ const goToAlarms = () => {
 
 const goToDeviceDetail = (deviceCode) => {
   router.push(`/devices/${deviceCode}`)
+}
+
+const goToAlarmDetail = (alarmId) => {
+  router.push({
+    path: '/alarms',
+    query: { alarmId }
+  })
 }
 
 // 加载所有数据
@@ -676,8 +830,8 @@ onBeforeUnmount(() => {
 /* 统计卡片 */
 .stats-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
   margin-bottom: 24px;
 }
 
@@ -804,6 +958,16 @@ onBeforeUnmount(() => {
   font-weight: 500;
 }
 
+.stat-detail .critical {
+  color: #f56c6c;
+  font-weight: 500;
+}
+
+.stat-detail .warning {
+  color: #e6a23c;
+  font-weight: 500;
+}
+
 /* 图表区域 */
 .charts-row {
   display: grid;
@@ -817,6 +981,10 @@ onBeforeUnmount(() => {
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.chart-card-full {
+  grid-column: 1 / -1;
 }
 
 .chart-header {
@@ -911,7 +1079,7 @@ onBeforeUnmount(() => {
 /* 底部区域 */
 .bottom-row {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
 
@@ -1105,12 +1273,26 @@ onBeforeUnmount(() => {
 }
 
 /* 响应式 */
-@media (max-width: 1400px) {
+@media (max-width: 1600px) {
+  .stats-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1200px) {
   .stats-cards {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+@media (max-width: 1400px) {
   
-  .charts-row,
+  .charts-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1200px) {
   .bottom-row {
     grid-template-columns: 1fr;
   }
@@ -1122,6 +1304,10 @@ onBeforeUnmount(() => {
   }
   
   .stats-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .bottom-row {
     grid-template-columns: 1fr;
   }
   
