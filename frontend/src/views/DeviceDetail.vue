@@ -878,12 +878,43 @@ const goBack = () => {
 // 复制到剪贴板
 const copyToClipboard = async (text, label) => {
   try {
-    await navigator.clipboard.writeText(text)
-    ElMessage({
-      message: `${label}已复制到剪贴板`,
-      type: 'success',
-      duration: 2000
-    })
+    // 方法1：优先使用 Clipboard API（HTTPS 或 localhost）
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text)
+      ElMessage({
+        message: `${label}已复制到剪贴板`,
+        type: 'success',
+        duration: 2000
+      })
+      return
+    }
+    
+    // 方法2：降级方案 - 使用传统的 execCommand（兼容 HTTP 环境）
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-999999px'
+    textArea.style.top = '-999999px'
+    document.body.appendChild(textArea)
+    textArea.select()
+    
+    try {
+      const successful = document.execCommand('copy')
+      document.body.removeChild(textArea)
+      
+      if (successful) {
+        ElMessage({
+          message: `${label}已复制到剪贴板`,
+          type: 'success',
+          duration: 2000
+        })
+      } else {
+        throw new Error('execCommand failed')
+      }
+    } catch (err) {
+      document.body.removeChild(textArea)
+      throw err
+    }
   } catch (err) {
     console.error('复制失败:', err)
     ElMessage.error('复制失败，请手动选择复制')
