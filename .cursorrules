@@ -60,31 +60,18 @@
 - **动画**：使用 `cubic-bezier(0.25, 0.46, 0.45, 0.94)` 缓动函数，过渡时间 `0.2-0.3s`
 
 #### 物联网平台专业规范
-- **简洁清晰**：界面布局简洁，信息层次分明，避免视觉噪音
-- **专业可靠**：配色和样式体现工业物联网的专业性和可靠性
-- **响应式设计**：适配不同屏幕尺寸，确保在各种设备上良好显示
-- **交互反馈**：所有操作必须有明确的视觉反馈（按钮点击、表单提交、数据加载）
-
-#### 禁止行为
-- ❌ 使用过于鲜艳或刺眼的颜色
-- ❌ 使用过于复杂的动画效果
-- ❌ 间距不统一，布局混乱
-- ❌ 字体大小、颜色使用不规范
+- 界面布局简洁，信息层次分明，避免视觉噪音
+- 配色和样式体现工业物联网的专业性和可靠性
+- 适配不同屏幕尺寸，确保在各种设备上良好显示
 
 ---
 
 ### 3. 原型开发原则 ⚠️⚠️⚠️
 
 **前端开发必须严格按照原型设计实现：**
-- **遵循原型**：所有页面布局、交互、样式必须严格按照提供的原型图实现
-- **保持一致性**：同一功能在不同页面的实现方式保持一致
-- **专业美观**：界面简洁清晰，体现物联网平台的专业性和可靠性
-- **交互反馈**：所有操作必须有明确的视觉反馈（按钮点击、表单提交、数据加载）
-
-**禁止行为：**
-- ❌ 不按原型随意修改布局和样式
-- ❌ 不同页面实现方式不一致
-- ❌ 操作后无视觉反馈
+- 所有页面布局、交互、样式必须严格按照提供的原型图实现
+- 同一功能在不同页面的实现方式保持一致
+- 所有操作必须有明确的视觉反馈（按钮点击、表单提交、数据加载）
 
 ---
 
@@ -98,12 +85,12 @@
 - **权限继承**：下级分组的数据自动继承上级分组权限
 
 #### 统一权限判断逻辑（所有接口必须一致）
-1. **获取当前用户**：从Token中解析用户信息
-2. **判断超级管理员**：检查用户角色是否为super_admin
-3. **获取权限分组列表**：
+1. 从Token中解析用户信息
+2. 检查用户角色是否为super_admin
+3. 获取权限分组列表：
    - 超级管理员：返回null（表示不过滤）
    - 普通用户：获取用户所属分组ID及所有下级分组ID列表
-4. **应用权限过滤**：使用分组ID列表过滤查询条件
+4. 使用分组ID列表过滤查询条件
 
 #### 权限过滤字段映射（统一规范）
 - **用户表**：使用 `group_id` 字段过滤
@@ -128,14 +115,13 @@
 #### 请求规范
 - 统一使用POST方法（除特殊情况如文件下载）
 - 统一请求头：Authorization: Bearer {token}
-- 统一请求体：JSON格式
-- 统一参数命名：驼峰命名法
+- 统一请求体：JSON格式，参数使用驼峰命名法
+- **统一API路径前缀**：所有后端接口必须使用 `/api/` 前缀
 
 #### 响应规范
 - 统一响应结构：{code, message, data}
 - code: 200表示成功，其他表示失败
 - message: 成功时返回"success"，失败时返回错误信息
-- data: 实际数据，可为null
 
 #### 数据来源规范
 - **禁止前端硬编码任何业务数据**
@@ -144,6 +130,7 @@
 - 产品类型：从后端 `/api/products/list` 获取
 - 设备状态：从后端 `/api/devices/list` 获取
 - 角色类型：从后端 `/api/roles/list` 获取
+- 设备日志：从后端 `/api/device-logs/list` 获取
 
 **禁止行为：**
 - ❌ 前端硬编码菜单、权限数据
@@ -151,6 +138,7 @@
 - ❌ 前端硬编码产品、设备类型
 - ❌ 前端硬编码状态枚举值
 - ❌ 前端硬编码角色类型
+- ❌ 后端接口不使用 `/api/` 前缀
 
 ---
 
@@ -295,7 +283,7 @@
 
 #### 表命名规范
 - 统一使用 `tb_` 前缀
-- 表名使用小写字母和下划线，如：`tb_device`、`tb_alarm_log`
+- 表名使用小写字母和下划线，如：`tb_device`、`tb_alarm_log`、`tb_device_log`
 
 #### 字段命名规范
 - 统一使用小写字母和下划线，如：`device_code`、`create_time`
@@ -331,6 +319,23 @@
   - INDEX `idx_trigger_time` (`trigger_time`)
   - INDEX `idx_status` (`status`)
   - INDEX `idx_device_status_time` (`device_id`, `status`, `trigger_time`)
+
+#### 设备日志表设计
+- **表名**：`tb_device_log`
+- **必填字段**：
+  - `id`：主键，BIGINT AUTO_INCREMENT
+  - `device_id`：设备ID，BIGINT，索引
+  - `device_code`：设备编码，VARCHAR(50)，索引
+  - `log_type`：日志类型（online/offline/command），VARCHAR(20)，索引
+  - `log_detail`：日志详情，TEXT
+  - `create_time`：创建时间，DATETIME，索引
+- **索引设计**：
+  - PRIMARY KEY (`id`)
+  - INDEX `idx_device_id` (`device_id`)
+  - INDEX `idx_device_code` (`device_code`)
+  - INDEX `idx_log_type` (`log_type`)
+  - INDEX `idx_create_time` (`create_time`)
+  - INDEX `idx_device_log_type_time` (`device_id`, `log_type`, `create_time`)
 
 **禁止行为：**
 - ❌ 表名不使用统一前缀
@@ -561,18 +566,20 @@
 
 ### 关键文件位置
 - 数据库初始化：`init.sql`
-- 前端API封装：`frontend/src/api/group.js`
+- 前端API封装：`frontend/src/api/group.js`、`frontend/src/api/deviceLog.js`
 - 前端请求封装：`frontend/src/utils/request.js`
 - 分组组件：`frontend/src/components/GroupSelector.vue`、`GroupTree.vue`
 - UI样式文件：`frontend/src/styles/common.css`、`frontend/src/styles/element-theme.css`
 - 数据权限示例：`backend/src/main/java/com/iot/platform/controller/DeviceController.java`
 - MQTT配置：`backend/src/main/java/com/iot/platform/mqtt/MqttConfig.java`
+- 设备日志：`backend/src/main/java/com/iot/platform/controller/DeviceLogController.java`
 
 ### 参考实现
 - 数据权限实现：参考DeviceController.getDeviceList()方法
 - 分组树实现：参考DeviceGroupController.getGroupTree()方法
 - 前端分组使用：参考GroupSelector.vue组件
 - UI样式参考：参考common.css和element-theme.css中的Apple风格设计
+- 设备日志实现：参考DeviceLogController.pageQuery()方法
 
 ---
 

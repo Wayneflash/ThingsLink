@@ -302,173 +302,49 @@ mqtt:
 
 ## 部署说明
 
-### 前置准备（全新服务器）
+### 快速部署
 
-如果是全新服务器，需要先安装 Docker 和 Docker Compose：
-
+**Linux 服务器（推荐）：**
 ```bash
-# 1. 给安装脚本添加执行权限
-chmod +x install-docker.sh
-
-# 2. 执行安装脚本
-sudo ./install-docker.sh
-
-# 3. 使权限生效（重要！）
-newgrp docker
-# 或者注销后重新登录
-```
-
-安装脚本会自动检测操作系统并安装：
-- ✅ Docker Engine
-- ✅ Docker Compose
-- ✅ 配置当前用户使用 Docker（无需 sudo）
-
-### 配置 Docker 镜像加速器（国内服务器推荐）
-
-如果服务器在国内，建议配置 Docker 镜像加速器以加快镜像下载速度：
-
-```bash
-# 1. 给镜像加速配置脚本添加执行权限
-chmod +x setup-docker-mirror.sh
-
-# 2. 执行配置脚本（需要 sudo 权限）
-sudo ./setup-docker-mirror.sh
-```
-
-配置脚本会自动：
-- ✅ 备份现有 Docker 配置
-- ✅ 配置多个镜像加速器（DaoCloud、1Panel、DockerHub.icu 等）
-- ✅ 重启 Docker 服务
-- ✅ 验证配置是否生效
-
-> **详细配置方法**: 请查看 [DOCKER_MIRROR_GUIDE.md](./DOCKER_MIRROR_GUIDE.md)
-
-### 🚀 一键部署（推荐）
-
-本平台提供一键部署脚本，用户无需任何操作即可完成部署。
-
-#### 方法一：使用 Gitee 克隆（国内推荐）
-
-```bash
-# 1. 从 Gitee 克隆项目代码（国内速度最快）
+# 克隆代码
 git clone https://gitee.com/WayneFlash/things-link.git
-
-# 2. 进入项目目录
 cd things-link
 
-# 3. 给脚本添加执行权限
-chmod +x deploy.sh
-
-# 4. 执行一键部署脚本
-./deploy.sh
-```
-
-#### 方法二：使用 GitHub 克隆
-
-```bash
-# 1. 克隆项目代码到服务器
-git clone https://github.com/Wayneflash/ThingsLink.git
-
-# 2. 进入项目目录
-cd ThingsLink
-
-# 3. 给脚本添加执行权限
-chmod +x deploy.sh
-
-# 4. 执行一键部署脚本
-./deploy.sh
-```
-
-#### 方法三：使用 FastGit 镜像
-
-```bash
-# 1. 从 FastGit 镜像克隆
-git clone https://hub.fastgit.xyz/Wayneflash/ThingsLink.git
-
-# 2. 进入项目目录
-cd ThingsLink
-
-# 3. 给脚本添加执行权限
-chmod +x deploy.sh
-
-# 4. 执行一键部署脚本
-./deploy.sh
-```
-
-#### 方法四：直接下载压缩包
-
-如果不需要 Git，也可以直接下载压缩包：
-
-```bash
-# 1. 从 Gitee 下载项目压缩包
-wget https://gitee.com/WayneFlash/things-link/archive/main.zip
-
-# 2. 解压
-unzip main.zip
-
-# 3. 进入项目目录
-cd things-link
-
-# 4. 执行部署
+# 一键部署
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
-部署脚本会自动完成以下操作：
-- ✅ 检查 Docker 和 Docker Compose 是否已安装
-- ✅ 检查并清理端口占用
-- ✅ 停止并删除旧容器
-- ✅ 创建必要的目录（mysql-data, emqx-data, emqx-log）
-- ✅ 启动所有服务（MySQL + Redis + EMQX）
-- ✅ 初始化数据库
-- ✅ 显示服务访问地址
-
-**详细部署指南**: 请查看 [DEPLOY.md](./DEPLOY.md)
-
-### Docker 部署（手动）
-
+**Windows 开发环境：**
 ```bash
-# 构建后端镜像
+# 启动所有服务（MySQL + Redis + EMQX）
+start-all-services.bat
+
+# 后端启动（需要先编译）
 cd backend
-docker build -t iot-platform-backend .
+mvn spring-boot:run
 
-# 构建前端镜像
+# 前端启动（新终端）
 cd frontend
-docker build -t iot-platform-frontend .
-
-# 启动所有服务
-docker-compose up -d
+npm install
+npm run dev
 ```
 
-### Nginx 配置
+### 详细部署文档
 
-```nginx
-server {
-    listen 80;
-    server_name localhost;
+- **完整部署指南**: [DEPLOY.md](./DEPLOY.md) - 包含详细的部署步骤、配置说明、故障排查
+- **Docker 镜像加速**: [DOCKER_MIRROR_GUIDE.md](./DOCKER_MIRROR_GUIDE.md) - 国内服务器镜像加速配置
 
-    # 前端静态资源
-    location / {
-        root /usr/share/nginx/html;
-        try_files $uri $uri/ /index.html;
-    }
+### 常用脚本
 
-    # 后端 API 代理
-    location /api {
-        proxy_pass http://backend:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-
-    # MQTT WebSocket 代理
-    location /mqtt {
-        proxy_pass http://emqx:8083;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
-```
+| 脚本 | 说明 |
+|------|------|
+| `deploy.sh` | Linux 一键部署脚本 |
+| `start-all-services.bat` | Windows 启动所有服务 |
+| `backup-database.bat` | 数据库备份 |
+| `restore-database.bat` | 数据库恢复 |
+| `git-pull.bat` | Git 拉取代码 |
+| `git-push.bat` | Git 推送代码 |
 
 ## 开发指南
 

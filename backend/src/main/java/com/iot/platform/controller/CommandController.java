@@ -3,8 +3,11 @@ package com.iot.platform.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.iot.platform.common.Result;
 import com.iot.platform.entity.Command;
+import com.iot.platform.entity.Device;
 import com.iot.platform.mapper.CommandMapper;
 import com.iot.platform.mqtt.MqttPublisher;
+import com.iot.platform.service.DeviceLogService;
+import com.iot.platform.service.DeviceService;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -31,6 +34,12 @@ public class CommandController {
     
     @Resource
     private CommandMapper commandMapper;
+    
+    @Resource
+    private DeviceService deviceService;
+    
+    @Resource
+    private DeviceLogService deviceLogService;
     
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     
@@ -68,11 +77,18 @@ public class CommandController {
     @PostMapping("/send")
     public Result<Map<String, Object>> sendCommand(@RequestBody SendCommandRequest request) {
         try {
-            log.info("接收到命令下发请求 - 设备: {}, 命令数量: {}", 
+            log.info("========== 命令下发接口被调用 ==========");
+            log.info("接收到命令下发请求 - 设备: {}, 命令数量: {}",
                     request.getDeviceCode(), request.getCommands() != null ? request.getCommands().size() : 0);
             
             if (request.getCommands() == null || request.getCommands().isEmpty()) {
                 return Result.error("命令列表不能为空");
+            }
+            
+            // 获取设备信息
+            Device device = deviceService.getByDeviceCode(request.getDeviceCode());
+            if (device == null) {
+                return Result.error("设备不存在");
             }
             
             // 生成命令唯一ID
@@ -83,6 +99,37 @@ public class CommandController {
                 mqttPublisher.sendCommand(request.getDeviceCode(), cmd.getAddr(), cmd.getAddrv());
             }
             
+            // 记录命令下发日志
+            try {
+                log.info("========== 开始记录命令下发日志 ==========");
+                // 获取第一个命令的名称
+                CommandItem firstCmd = request.getCommands().get(0);
+                String commandAddr = firstCmd.getAddr();
+                log.info("命令地址: {}", commandAddr);
+                
+                // 根据命令地址和命令值查询命令名称
+                String commandValue = firstCmd.getAddrv();
+                LambdaQueryWrapper<Command> commandQuery = new LambdaQueryWrapper<>();
+                commandQuery.eq(Command::getProductId, device.getProductId())
+                          .eq(Command::getAddr, commandAddr)
+                          .eq(Command::getCommandValue, commandValue);
+                Command command = commandMapper.selectOne(commandQuery);
+                String commandName = command != null ? command.getCommandName() : commandAddr;
+                log.info("命令名称: {}", commandName);
+                 
+                com.iot.platform.entity.DeviceLog deviceLog = new com.iot.platform.entity.DeviceLog();
+                deviceLog.setDeviceId(device.getId());
+                deviceLog.setDeviceCode(request.getDeviceCode());
+                deviceLog.setLogType("command");
+                deviceLog.setLogDetail(commandName);
+                deviceLog.setCreateTime(LocalDateTime.now());
+                deviceLogService.save(deviceLog);
+                log.info("========== 命令下发日志记录成功，ID: {} ==========", deviceLog.getId());
+            } catch (Exception e) {
+                log.error("记录设备日志失败", e);
+                e.printStackTrace();
+            }
+            
             // 立即返回下发成功响应
             Map<String, Object> data = new HashMap<>();
             data.put("commandId", commandId);
@@ -91,12 +138,13 @@ public class CommandController {
             data.put("sendTime", LocalDateTime.now().format(FORMATTER));
             data.put("message", "命令已通过MQTT下发到设备，设备收到后会自行执行");
             
-            log.info("命令下发成功 - CommandId: {}, 设备: {}", commandId, request.getDeviceCode());
+            log.info("========== 命令下发成功 - CommandId: {}, 设备: {} ==========", commandId, request.getDeviceCode());
             
             return Result.success(data, "success");
             
         } catch (Exception e) {
-            log.error("命令下发失败 - 设备: {}", request.getDeviceCode(), e);
+            log.error("========== 命令下发失败 - 设备: {} ==========", request.getDeviceCode(), e);
+            e.printStackTrace();
             return Result.error("命令下发失败: " + e.getMessage());
         }
     }

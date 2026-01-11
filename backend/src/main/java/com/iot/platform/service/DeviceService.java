@@ -44,6 +44,9 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
     @Resource
     private ObjectMapper objectMapper;
     
+    @Resource
+    private DeviceLogService deviceLogService;
+    
     private static final String DEVICE_ONLINE_KEY = "device:online:";
     
     /**
@@ -277,7 +280,27 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
             // 如果设备状态是离线，更新为在线
             if (device.getStatus() == 0) {
                 updateOnlineStatus(deviceCode, true);
+                
+                // 记录设备上线日志
+                recordDeviceLog(device.getId(), deviceCode, "online", "设备上线");
             }
+        }
+    }
+    
+    /**
+     * 记录设备日志
+     */
+    private void recordDeviceLog(Long deviceId, String deviceCode, String logType, String logDetail) {
+        try {
+            com.iot.platform.entity.DeviceLog deviceLog = new com.iot.platform.entity.DeviceLog();
+            deviceLog.setDeviceId(deviceId);
+            deviceLog.setDeviceCode(deviceCode);
+            deviceLog.setLogType(logType);
+            deviceLog.setLogDetail(logDetail);
+            deviceLog.setCreateTime(LocalDateTime.now());
+            deviceLogService.save(deviceLog);
+        } catch (Exception e) {
+            log.error("记录设备日志失败 - 设备: {}", deviceCode, e);
         }
     }
     

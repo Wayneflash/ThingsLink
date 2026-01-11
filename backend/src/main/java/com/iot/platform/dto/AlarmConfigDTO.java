@@ -39,6 +39,11 @@ public class AlarmConfigDTO {
     private Map<String, MetricConfig> metrics;
     
     /**
+     * 离线报警配置
+     */
+    private OfflineAlarmConfig offlineAlarm;
+    
+    /**
      * 单个物模型属性的报警配置
      */
     @Data
@@ -57,6 +62,37 @@ public class AlarmConfigDTO {
          * 阈值
          */
         private Double threshold;
+        
+        /**
+         * 报警级别：critical(严重), warning(警告), info(提示)
+         */
+        private String level;
+    }
+    
+    /**
+     * 离线报警配置
+     */
+    @Data
+    public static class OfflineAlarmConfig {
+        /**
+         * 是否启用离线报警
+         */
+        private Boolean enabled;
+        
+        /**
+         * 运算符（固定为 >）
+         */
+        private String operator;
+        
+        /**
+         * 阈值（离线超过多少分钟时报警）
+         */
+        private Integer threshold;
+        
+        /**
+         * 单位（固定为 min）
+         */
+        private String unit;
         
         /**
          * 报警级别：critical(严重), warning(警告), info(提示)

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.iot.platform.mapper.DeviceLogMapper">
+
+    <!-- 插入设备日志 -->
+    <insert id="insert" parameterType="com.iot.platform.entity.DeviceLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO tb_device_log (device_id, device_code, log_type, log_detail, create_time)
+        VALUES (#{deviceId}, #{deviceCode}, #{logType}, #{logDetail}, #{createTime})
+    </insert>
+
+</mapper>

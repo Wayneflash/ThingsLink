@@ -113,6 +113,23 @@ export const getAlarmStatistics = () => {
   })
 }
 
+/**
+ * 获取报警分析数据
+ * @param {Object} params - 查询参数
+ * @param {Array<string>} params.deviceCodes - 设备编码列表
+ * @param {string} params.timeRange - 时间范围：today/yesterday/7days/30days/custom
+ * @param {string} params.startTime - 自定义开始时间（yyyy-MM-dd HH:mm:ss）
+ * @param {string} params.endTime - 自定义结束时间（yyyy-MM-dd HH:mm:ss）
+ * @returns {Promise} 返回报警分析数据
+ */
+export const getAlarmAnalysis = (params) => {
+  return request({
+    url: '/alarm-log/analysis',
+    method: 'post',
+    data: params
+  })
+}
+
 export default {
   configureAlarm,
   getAlarmConfig,
@@ -120,6 +137,7 @@ export default {
   getAlarmLogList,
   handleAlarm,
   getUnhandledCount,
-  getAlarmStatistics
+  getAlarmStatistics,
+  getAlarmAnalysis
 }
 

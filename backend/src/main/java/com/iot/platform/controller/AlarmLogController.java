@@ -7,6 +7,7 @@ import com.iot.platform.common.Result;
 import com.iot.platform.entity.AlarmLog;
 import com.iot.platform.entity.Device;
 import com.iot.platform.entity.User;
+import com.iot.platform.service.AlarmAnalysisService;
 import com.iot.platform.service.AlarmLogService;
 import com.iot.platform.service.DeviceService;
 import com.iot.platform.util.PermissionUtil;
@@ -37,6 +38,9 @@ public class AlarmLogController {
     
     @Resource
     private PermissionUtil permissionUtil;
+    
+    @Resource
+    private AlarmAnalysisService alarmAnalysisService;
     
     /**
      * 分页查询报警日志
@@ -353,6 +357,91 @@ public class AlarmLogController {
             return Result.success(stats);
         } catch (Exception e) {
             log.error("获取报警统计失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取报警分析数据
+     * 支持单设备或多设备分析，用于设备详情页或Dashboard全局统计
+     */
+    @PostMapping("/analysis")
+    public Result<Map<String, Object>> getAlarmAnalysis(@RequestHeader("Authorization") String token,
+                                                         @RequestBody Map<String, Object> params) {
+        try {
+            log.info("========== 开始处理报警分析请求 ==========");
+            
+            // 获取当前用户信息
+            User currentUser = permissionUtil.getCurrentUser(token);
+            if (currentUser == null) {
+                return Result.error("用户未登录");
+            }
+            
+            // 获取查询参数
+            @SuppressWarnings("unchecked")
+            List<String> deviceCodes = (List<String>) params.get("deviceCodes");
+            String timeRange = (String) params.get("timeRange");
+            String startTime = (String) params.get("startTime");
+            String endTime = (String) params.get("endTime");
+            
+            // 默认参数
+            if (timeRange == null || timeRange.isEmpty()) {
+                timeRange = "7days";
+            }
+            
+            // 验证设备编码列表
+            if (deviceCodes == null || deviceCodes.isEmpty()) {
+                return Result.error("设备编码列表不能为空");
+            }
+            
+            log.info("请求参数 - 设备编码: {}, 时间范围: {}, 开始时间: {}, 结束时间: {}",
+                    deviceCodes, timeRange, startTime, endTime);
+            
+            // 数据权限过滤：获取用户有权限查看的设备编码列表
+            List<Long> allowedGroupIds = permissionUtil.getAllowedGroupIds(currentUser);
+            List<String> allowedDeviceCodes = new ArrayList<>();
+            
+            if (allowedGroupIds != null) {
+                // 普通用户：获取权限范围内的所有设备编码
+                LambdaQueryWrapper<Device> deviceQuery = new LambdaQueryWrapper<>();
+                deviceQuery.in(Device::getGroupId, allowedGroupIds);
+                List<Device> allowedDevices = deviceService.list(deviceQuery);
+                for (Device device : allowedDevices) {
+                    allowedDeviceCodes.add(device.getDeviceCode());
+                }
+                
+                // 过滤请求的设备编码，只保留有权限的设备
+                List<String> filteredDeviceCodes = new ArrayList<>();
+                for (String code : deviceCodes) {
+                    if (allowedDeviceCodes.contains(code)) {
+                        filteredDeviceCodes.add(code);
+                    }
+                }
+                
+                // 如果过滤后没有设备权限，返回空结果
+                if (filteredDeviceCodes.isEmpty()) {
+                    log.warn("用户没有访问任何请求设备的权限");
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("trend", new HashMap<>());
+                    result.put("levelDistribution", new HashMap<>());
+                    result.put("efficiency", new HashMap<>());
+                    return Result.success(result);
+                }
+                
+                deviceCodes = filteredDeviceCodes;
+            }
+            // 超级管理员：不过滤设备编码
+            
+            log.info("权限过滤后设备编码: {}", deviceCodes);
+            
+            // 调用服务层获取分析数据
+            Map<String, Object> analysisData = alarmAnalysisService.getAlarmAnalysis(
+                    deviceCodes, timeRange, startTime, endTime);
+            
+            log.info("========== 报警分析请求处理完成 ==========");
+            return Result.success(analysisData);
+        } catch (Exception e) {
+            log.error("获取报警分析数据失败", e);
             return Result.error(e.getMessage());
         }
     }

@@ -104,13 +104,28 @@
       >
         历史数据
       </button>
-      <button 
-        class="tab" 
+      <button
+        class="tab"
         :class="{ active: activeTab === 'command' }"
         @click="switchTab('command')"
       >
         命令控制
       </button>
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'log' }"
+        @click="switchTab('log')"
+      >
+        设备日志
+      </button>
+      <!-- 报警分析Tab暂时隐藏 -->
+      <!-- <button
+        class="tab"
+        :class="{ active: activeTab === 'analysis' }"
+        @click="switchTab('analysis')"
+      >
+        报警分析
+      </button> -->
     </div>
 
     <!-- 实时数据 Tab -->
@@ -223,6 +238,68 @@
           </div>
         </div>
       </div>
+
+    <!-- 设备日志 Tab -->
+    <div class="tab-content" :class="{ active: activeTab === 'log' }">
+      <!-- 日志筛选条件 -->
+      <div class="log-filter-bar">
+        <el-select v-model="logFilter.logType" placeholder="日志类型" clearable style="width: 150px;">
+          <el-option label="全部" value="" />
+          <el-option label="设备上线" value="online" />
+          <el-option label="设备离线" value="offline" />
+          <el-option label="命令下发" value="command" />
+        </el-select>
+        <el-date-picker
+          v-model="logDateRange"
+          type="datetimerange"
+          range-separator="至"
+          start-placeholder="开始时间"
+          end-placeholder="结束时间"
+          format="YYYY-MM-DD HH:mm:ss"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          style="width: 380px;"
+        />
+        <el-button type="primary" @click="loadDeviceLogs">查询</el-button>
+      </div>
+      
+      <!-- 日志列表表格 -->
+      <div class="log-table-wrapper">
+        <el-table :data="deviceLogList" stripe v-loading="logLoading" style="width: 100%">
+          <el-table-column prop="createTime" label="时间" width="180" />
+          <el-table-column prop="logType" label="类型" width="120">
+            <template #default="{ row }">
+              <el-tag v-if="row.logType === 'online'" type="success">设备上线</el-tag>
+              <el-tag v-else-if="row.logType === 'offline'" type="danger">设备离线</el-tag>
+              <el-tag v-else type="info">命令下发</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="logDetail" label="详情" />
+        </el-table>
+        
+        <!-- 分页器 -->
+        <el-pagination
+          v-if="deviceLogList.length > 0"
+          v-model:current-page="logPagination.currentPage"
+          v-model:page-size="logPagination.pageSize"
+          :total="logPagination.total"
+          :page-sizes="[20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          class="log-pagination"
+          @size-change="loadDeviceLogs"
+          @current-change="loadDeviceLogs"
+        />
+        
+        <div v-if="deviceLogList.length === 0 && !logLoading" class="empty-data">
+          <div class="empty-icon">📭</div>
+          <div>暂无日志数据</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 报警分析 Tab - 暂时隐藏 -->
+    <!-- <div class="tab-content" :class="{ active: activeTab === 'analysis' }">
+      <AlarmAnalysis :device-code="deviceInfo.deviceCode" />
+    </div> -->
   </div>
 </template>
 
@@ -236,6 +313,8 @@ import { getProductAttributes, getProductCommands } from '@/api/product'
 import { getHistoryData } from '@/api/data'
 import { sendCommand as sendCommandAPI } from '@/api/command'
 import { getMqttConfig } from '@/api/system'
+import { getDeviceLogList } from '@/api/deviceLog'
+// import AlarmAnalysis from '@/components/AlarmAnalysis.vue' // 报警分析组件暂时隐藏
 import * as echarts from 'echarts'
 
 const route = useRoute()
@@ -278,6 +357,19 @@ const historyPagination = reactive({
 
 // 当前激活的Tab
 const activeTab = ref('realtime')
+
+// 设备日志数据
+const deviceLogList = ref([])
+const logLoading = ref(false)
+const logFilter = ref({
+  logType: ''
+})
+const logDateRange = ref([])
+const logPagination = reactive({
+  currentPage: 1,
+  pageSize: 20,
+  total: 0
+})
 
 // MQTT配置信息
 const mqttConfig = reactive({
@@ -845,6 +937,35 @@ const switchTab = async (tabName) => {
   } else if (tabName === 'command') {
     // 命令控制：加载产品命令
     await loadProductCommands()
+  } else if (tabName === 'log') {
+    // 设备日志：加载日志列表
+    loadDeviceLogs()
+  }
+  // 报警分析Tab暂时隐藏
+  // else if (tabName === 'analysis') {
+  //   // 报警分析：组件内部自动加载数据
+  // }
+}
+
+// 获取设备日志列表
+const loadDeviceLogs = async () => {
+  logLoading.value = true
+  try {
+    const res = await getDeviceLogList({
+      page: logPagination.currentPage,
+      pageSize: logPagination.pageSize,
+      deviceCode: deviceInfo.deviceCode,
+      logType: logFilter.value.logType,
+      startTime: logDateRange.value?.[0],
+      endTime: logDateRange.value?.[1]
+    })
+    deviceLogList.value = res?.list || []
+    logPagination.total = res?.total || 0
+  } catch (error) {
+    console.error('加载设备日志失败:', error)
+    ElMessage.error('加载设备日志失败')
+  } finally {
+    logLoading.value = false
   }
 }
 
@@ -1801,5 +1922,34 @@ onMounted(() => {
   font-size: 72px;
   margin-bottom: 20px;
   opacity: 0.5;
+}
+
+/* 设备日志 */
+.log-filter-bar {
+  background: white;
+  border: 1px solid #e5e5e7;
+  border-radius: 8px;
+  padding: 6px 14px;
+  margin-bottom: 4px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+}
+
+.log-table-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.log-pagination {
+  padding: 8px 16px;
+  flex-shrink: 0;
+  border-top: 1px solid #e5e5e7;
+  background: white;
 }
 </style>

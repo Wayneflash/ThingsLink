@@ -1,1 +1,0 @@
-import{r}from"./index-6eb9f70f.js";const o=t=>r({url:"/device-alarm/configure",method:"post",data:t}),s=t=>r({url:"/alarm-log/list",method:"post",data:t}),e=t=>r({url:"/alarm-log/handle",method:"post",data:t}),l=()=>r({url:"/alarm-log/statistics",method:"post"});export{l as a,o as c,s as g,e as h};

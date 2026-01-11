@@ -219,27 +219,49 @@
         <!-- 物模型监控配置 -->
         <div class="form-section">
           <h3 class="section-title">物模型监控配置</h3>
-          <el-table 
-            :data="deviceAttributes" 
+          <el-table
+            :data="deviceAttributes"
             border
             style="width: 100%"
             max-height="300px"
           >
-            <el-table-column prop="attrName" label="属性名称" width="120" />
+            <el-table-column label="属性名称" width="120">
+              <template #default="{ row, $index }">
+                <span v-if="$index === 0" style="font-weight: 600; color: #1d1d1f;">离线报警</span>
+                <span v-else>{{ row.attrName }}</span>
+              </template>
+            </el-table-column>
             <el-table-column label="启用" width="70" align="center">
-              <template #default="{ row }">
-                <el-switch 
-                  v-model="configModal.form.metrics[row.addr].enabled" 
+              <template #default="{ row, $index }">
+                <el-switch
+                  v-if="$index === 0"
+                  v-model="configModal.form.offlineAlarm.enabled"
+                  size="small"
+                />
+                <el-switch
+                  v-else
+                  v-model="configModal.form.metrics[row.addr].enabled"
                   size="small"
                 />
               </template>
             </el-table-column>
             <el-table-column label="运算符" width="100">
-              <template #default="{ row }">
-                <el-select 
-                  v-model="configModal.form.metrics[row.addr].operator" 
+              <template #default="{ row, $index }">
+                <el-select
+                  v-if="$index === 0"
+                  v-model="configModal.form.offlineAlarm.operator"
+                  :disabled="!configModal.form.offlineAlarm.enabled"
+                  size="small"
+                  style="width: 100%"
+                >
+                  <el-option label=">" value=">" />
+                </el-select>
+                <el-select
+                  v-else
+                  v-model="configModal.form.metrics[row.addr].operator"
                   :disabled="!configModal.form.metrics[row.addr].enabled"
                   size="small"
+                  style="width: 100%"
                 >
                   <el-option label=">" value=">" />
                   <el-option label="<" value="<" />
@@ -248,11 +270,22 @@
               </template>
             </el-table-column>
             <el-table-column label="阈值" width="140">
-              <template #default="{ row }">
-                <el-input-number 
-                  v-model="configModal.form.metrics[row.addr].threshold" 
+              <template #default="{ row, $index }">
+                <el-input-number
+                  v-if="$index === 0"
+                  v-model="configModal.form.offlineAlarm.threshold"
+                  :disabled="!configModal.form.offlineAlarm.enabled"
+                  :min="1"
+                  :precision="0"
+                  :step="1"
+                  size="small"
+                  style="width: 100%"
+                />
+                <el-input-number
+                  v-else
+                  v-model="configModal.form.metrics[row.addr].threshold"
                   :disabled="!configModal.form.metrics[row.addr].enabled"
-                  :precision="2" 
+                  :precision="2"
                   :step="0.1"
                   size="small"
                   style="width: 100%"
@@ -260,16 +293,30 @@
               </template>
             </el-table-column>
             <el-table-column label="单位" width="80" align="center">
-              <template #default="{ row }">
-                <span class="field-unit">{{ row.unit || '-' }}</span>
+              <template #default="{ row, $index }">
+                <span v-if="$index === 0" class="field-unit">min</span>
+                <span v-else class="field-unit">{{ row.unit || '-' }}</span>
               </template>
             </el-table-column>
             <el-table-column label="报警级别" width="140">
-              <template #default="{ row }">
-                <el-select 
-                  v-model="configModal.form.metrics[row.addr].level" 
+              <template #default="{ row, $index }">
+                <el-select
+                  v-if="$index === 0"
+                  v-model="configModal.form.offlineAlarm.level"
+                  :disabled="!configModal.form.offlineAlarm.enabled"
+                  size="small"
+                  style="width: 100%"
+                >
+                  <el-option label="🔴 严重" value="critical" />
+                  <el-option label="🟡 警告" value="warning" />
+                  <el-option label="🔵 提示" value="info" />
+                </el-select>
+                <el-select
+                  v-else
+                  v-model="configModal.form.metrics[row.addr].level"
                   :disabled="!configModal.form.metrics[row.addr].enabled"
                   size="small"
+                  style="width: 100%"
                 >
                   <el-option label="🔴 严重" value="critical" />
                   <el-option label="🟡 警告" value="warning" />
@@ -437,27 +484,49 @@
               物模型监控配置
               <span class="required">*</span>
             </label>
-            <el-table 
-              :data="batchDeviceAttributes" 
+            <el-table
+              :data="batchDeviceAttributes"
               border
               style="width: 100%"
               max-height="300px"
             >
-              <el-table-column prop="attrName" label="属性名称" width="120" />
+              <el-table-column label="属性名称" width="120">
+                <template #default="{ row, $index }">
+                  <span v-if="$index === 0" style="font-weight: 600; color: #1d1d1f;">离线报警</span>
+                  <span v-else>{{ row.attrName }}</span>
+                </template>
+              </el-table-column>
               <el-table-column label="启用" width="70" align="center">
-                <template #default="{ row }">
-                  <el-switch 
-                    v-model="batchModal.form.metrics[row.addr].enabled" 
+                <template #default="{ row, $index }">
+                  <el-switch
+                    v-if="$index === 0"
+                    v-model="batchModal.form.offlineAlarm.enabled"
+                    size="small"
+                  />
+                  <el-switch
+                    v-else
+                    v-model="batchModal.form.metrics[row.addr].enabled"
                     size="small"
                   />
                 </template>
               </el-table-column>
               <el-table-column label="运算符" width="100">
-                <template #default="{ row }">
-                  <el-select 
-                    v-model="batchModal.form.metrics[row.addr].operator" 
+                <template #default="{ row, $index }">
+                  <el-select
+                    v-if="$index === 0"
+                    v-model="batchModal.form.offlineAlarm.operator"
+                    :disabled="!batchModal.form.offlineAlarm.enabled"
+                    size="small"
+                    style="width: 100%"
+                  >
+                    <el-option label=">" value=">" />
+                  </el-select>
+                  <el-select
+                    v-else
+                    v-model="batchModal.form.metrics[row.addr].operator"
                     :disabled="!batchModal.form.metrics[row.addr].enabled"
                     size="small"
+                    style="width: 100%"
                   >
                     <el-option label=">" value=">" />
                     <el-option label="<" value="<" />
@@ -466,11 +535,22 @@
                 </template>
               </el-table-column>
               <el-table-column label="阈值" width="140">
-                <template #default="{ row }">
-                  <el-input-number 
-                    v-model="batchModal.form.metrics[row.addr].threshold" 
+                <template #default="{ row, $index }">
+                  <el-input-number
+                    v-if="$index === 0"
+                    v-model="batchModal.form.offlineAlarm.threshold"
+                    :disabled="!batchModal.form.offlineAlarm.enabled"
+                    :min="1"
+                    :precision="0"
+                    :step="1"
+                    size="small"
+                    style="width: 100%"
+                  />
+                  <el-input-number
+                    v-else
+                    v-model="batchModal.form.metrics[row.addr].threshold"
                     :disabled="!batchModal.form.metrics[row.addr].enabled"
-                    :precision="2" 
+                    :precision="2"
                     :step="0.1"
                     size="small"
                     style="width: 100%"
@@ -478,16 +558,30 @@
                 </template>
               </el-table-column>
               <el-table-column label="单位" width="80" align="center">
-                <template #default="{ row }">
-                  <span class="field-unit">{{ row.unit || '-' }}</span>
+                <template #default="{ row, $index }">
+                  <span v-if="$index === 0" class="field-unit">min</span>
+                  <span v-else class="field-unit">{{ row.unit || '-' }}</span>
                 </template>
               </el-table-column>
               <el-table-column label="报警级别" width="140">
-                <template #default="{ row }">
-                  <el-select 
-                    v-model="batchModal.form.metrics[row.addr].level" 
+                <template #default="{ row, $index }">
+                  <el-select
+                    v-if="$index === 0"
+                    v-model="batchModal.form.offlineAlarm.level"
+                    :disabled="!batchModal.form.offlineAlarm.enabled"
+                    size="small"
+                    style="width: 100%"
+                  >
+                    <el-option label="🔴 严重" value="critical" />
+                    <el-option label="🟡 警告" value="warning" />
+                    <el-option label="🔵 提示" value="info" />
+                  </el-select>
+                  <el-select
+                    v-else
+                    v-model="batchModal.form.metrics[row.addr].level"
                     :disabled="!batchModal.form.metrics[row.addr].enabled"
                     size="small"
+                    style="width: 100%"
                   >
                     <el-option label="🔴 严重" value="critical" />
                     <el-option label="🟡 警告" value="warning" />
@@ -563,7 +657,14 @@ const configModal = reactive({
     notifyUser: null,
     stackMode: true,
     mailEnabled: false,
-    smsEnabled: false
+    smsEnabled: false,
+    offlineAlarm: {
+      enabled: false,
+      operator: '>',
+      threshold: 5,
+      unit: 'min',
+      level: 'warning'
+    }
   }
 })
 
@@ -582,7 +683,14 @@ const batchModal = reactive({
     notifyUser: null,
     stackMode: true,
     mailEnabled: false,
-    smsEnabled: false
+    smsEnabled: false,
+    offlineAlarm: {
+      enabled: false,
+      operator: '>',
+      threshold: 5,
+      unit: 'min',
+      level: 'warning'
+    }
   }
 })
 
@@ -756,7 +864,14 @@ const openConfigModal = async (device) => {
       stackMode: device.alarmConfigObj.stackMode !== false,
       mailEnabled: device.alarmConfigObj.mailEnabled || false,
       smsEnabled: device.alarmConfigObj.smsEnabled || false,
-      metrics: metricsMap
+      metrics: metricsMap,
+      offlineAlarm: device.alarmConfigObj.offlineAlarm || {
+        enabled: false,
+        operator: '>',
+        threshold: 5,
+        unit: 'min',
+        level: 'warning'
+      }
     }
   } else if (device.alarmConfigObj && device.alarmConfigObj.conditions) {
     // 兼容旧版条件数组结构
@@ -787,7 +902,14 @@ const openConfigModal = async (device) => {
       stackMode: true,
       mailEnabled: false,
       smsEnabled: false,
-      metrics: metricsMap
+      metrics: metricsMap,
+      offlineAlarm: {
+        enabled: false,
+        operator: '>',
+        threshold: 5,
+        unit: 'min',
+        level: 'warning'
+      }
     }
   }
 }
@@ -851,7 +973,8 @@ const saveConfig = async () => {
         stackMode: configModal.form.stackMode,
         mailEnabled: configModal.form.mailEnabled,
         smsEnabled: configModal.form.smsEnabled,
-        metrics: configModal.form.metrics
+        metrics: configModal.form.metrics,
+        offlineAlarm: configModal.form.offlineAlarm
       },
       enabled: true
     })
@@ -888,7 +1011,14 @@ const openBatchModal = () => {
     stackMode: true,
     mailEnabled: false,
     smsEnabled: false,
-    metrics: {}
+    metrics: {},
+    offlineAlarm: {
+      enabled: false,
+      operator: '>',
+      threshold: 5,
+      unit: 'min',
+      level: 'warning'
+    }
   }
 }
 
@@ -1047,7 +1177,8 @@ const saveBatchConfig = async () => {
         stackMode: batchModal.form.stackMode,
         mailEnabled: batchModal.form.mailEnabled,
         smsEnabled: batchModal.form.smsEnabled,
-        metrics: batchModal.form.metrics
+        metrics: batchModal.form.metrics,
+        offlineAlarm: batchModal.form.offlineAlarm
       },
       enabled: true
     })
@@ -1862,6 +1993,26 @@ onMounted(() => {
 .dialog-footer .el-button--primary:hover {
   background: #0051D5;
   border-color: #0051D5;
+}
+
+/* 表单项内联布局 */
+.form-field-inline {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.form-field-inline-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field-inline-item .field-label {
+  font-size: 15px;
+  color: #1d1d1f;
+  font-weight: 500;
 }
 
 /* Element Plus 组件样式覆盖 */
