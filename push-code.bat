@@ -10,16 +10,16 @@ REM 切换到脚本所在目录
 cd /d "!SCRIPT_DIR!"
 
 echo ========================================
-echo   Git 推送脚本（一键提交并推送）
+echo   Git Push Script (Auto Commit and Push)
 echo ========================================
 echo.
 echo 项目路径: !SCRIPT_DIR!
 echo.
-echo 功能说明:
-echo   - 自动添加所有本地更改
-echo   - 自动提交更改（带时间戳）
-echo   - 自动推送到GitHub（覆盖远程）
-echo   你只需要双击运行，无需手动执行git命令！
+echo Function:
+echo   - Auto add all local changes
+echo   - Auto commit (with custom message or timestamp)
+echo   - Auto push to GitHub (overwrite remote)
+echo   Just double-click to run, no manual git commands needed!
 echo.
 
 REM Check if Git is installed
@@ -33,8 +33,8 @@ if errorlevel 1 (
 REM Check if current directory is a Git repository
 if not exist ".git" (
     echo [ERROR] Git repository not found
-    echo 当前目录: !SCRIPT_DIR!
-    echo 请确保脚本在项目根目录下
+    echo Current directory: !SCRIPT_DIR!
+    echo Please ensure script is in project root directory
     pause
     exit /b 1
 )
@@ -77,14 +77,27 @@ if not errorlevel 1 (
 REM Commit changes
 echo.
 echo [3/5] Committing changes...
-REM 生成时间戳格式的提交消息
-for /f "tokens=1-3 delims=/ " %%a in ('date /t') do set DATE_PART=%%c-%%a-%%b
-for /f "tokens=1-2 delims=: " %%a in ('time /t') do set TIME_PART=%%a:%%b
-set COMMIT_MSG=Auto commit: !DATE_PART! !TIME_PART!
+echo.
+echo Enter commit message (press Enter for default timestamp):
+set /p COMMIT_MSG_INPUT="Commit message: "
+
+REM 如果用户没有输入，使用默认时间戳
+if "!COMMIT_MSG_INPUT!"=="" (
+    REM 生成时间戳格式的提交消息
+    for /f "tokens=1-3 delims=/ " %%a in ('date /t') do set DATE_PART=%%c-%%a-%%b
+    for /f "tokens=1-2 delims=: " %%a in ('time /t') do set TIME_PART=%%a:%%b
+    set COMMIT_MSG=Auto commit: !DATE_PART! !TIME_PART!
+    echo [INFO] Using default commit message: !COMMIT_MSG!
+) else (
+    set COMMIT_MSG=!COMMIT_MSG_INPUT!
+    echo [INFO] Using custom commit message: !COMMIT_MSG!
+)
+
+echo.
 git commit -m "!COMMIT_MSG!"
 if errorlevel 1 (
     echo [ERROR] Failed to commit
-    echo 可能原因: 没有需要提交的更改
+    echo Possible reason: No changes to commit
     pause
     exit /b 1
 )
@@ -125,15 +138,18 @@ echo   Done!
 echo ========================================
 echo.
 echo [Summary]
-echo - ✅ 所有本地更改已自动提交
-echo - ✅ 代码已推送到远程: origin/%CURRENT_BRANCH%
-echo - ✅ 远程内容已被本地版本覆盖
+echo - All local changes have been committed
+echo - Code pushed to remote: origin/%CURRENT_BRANCH%
+echo - Remote has been overwritten with local version
 echo.
-echo 提示: 你只需要双击这个脚本，就会自动完成：
-echo   1. 检查更改状态
-echo   2. 添加所有更改到暂存区
-echo   3. 自动提交更改（带时间戳）
-echo   4. 强制推送到GitHub（覆盖远程）
+echo Tips:
+echo   - You can enter a custom commit message when prompted
+echo   - Press Enter to use default timestamp message
+echo   - The script will automatically:
+echo     1. Check status
+echo     2. Add all changes
+echo     3. Commit changes (with your message or timestamp)
+echo     4. Force push to GitHub (overwrite remote)
 echo.
 pause
 endlocal
