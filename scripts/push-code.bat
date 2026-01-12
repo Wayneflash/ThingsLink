@@ -2,11 +2,11 @@
 setlocal enabledelayedexpansion
 chcp 65001 >nul
 
-REM 获取脚本所在目录（自动适配不同路径）
+REM Get script directory
 set SCRIPT_DIR=%~dp0
 set SCRIPT_DIR=!SCRIPT_DIR:~0,-1!
 
-REM 切换到项目根目录（scripts目录的上一级）
+REM Change to project root
 cd /d "!SCRIPT_DIR!\.."
 
 echo ========================================
@@ -45,17 +45,9 @@ git status --short
 echo.
 
 REM Check if there are changes
-git diff --quiet >nul 2>&1
-set HAS_UNSTAGED=0
-if errorlevel 1 set HAS_UNSTAGED=1
+for /f %%i in ('git status --porcelain 2^>nul ^| find /c /v ""') do set CHANGE_COUNT=%%i
 
-git diff --cached --quiet >nul 2>&1
-set HAS_STAGED=0
-if errorlevel 1 set HAS_STAGED=1
-
-for /f %%i in ('git status --porcelain 2^>nul ^| find /c "??"') do set UNTRACKED_COUNT=%%i
-
-if %HAS_UNSTAGED%==0 if %HAS_STAGED%==0 if %UNTRACKED_COUNT%==0 (
+if "%CHANGE_COUNT%"=="0" (
     echo [INFO] No changes to commit
     echo.
     echo Push existing commits to remote?
@@ -101,13 +93,6 @@ if errorlevel 1 (
 )
 echo [OK] All changes added
 
-REM Check if there are staged changes
-git diff --cached --quiet >nul 2>&1
-if not errorlevel 1 (
-    echo [INFO] No changes to commit
-    goto :do_push
-)
-
 REM Enter commit message
 echo.
 echo [2/4] Enter commit message...
@@ -116,9 +101,8 @@ echo Enter commit message (press Enter for default timestamp):
 set /p COMMIT_MSG_INPUT="Message: "
 
 if "!COMMIT_MSG_INPUT!"=="" (
-    for /f "tokens=1-3 delims=/ " %%a in ('date /t') do set DATE_PART=%%c-%%a-%%b
-    for /f "tokens=1-2 delims=: " %%a in ('time /t') do set TIME_PART=%%a:%%b
-    set COMMIT_MSG=Auto commit: !DATE_PART! !TIME_PART!
+    for /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') do set "dt=%%a"
+    set COMMIT_MSG=Auto commit: !dt:~0,4!-!dt:~4,2!-!dt:~6,2! !dt:~8,2!:!dt:~10,2!
     echo [INFO] Using default message: !COMMIT_MSG!
 ) else (
     set COMMIT_MSG=!COMMIT_MSG_INPUT!
@@ -140,29 +124,33 @@ echo.
 echo [3/4] Committing...
 git commit -m "!COMMIT_MSG!"
 if errorlevel 1 (
-    echo [ERROR] Commit failed
-    pause
-    exit /b 1
+    echo [WARNING] Commit may have failed or no changes to commit
 )
-echo [OK] Committed
+echo [OK] Commit done
 
 :do_push
 REM Push
 echo.
 echo [4/4] Pushing to remote...
 echo.
-echo Will force push to origin/%CURRENT_BRANCH%
+echo Target: origin/%CURRENT_BRANCH%
+echo.
 set /p CONFIRM_PUSH="Confirm push? (Y/N): "
 if /i not "!CONFIRM_PUSH!"=="Y" (
     echo.
-    echo Push cancelled (commit saved locally)
+    echo Push cancelled
     pause
     exit /b 0
 )
 
+echo.
+echo Executing: git push origin %CURRENT_BRANCH% --force
+echo.
 git push origin %CURRENT_BRANCH% --force
-if errorlevel 1 (
-    echo [ERROR] Push failed
+
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [ERROR] Push failed with error code: %ERRORLEVEL%
     echo.
     echo Possible reasons:
     echo   1. Network issue
@@ -173,11 +161,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [OK] Push successful!
-
 echo.
 echo ========================================
-echo   Done!
+echo   [OK] Push successful!
 echo ========================================
 echo.
 echo Pushed to: origin/%CURRENT_BRANCH%
