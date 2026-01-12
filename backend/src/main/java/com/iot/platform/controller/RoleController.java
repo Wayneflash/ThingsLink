@@ -183,10 +183,10 @@ public class RoleController {
     private java.util.List<Map<String, Object>> buildAllPermissions(java.util.Set<String> grantedSet) {
         java.util.List<Map<String, Object>> permissions = new java.util.ArrayList<>();
         
-        // 1. 设备概览
+        // 1. 数据概览
         Map<String, Object> overview = new java.util.LinkedHashMap<>();
         overview.put("code", "overview");
-        overview.put("name", "设备概览");
+        overview.put("name", "数据概览");
         overview.put("icon", "📊");
         overview.put("sort", 1);
         overview.put("granted", grantedSet.contains("overview"));
@@ -223,10 +223,10 @@ public class RoleController {
         products.put("children", null);
         permissions.add(products);
         
-        // 5. 报警日志
+        // 5. 报警统计
         Map<String, Object> alarms = new java.util.LinkedHashMap<>();
         alarms.put("code", "alarms");
-        alarms.put("name", "报警日志");
+        alarms.put("name", "报警统计");
         alarms.put("icon", "⚠️");
         alarms.put("sort", 5);
         alarms.put("granted", grantedSet.contains("alarms"));

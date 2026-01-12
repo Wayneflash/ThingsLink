@@ -133,9 +133,9 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         // 根据权限构建菜单树
         int sort = 1;
         
-        // 1. 设备概览
+        // 1. 数据概览
         if (isSuperAdmin || permissions.contains("overview")) {
-            menus.add(createMenu("overview", "设备概览", "/overview", "DataAnalysis", null, sort++));
+            menus.add(createMenu("overview", "数据概览", "/overview", "DataAnalysis", null, sort++));
         }
         
         // 2. 设备分组
@@ -153,9 +153,9 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             menus.add(createMenu("products", "产品管理", "/products", "Box", null, sort++));
         }
         
-        // 5. 报警日志
+        // 5. 报警统计
         if (isSuperAdmin || permissions.contains("alarms")) {
-            menus.add(createMenu("alarms", "报警日志", "/alarms", "BellFilled", null, sort++));
+            menus.add(createMenu("alarms", "报警统计", "/alarms", "BellFilled", null, sort++));
         }
         
         // 6. 报警配置
