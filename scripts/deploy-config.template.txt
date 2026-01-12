@@ -1,0 +1,16 @@
+# 部署配置文件模板
+# 复制此文件为 deploy-config.txt 并修改以下配置
+
+# 远程服务器配置
+REMOTE_HOST=your-server-ip
+REMOTE_PORT=22
+REMOTE_USER=root
+
+# 后端配置
+REMOTE_BACKEND_PATH=/opt/iot-platform/backend
+REMOTE_BACKEND_SERVICE=iot-platform
+LOCAL_BACKEND_JAR=backend\target\iot-platform.jar
+
+# 前端配置
+REMOTE_FRONTEND_PATH=/opt/iot-platform/frontend
+LOCAL_FRONTEND_DIST=frontend\dist

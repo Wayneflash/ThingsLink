@@ -1,0 +1,16 @@
+# 部署配置文件
+# 请妥善保管此文件，不要提交到代码仓库
+
+# 远程服务器配置
+REMOTE_HOST=117.72.222.8
+REMOTE_PORT=22
+REMOTE_USER=root
+
+# 后端配置
+REMOTE_BACKEND_PATH=/opt/iot-platform/backend
+REMOTE_BACKEND_SERVICE=iot-platform
+LOCAL_BACKEND_JAR=backend\target\iot-platform.jar
+
+# 前端配置
+REMOTE_FRONTEND_PATH=/opt/iot-platform/frontend
+LOCAL_FRONTEND_DIST=frontend\dist

@@ -10,16 +10,10 @@ REM 切换到项目根目录（scripts目录的上一级）
 cd /d "!SCRIPT_DIR!\.."
 
 echo ========================================
-echo   Git Push Script (Auto Commit and Push)
+echo   Git Push - Commit and Push to Remote
 echo ========================================
 echo.
-echo 项目路径: !SCRIPT_DIR!
-echo.
-echo Function:
-echo   - Auto add all local changes
-echo   - Auto commit (with custom message or timestamp)
-echo   - Auto push to GitHub (overwrite remote)
-echo   Just double-click to run, no manual git commands needed!
+echo Project: %CD%
 echo.
 
 REM Check if Git is installed
@@ -33,93 +27,147 @@ if errorlevel 1 (
 REM Check if current directory is a Git repository
 if not exist ".git" (
     echo [ERROR] Git repository not found
-    echo Current directory: !SCRIPT_DIR!
-    echo Please ensure script is in project root directory
     pause
     exit /b 1
 )
-
-echo [INFO] Found Git repository in: !SCRIPT_DIR!
 
 REM Get current branch
 for /f "tokens=*" %%b in ('git branch --show-current 2^>nul') do set CURRENT_BRANCH=%%b
 if "%CURRENT_BRANCH%"=="" set CURRENT_BRANCH=main
-echo [INFO] Current branch: %CURRENT_BRANCH%
-
-REM Check status
+echo [INFO] Branch: %CURRENT_BRANCH%
 echo.
-echo [1/5] Checking status...
+
+REM Show current status
+echo ========================================
+echo   Current Changes:
+echo ========================================
 git status --short
-if errorlevel 1 (
-    echo [ERROR] Failed to check status
-    pause
-    exit /b 1
+echo.
+
+REM Check if there are changes
+git diff --quiet >nul 2>&1
+set HAS_UNSTAGED=0
+if errorlevel 1 set HAS_UNSTAGED=1
+
+git diff --cached --quiet >nul 2>&1
+set HAS_STAGED=0
+if errorlevel 1 set HAS_STAGED=1
+
+for /f %%i in ('git status --porcelain 2^>nul ^| find /c "??"') do set UNTRACKED_COUNT=%%i
+
+if %HAS_UNSTAGED%==0 if %HAS_STAGED%==0 if %UNTRACKED_COUNT%==0 (
+    echo [INFO] No changes to commit
+    echo.
+    echo Push existing commits to remote?
+    set /p PUSH_ONLY="Enter Y to push, other key to exit: "
+    if /i not "!PUSH_ONLY!"=="Y" (
+        echo Cancelled
+        pause
+        exit /b 0
+    )
+    goto :do_push
 )
 
-REM Add all changes
+echo ========================================
+echo   This will:
+echo ========================================
+echo   1. Add all changes
+echo   2. Commit with message
+echo   3. Force push to remote
 echo.
-echo [2/5] Adding all changes...
+
+REM First confirmation
+set /p CONFIRM1="Confirm commit and push? (Y/N): "
+if /i not "!CONFIRM1!"=="Y" (
+    echo.
+    echo Cancelled
+    pause
+    exit /b 0
+)
+
+echo.
+echo ========================================
+echo   Committing...
+echo ========================================
+echo.
+
+REM Add all changes
+echo [1/4] Adding all changes...
 git add .
 if errorlevel 1 (
-    echo [ERROR] Failed to add files
+    echo [ERROR] Add failed
     pause
     exit /b 1
 )
 echo [OK] All changes added
 
-REM Check if there are changes to commit
+REM Check if there are staged changes
 git diff --cached --quiet >nul 2>&1
 if not errorlevel 1 (
     echo [INFO] No changes to commit
-    goto :push_only
+    goto :do_push
 )
 
-REM Commit changes
+REM Enter commit message
 echo.
-echo [3/5] Committing changes...
+echo [2/4] Enter commit message...
 echo.
 echo Enter commit message (press Enter for default timestamp):
-set /p COMMIT_MSG_INPUT="Commit message: "
+set /p COMMIT_MSG_INPUT="Message: "
 
-REM 如果用户没有输入，使用默认时间戳
 if "!COMMIT_MSG_INPUT!"=="" (
-    REM 生成时间戳格式的提交消息
     for /f "tokens=1-3 delims=/ " %%a in ('date /t') do set DATE_PART=%%c-%%a-%%b
     for /f "tokens=1-2 delims=: " %%a in ('time /t') do set TIME_PART=%%a:%%b
     set COMMIT_MSG=Auto commit: !DATE_PART! !TIME_PART!
-    echo [INFO] Using default commit message: !COMMIT_MSG!
+    echo [INFO] Using default message: !COMMIT_MSG!
 ) else (
     set COMMIT_MSG=!COMMIT_MSG_INPUT!
-    echo [INFO] Using custom commit message: !COMMIT_MSG!
 )
 
+REM Confirm message
 echo.
+echo Commit message: !COMMIT_MSG!
+set /p CONFIRM_MSG="Confirm message? (Y/N): "
+if /i not "!CONFIRM_MSG!"=="Y" (
+    echo.
+    echo Cancelled
+    pause
+    exit /b 0
+)
+
+REM Commit
+echo.
+echo [3/4] Committing...
 git commit -m "!COMMIT_MSG!"
 if errorlevel 1 (
-    echo [ERROR] Failed to commit
-    echo Possible reason: No changes to commit
+    echo [ERROR] Commit failed
     pause
     exit /b 1
 )
-echo [OK] Changes committed: !COMMIT_MSG!
+echo [OK] Committed
 
-:push_only
-REM Fetch remote first to check for updates
+:do_push
+REM Push
 echo.
-echo [4/5] Fetching remote updates...
-git fetch origin %CURRENT_BRANCH% >nul 2>&1
+echo [4/4] Pushing to remote...
+echo.
+echo Will force push to origin/%CURRENT_BRANCH%
+set /p CONFIRM_PUSH="Confirm push? (Y/N): "
+if /i not "!CONFIRM_PUSH!"=="Y" (
+    echo.
+    echo Push cancelled (commit saved locally)
+    pause
+    exit /b 0
+)
 
-REM Force push to overwrite remote (local takes priority)
-echo.
-echo [5/5] Pushing to remote (will overwrite remote with local)...
 git push origin %CURRENT_BRANCH% --force
 if errorlevel 1 (
     echo [ERROR] Push failed
     echo.
     echo Possible reasons:
-    echo   1. Network connection problem
-    echo   2. No permission to push
-    echo   3. Remote repository URL is incorrect
+    echo   1. Network issue
+    echo   2. No permission
+    echo   3. Wrong remote URL
     echo.
     pause
     exit /b 1
@@ -127,29 +175,12 @@ if errorlevel 1 (
 
 echo [OK] Push successful!
 
-REM Show final status
-echo.
-echo [INFO] Final status:
-git status --short
-
 echo.
 echo ========================================
 echo   Done!
 echo ========================================
 echo.
-echo [Summary]
-echo - All local changes have been committed
-echo - Code pushed to remote: origin/%CURRENT_BRANCH%
-echo - Remote has been overwritten with local version
-echo.
-echo Tips:
-echo   - You can enter a custom commit message when prompted
-echo   - Press Enter to use default timestamp message
-echo   - The script will automatically:
-echo     1. Check status
-echo     2. Add all changes
-echo     3. Commit changes (with your message or timestamp)
-echo     4. Force push to GitHub (overwrite remote)
+echo Pushed to: origin/%CURRENT_BRANCH%
 echo.
 pause
 endlocal

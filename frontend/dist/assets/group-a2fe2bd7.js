@@ -1,1 +1,0 @@
-import{r}from"./index-d25c41ea.js";const o=()=>r({url:"/device-groups/tree",method:"post"}),u=e=>r({url:"/device-groups/create",method:"post",data:e}),s=e=>r({url:"/device-groups/update",method:"post",data:e}),p=e=>r({url:"/device-groups/delete",method:"post",data:e});export{u as c,p as d,o as g,s as u};

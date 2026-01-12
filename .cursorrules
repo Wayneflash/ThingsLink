@@ -1,608 +1,181 @@
-# IoT物联网设备管理平台开发规约，每次编码时必须遵循
+# IoT物联网设备管理平台开发规约
 
-> 本文档定义了IoT平台项目的开发规范和架构原则，所有AI助手必须严格遵守执行。
-
----
-
-## 📋 项目概述
-
-### 项目定位
-- **项目类型**：IoT物联网设备管理平台
-- **技术栈**：Vue 3 + Spring Boot + MySQL + EMQX (MQTT) + Redis
-- **核心特点**：
-  - **未使用时序数据库**，仅使用MySQL存储时序数据
-  - **性能要求高**：支持1W设备并发，按1分钟1条数据计算（约167条/秒写入量）
-  - **数据权限严格**，基于设备分组的权限体系
-  - **实时性要求高**，MQTT消息实时处理
-
-### 核心业务模块
-- 设备管理（设备分组、设备实例、设备状态）
-- 产品管理（产品定义、物模型、命令定义）
-- 数据管理（设备数据存储、查询、统计）
-- 用户权限管理（角色、菜单、数据权限）
-- 告警管理（告警阈值配置、告警触发、告警日志）
-- MQTT消息处理（设备上报、命令下发）
+> Vue 3 + Spring Boot + MySQL + EMQX (MQTT) + Redis
+> 支持1W设备并发，167条/秒写入量，基于设备分组的数据权限体系
 
 ---
 
-## 🎯 核心架构原则
+## 🎯 核心原则
 
-### 1. 修改优先级原则 ⚠️⚠️⚠️
-
-**必须严格遵守的优先级顺序：**
+### 1. 修改优先级 ⚠️⚠️⚠️
 1. **优先修改前端** - 能前端解决的问题，不要动后端
 2. **后端修改需询问** - 必须修改后端时，先询问用户确认
-3. **不要为了解决问题就乱改后端** - 保持后端代码的稳定性和一致性
-
-**判断标准：**
-- 前端显示问题 → 优先前端适配
-- 前端数据格式问题 → 优先前端转换
-- 前端交互问题 → 优先前端解决
-
----
-
-### 2. UI设计风格原则 ⚠️⚠️⚠️
-
-**所有前端界面必须遵循Apple设计风格和物联网平台专业规范：**
-
-#### Apple风格设计规范
-- **字体**：使用 `-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text'` 系统字体栈
-- **颜色**：
-  - 主色调：`#007aff`（Apple蓝）
-  - 成功色：`#34c759`（Apple绿）
-  - 警告色：`#ff9500`（Apple橙）
-  - 危险色：`#ff3b30`（Apple红）
-  - 文字主色：`#1d1d1f`，次要色：`#6e6e73`，辅助色：`#86868b`
-  - 背景色：`#f5f5f7`（页面背景），`#ffffff`（卡片背景）
-- **圆角**：统一使用 `6px`（小）、`10px`（中）、`16px`（大）、`20px`（超大）
-- **阴影**：柔和阴影，使用 `rgba(0, 0, 0, 0.04-0.12)` 透明度范围
-- **间距**：使用 `8px` 的倍数（8px, 16px, 24px, 40px）
-- **动画**：使用 `cubic-bezier(0.25, 0.46, 0.45, 0.94)` 缓动函数，过渡时间 `0.2-0.3s`
-
-#### 物联网平台专业规范
-- 界面布局简洁，信息层次分明，避免视觉噪音
-- 配色和样式体现工业物联网的专业性和可靠性
-- 适配不同屏幕尺寸，确保在各种设备上良好显示
-
----
-
-### 3. 原型开发原则 ⚠️⚠️⚠️
-
-**前端开发必须严格按照原型设计实现：**
-- 所有页面布局、交互、样式必须严格按照提供的原型图实现
-- 同一功能在不同页面的实现方式保持一致
-- 所有操作必须有明确的视觉反馈（按钮点击、表单提交、数据加载）
-
----
-
-### 4. 数据权限统一原则 ⚠️⚠️⚠️
-
-**全局数据权限必须统一实现，所有数据权限逻辑必须完全一致：**
-
-#### 权限模型（全局统一）
-- **超级管理员**：可查看所有数据（不受分组限制）
-- **普通用户**：只能查看本分组及所有下级分组的数据
-- **权限继承**：下级分组的数据自动继承上级分组权限
-
-#### 统一权限判断逻辑（所有接口必须一致）
-1. 从Token中解析用户信息
-2. 检查用户角色是否为super_admin
-3. 获取权限分组列表：
-   - 超级管理员：返回null（表示不过滤）
-   - 普通用户：获取用户所属分组ID及所有下级分组ID列表
-4. 使用分组ID列表过滤查询条件
-
-#### 权限过滤字段映射（统一规范）
-- **用户表**：使用 `group_id` 字段过滤
-- **设备表**：使用 `group_id` 字段过滤
-- **设备数据表**：通过设备表的 `group_id` 关联过滤
-- **分组表**：使用分组ID列表过滤
-- **告警日志表**：通过设备表的 `group_id` 关联过滤
-- **命令记录表**：通过设备表的 `group_id` 关联过滤
-
-**禁止行为：**
-- ❌ 不同Controller使用不同的数据权限逻辑
-- ❌ 硬编码权限判断逻辑
-- ❌ 跳过数据权限检查
-- ❌ 只检查本分组，不包含下级分组
-
----
-
-### 5. API接口统一原则 ⚠️⚠️⚠️
-
-**所有接口必须遵循统一规范：**
-
-#### 请求规范
-- 统一使用POST方法（除特殊情况如文件下载）
-- 统一请求头：Authorization: Bearer {token}
-- 统一请求体：JSON格式，参数使用驼峰命名法
-- **统一API路径前缀**：所有后端接口必须使用 `/api/` 前缀
-
-#### 响应规范
-- 统一响应结构：{code, message, data}
-- code: 200表示成功，其他表示失败
-- message: 成功时返回"success"，失败时返回错误信息
-
-#### 数据来源规范
-- **禁止前端硬编码任何业务数据**
-- 菜单权限：从后端 `/api/auth/user-info` 获取
-- 分组数据：从后端 `/api/device-groups/tree` 获取
-- 产品类型：从后端 `/api/products/list` 获取
-- 设备状态：从后端 `/api/devices/list` 获取
-- 角色类型：从后端 `/api/roles/list` 获取
-- 设备日志：从后端 `/api/device-logs/list` 获取
-
-**禁止行为：**
-- ❌ 前端硬编码菜单、权限数据
-- ❌ 前端硬编码分组数据
-- ❌ 前端硬编码产品、设备类型
-- ❌ 前端硬编码状态枚举值
-- ❌ 前端硬编码角色类型
-- ❌ 后端接口不使用 `/api/` 前缀
-
----
-
-### 6. 分组查询统一原则 ⚠️⚠️⚠️
-
-**分组相关功能必须完全统一，禁止任何形式的重复实现：**
-
-#### 后端分组接口（唯一接口）
-- **统一接口**：`POST /api/device-groups/tree`（唯一的分组树接口）
-- **统一返回格式**：{code: 200, data: {tree: [...]}}
-- **统一权限过滤**：根据用户权限自动过滤分组树（后端统一处理）
-
-#### 前端分组使用（强制统一）
-- **统一API方法**：**必须**使用 `frontend/src/api/group.js` 中的 `getGroupTree()` 方法
-- **统一组件使用**：
-  - **下拉选择场景**：**必须**使用 `GroupSelector` 组件（禁止自己实现）
-  - **树形展示场景**：**必须**使用 `GroupTree` 组件（禁止自己实现）
-
-**禁止行为：**
-- ❌ 不同页面重复实现分组查询逻辑（必须使用统一组件）
-- ❌ 直接调用API而不使用统一组件或方法（禁止直接调用 `/api/device-groups/tree`）
-- ❌ 自己实现分组选择器（必须使用GroupSelector组件）
-- ❌ 自己实现分组树展示（必须使用GroupTree组件）
-
----
-
-### 7. 性能优化原则 ⚠️⚠️⚠️
-
-**本项目未使用时序数据库，仅使用MySQL存储时序数据，性能要求极高，必须严格遵循：**
-
-#### 性能指标要求
-- **设备规模**：支持1W设备并发
-- **数据写入量**：按1分钟1条数据计算，约167条/秒写入量
-- **查询性能**：
-  - 列表查询响应时间 < 500ms
-  - 单条数据查询响应时间 < 100ms
-  - 统计数据查询响应时间 < 1s
-
-#### 数据库性能优化
-- **分区表**：时序数据表必须使用分区（按月分区）
-- **索引优化**：合理设计索引，避免全表扫描
-- **查询优化**：避免N+1查询，使用批量查询
-- **数据归档**：定期清理历史数据（保留最近3个月）
-
-#### 代码性能优化
-- **批量操作**：批量插入、批量更新、批量查询
-- **缓存策略**：设备在线状态、最新数据使用Redis缓存
-- **异步处理**：MQTT消息处理使用异步，避免阻塞
-- **分页查询**：列表查询必须分页，避免一次性加载大量数据
-
-**禁止行为：**
-- ❌ 全表扫描查询
-- ❌ 大量数据一次性加载
-- ❌ 循环中执行数据库操作
-- ❌ 缺少索引的查询条件
-- ❌ 未分页的列表查询
-
----
-
-### 8. MQTT消息处理原则 ⚠️⚠️⚠️
-
-**MQTT是核心通信协议，必须严格遵循：**
-
-#### 消息处理规范
-- **异步处理**：MQTT消息处理必须异步，避免阻塞
-- **幂等性**：消息处理要保证幂等性，避免重复处理
-- **错误处理**：消息处理失败要有重试机制和错误日志
-- **性能要求**：消息处理要快速，避免消息堆积
-
-#### 设备上报处理流程
-1. 接收设备上报数据
-2. 解析数据格式（ThingsFusion格式）
-3. 存储设备数据到数据库
-4. 更新设备在线状态
-5. **触发告警检查**（如果配置了告警）
-
-#### 命令下发处理流程
-1. 接收命令下发请求
-2. 验证设备状态（设备必须在线）
-3. 通过MQTT发送命令到设备
-4. 记录命令下发日志
-
-**禁止行为：**
-- ❌ 同步处理MQTT消息
-- ❌ 消息处理失败不记录日志
-- ❌ 命令下发不验证设备状态
-- ❌ 消息处理阻塞主线程
-
----
-
-### 9. 告警管理原则 ⚠️⚠️⚠️
-
-**告警是核心功能，必须严格遵循：**
-
-#### 告警配置规范
-- 告警配置存储在设备表的`alarm_config`字段（JSON格式）
-- 支持单设备配置和批量配置
-- 告警配置包含：级别、条件、通知人员、堆叠模式
-- 告警配置必须关联产品物模型（监控指标）
-- **限制**：一个物模型属性只能配置一个告警条件
-
-#### 告警触发规范
-- **触发时机**：设备数据上报时触发告警检查
-- **触发逻辑**：使用"或"（OR）关系，满足任意一个条件即触发告警
-- **条件数量**：一个设备最多可配置N个告警条件（N=该设备所属产品的物模型属性数量）
-- **告警检查**：在`DeviceDataService.handleDeviceReport()`方法中，数据存储后立即检查告警
-- **告警记录**：告警触发后必须记录到`tb_alarm_log`表
-
-#### 告警日志规范
-- **存储表**：`tb_alarm_log`（告警日志表）
-- **必填字段**：
-  - `device_id`：设备ID
-  - `device_code`：设备编码
-  - `device_name`：设备名称
-  - `alarm_level`：告警级别（critical/warning/info）
-  - `alarm_message`：告警消息（描述触发的条件和实际值）
-  - `trigger_time`：触发时间
-  - `status`：处理状态（0=未处理，1=已处理）
-  - `handler`：处理人（可为空）
-  - `handle_time`：处理时间（可为空）
-- **数据权限**：告警日志必须实现数据权限过滤（通过设备表的`group_id`关联）
-- **查询功能**：支持按设备、级别、时间范围、处理状态筛选
-- **分页查询**：告警日志列表必须分页查询
-
-#### 告警展示规范
-- **主要展示位置**：`/alarms` 报警日志页面（列表展示、筛选、详情、处理）
-- **实时通知**：顶部导航栏通知图标显示未读告警数量，点击跳转到报警日志页面
-- **统计展示**：设备概览页面显示告警统计卡片和最新告警列表
-- **状态标识**：设备管理页面在设备列表中显示告警状态图标
-
-**禁止行为：**
-- ❌ 告警配置不关联产品物模型
-- ❌ 告警触发不记录日志
-- ❌ 告警日志不实现数据权限过滤
-- ❌ 告警日志不分页查询
-
----
-
-### 10. 数据库表设计原则 ⚠️⚠️⚠️
-
-**数据库表设计必须遵循以下规范：**
-
-#### 表命名规范
-- 统一使用 `tb_` 前缀
-- 表名使用小写字母和下划线，如：`tb_device`、`tb_alarm_log`、`tb_device_log`
-
-#### 字段命名规范
-- 统一使用小写字母和下划线，如：`device_code`、`create_time`
-- 主键统一命名为 `id`，类型为 `BIGINT AUTO_INCREMENT`
-- 时间字段统一命名：`create_time`（创建时间）、`update_time`（更新时间）
-- 逻辑删除字段统一命名为 `deleted`，类型为 `TINYINT(1)`，默认0
-
-#### 索引设计规范
-- 主键自动创建索引
-- 外键字段必须创建索引
-- 查询条件字段必须创建索引
-- 联合索引：按查询频率和选择性设计
-
-#### 告警日志表设计
-- **表名**：`tb_alarm_log`
-- **必填字段**：
-  - `id`：主键，BIGINT AUTO_INCREMENT
-  - `device_id`：设备ID，BIGINT，索引
-  - `device_code`：设备编码，VARCHAR(50)，索引
-  - `device_name`：设备名称，VARCHAR(100)
-  - `alarm_level`：告警级别，VARCHAR(20)，索引
-  - `alarm_message`：告警消息，TEXT
-  - `trigger_time`：触发时间，DATETIME，索引
-  - `status`：处理状态，TINYINT(1)，默认0，索引
-  - `handler`：处理人，VARCHAR(50)，可为空
-  - `handle_time`：处理时间，DATETIME，可为空
-  - `create_time`：创建时间，DATETIME
-- **索引设计**：
-  - PRIMARY KEY (`id`)
-  - INDEX `idx_device_id` (`device_id`)
-  - INDEX `idx_device_code` (`device_code`)
-  - INDEX `idx_alarm_level` (`alarm_level`)
-  - INDEX `idx_trigger_time` (`trigger_time`)
-  - INDEX `idx_status` (`status`)
-  - INDEX `idx_device_status_time` (`device_id`, `status`, `trigger_time`)
-
-#### 设备日志表设计
-- **表名**：`tb_device_log`
-- **必填字段**：
-  - `id`：主键，BIGINT AUTO_INCREMENT
-  - `device_id`：设备ID，BIGINT，索引
-  - `device_code`：设备编码，VARCHAR(50)，索引
-  - `log_type`：日志类型（online/offline/command），VARCHAR(20)，索引
-  - `log_detail`：日志详情，TEXT
-  - `create_time`：创建时间，DATETIME，索引
-- **索引设计**：
-  - PRIMARY KEY (`id`)
-  - INDEX `idx_device_id` (`device_id`)
-  - INDEX `idx_device_code` (`device_code`)
-  - INDEX `idx_log_type` (`log_type`)
-  - INDEX `idx_create_time` (`create_time`)
-  - INDEX `idx_device_log_type_time` (`device_id`, `log_type`, `create_time`)
-
-**禁止行为：**
-- ❌ 表名不使用统一前缀
-- ❌ 字段命名不规范
-- ❌ 缺少必要的索引
-- ❌ 时间字段类型使用错误
-
----
-
-### 11. 代码规范原则 ⚠️⚠️⚠️
-
-**代码编写必须遵循以下规范：**
-
-#### 命名规范
-- **Java后端**：
-  - 类名：大驼峰命名，如：`DeviceController`、`DeviceService`
-  - 方法名：小驼峰命名，如：`getDeviceList`、`configureAlarm`
-  - 变量名：小驼峰命名，如：`deviceId`、`alarmConfig`
-  - 常量名：全大写下划线分隔，如：`DEVICE_ONLINE_KEY`
-- **Vue前端**：
-  - 组件名：大驼峰命名，如：`DeviceManagement.vue`、`AlarmLog.vue`
-  - 方法名：小驼峰命名，如：`loadDevices`、`handleAlarm`
-  - 变量名：小驼峰命名，如：`deviceList`、`alarmConfig`
-  - 常量名：全大写下划线分隔，如：`API_BASE_URL`
-
-#### 文件组织规范
-- **后端**：
-  - Controller：`backend/src/main/java/com/iot/platform/controller/`
-  - Service：`backend/src/main/java/com/iot/platform/service/`
-  - Mapper：`backend/src/main/java/com/iot/platform/mapper/`
-  - Entity：`backend/src/main/java/com/iot/platform/entity/`
-  - DTO：`backend/src/main/java/com/iot/platform/dto/`
-- **前端**：
-  - 页面组件：`frontend/src/views/`
-  - 公共组件：`frontend/src/components/`
-  - API封装：`frontend/src/api/`
-  - 工具函数：`frontend/src/utils/`
-  - 样式文件：`frontend/src/styles/`
-
-#### 注释规范
-- **方法注释**：说明方法功能、参数含义、返回值含义
-- **业务逻辑注释**：复杂业务逻辑必须添加注释说明
-- **关键代码注释**：数据权限判断、权限过滤等关键代码必须注释
-
-**禁止行为：**
-- ❌ 命名不规范
-- ❌ 文件组织混乱
-- ❌ 关键逻辑没有注释
-
----
-
-### 12. 前端组件规范 ⚠️⚠️⚠️
-
-**前端组件要统一、可复用：**
-
-#### 组件使用规范
-- 统一使用Element Plus组件库
-- 统一使用Vue 3 Composition API（`<script setup>`）
-- 组件要可复用、可配置
-
-#### 组件设计规范
-- 组件要有明确的职责
-- 组件要有清晰的Props和Events
-- 组件要有错误处理
-- 组件要有加载状态
-
-#### 全局组件
-- GroupSelector：分组选择器组件
-- GroupTree：分组树组件
-- 其他全局组件要统一管理
-
-**禁止行为：**
-- ❌ 不同页面重复实现相同功能的组件
-- ❌ 组件硬编码业务数据
-- ❌ 组件不处理错误情况
-
----
-
-### 13. 错误处理原则 ⚠️⚠️⚠️
-
-**错误处理要统一、友好：**
-
-#### 后端错误处理
-- 统一异常处理：使用`@ControllerAdvice`统一处理异常
-- 统一错误响应格式：{code, message, data: null}
-- 记录错误日志：关键错误要记录日志
-- 错误信息要友好：不要暴露系统内部信息
-
-#### 前端错误处理
-- 统一错误处理：使用响应拦截器统一处理错误
-- 统一错误提示：使用Element Plus的Message组件
-- 错误要友好：显示用户友好的错误信息
-- 错误要记录：关键错误要记录到控制台
-
-**禁止行为：**
-- ❌ 错误信息暴露系统内部信息
-- ❌ 错误不处理直接抛出
-- ❌ 错误不记录日志
+3. **保持后端稳定** - 不要为了解决问题就乱改后端
+
+### 2. UI设计风格（Apple风格）
+- **字体**：`-apple-system, BlinkMacSystemFont, 'SF Pro Display'`
+- **颜色**：主色`#007aff`，成功`#34c759`，警告`#ff9500`，危险`#ff3b30`
+- **背景**：页面`#f5f5f7`，卡片`#ffffff`
+- **圆角**：6px/10px/16px/20px
+- **间距**：8px倍数
+
+### 3. 数据权限（全局统一）
+- **超级管理员**：查看所有数据（不过滤）
+- **普通用户**：只能查看本分组及下级分组数据
+- **过滤字段**：用户表、设备表、告警日志表都使用 `group_id` 过滤
+
+### 4. API接口规范
+- 统一POST方法，JSON格式
+- 统一响应：`{code, message, data}`
+- **禁止前端硬编码业务数据**，必须从后端API获取
+
+### 5. 分组组件（强制统一）
+- 下拉选择：使用 `GroupSelector` 组件
+- 树形展示：使用 `GroupTree` 组件
+- **禁止重复实现分组功能**
+
+### 6. 性能要求
+- 列表查询 < 500ms
+- 必须分页查询，禁止一次性加载
+- 禁止循环中执行数据库操作
+- MQTT消息异步处理
 
 ---
 
 ## ✅ 必须遵守的规则
 
-### 1. 修改后端前必须询问
+### 后端修改后自动编译
 ```
-⚠️ 重要：需要修改后端代码时，必须先询问用户：
-"需要修改后端代码 [具体文件和方法]，是否同意？"
-```
-
-### 2. 严格按照原型开发
-```
-⚠️ 所有前端页面必须严格按照提供的原型图实现，不得随意修改布局和样式。
+修改后端代码后，执行：cd backend && mvn package -DskipTests
+编译完成后提醒用户重启后端服务
 ```
 
-### 3. UI设计必须遵循Apple风格
-```
-⚠️ 所有前端界面必须遵循Apple设计风格和物联网平台专业规范。
-⚠️ 使用Apple系统字体、Apple标准配色、Apple风格圆角和阴影。
-⚠️ 界面简洁清晰，体现物联网平台的专业性和可靠性。
+### 设备列表排序
+```sql
+ORDER BY status DESC, create_time DESC  -- 在线优先，时间降序
 ```
 
-### 4. 数据权限必须全局统一
+### 弹窗设计
+- 内容在视窗内完整显示，最大高度96vh
+- 禁止出现滚动条（列表区域除外）
+
+### 时间格式
 ```
-⚠️ 所有查询接口必须实现数据权限过滤，使用完全一致的逻辑。
-⚠️ 用户数据权限、分组数据权限、设备数据权限必须统一实现。
-⚠️ 所有权限判断逻辑必须一致，禁止不同接口使用不同的权限逻辑。
+格式：yyyy-MM-dd HH:mm:ss
+示例：2026-01-10 08:42:49
+禁止：ISO 8601格式（带T的格式）
 ```
 
-### 5. 接口数据必须从后端获取
+### 脚本编写规则 ⚠️⚠️⚠️
 ```
-⚠️ 前端禁止硬编码任何业务数据，必须从后端API获取。
+⚠️ 所有脚本必须支持在不同电脑上运行，禁止硬编码绝对路径！
+
+📁 脚本目录：scripts/
+🔹 脚本开头必须使用相对路径：
+   @echo off
+   setlocal enabledelayedexpansion
+   chcp 65001 >nul
+   
+   REM 获取脚本所在目录（自动适配不同路径）
+   set SCRIPT_DIR=%~dp0
+   set SCRIPT_DIR=!SCRIPT_DIR:~0,-1!
+   
+   REM 切换到项目根目录
+   cd /d "!SCRIPT_DIR!\.."
+
+🔹 配置信息放在单独的配置文件：
+   - 配置文件：scripts/deploy-config.txt
+   - 模板文件：scripts/deploy-config.template.txt
+   - 配置文件不提交到Git（已在.gitignore中）
+
+🔹 危险操作必须二次确认：
+   - Git pull/push 等会覆盖代码的操作
+   - 删除文件/目录的操作
+   - 需要先显示当前状态，让用户知道会影响什么
+   - 使用 set /p CONFIRM="确认？(Y/N): " 获取用户确认
+
+❌ 禁止行为：
+   - 硬编码绝对路径（如 D:\AICoding\IOT）
+   - 硬编码用户名、密码到脚本中
+   - 依赖特定电脑的环境变量
+   - 危险操作不经确认直接执行
 ```
 
-### 6. 分组查询必须完全统一
+### 数据库迁移规则 ⚠️⚠️⚠️
 ```
-⚠️ 前端必须使用统一的组件获取分组数据，禁止任何形式的重复实现。
-⚠️ 下拉选择场景必须使用GroupSelector组件，树形展示必须使用GroupTree组件。
-⚠️ 禁止直接调用分组API，禁止自己实现分组选择器或分组树。
-```
+⚠️ 数据库结构变更必须通过迁移脚本管理，保护生产数据安全！
 
-### 7. 性能优先
-```
-⚠️ 本项目未使用时序数据库，仅使用MySQL存储时序数据，代码设计必须考虑性能。
-⚠️ 支持1W设备并发，按1分钟1条数据计算（约167条/秒写入量）。
-```
+📁 迁移脚本目录：sql/migrations/
+📋 服务器现有表（15张）：
+   - system_config, tb_alarm_log, tb_attribute, tb_command, tb_command_log
+   - tb_device, tb_device_data, tb_device_group, tb_device_log, tb_menu
+   - tb_migration_history, tb_notification, tb_product, tb_role, tb_user
 
-### 8. MQTT消息异步处理
-```
-⚠️ MQTT消息处理必须异步，避免阻塞。
-```
+🔹 新增功能需要新建表时：
+   1. 在 sql/migrations/ 目录创建迁移脚本
+   2. 文件命名：XXX_功能描述.sql（如：002_add_xxx_table.sql）
+   3. 使用 CREATE TABLE IF NOT EXISTS 语法
+   4. 示例：
+      CREATE TABLE IF NOT EXISTS `tb_new_table` (
+          `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+          ...
+      );
 
-### 9. 告警必须记录日志
-```
-⚠️ 所有告警必须记录到tb_alarm_log表，支持查询和统计。
-⚠️ 告警日志必须实现数据权限过滤。
-```
+🔹 现有表需要新增字段时：
+   1. 在 sql/migrations/ 目录创建迁移脚本
+   2. 使用安全的 ALTER TABLE 语法，先检查字段是否存在
+   3. 示例：
+      SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+                     WHERE TABLE_SCHEMA = DATABASE() 
+                     AND TABLE_NAME = 'tb_device' 
+                     AND COLUMN_NAME = 'new_field');
+      SET @sql := IF(@exist = 0, 
+          'ALTER TABLE tb_device ADD COLUMN new_field VARCHAR(100) DEFAULT NULL', 
+          'SELECT 1');
+      PREPARE stmt FROM @sql;
+      EXECUTE stmt;
+      DEALLOCATE PREPARE stmt;
 
-### 10. 后端代码修改后自动编译 ⚠️⚠️⚠️
-```
-⚠️ 修改后端Java代码后，必须自动重新编译后端项目。
-⚠️ 编译命令：cd backend && mvn package -DskipTests
-⚠️ 编译完成后告知用户编译结果，并提醒需要重启后端服务。
-⚠️ 如果编译失败，必须修复错误后重新编译。
-⚠️ 此规则适用于所有后端代码修改，包括但不限于：
-   - Controller、Service、Mapper、Entity等Java文件
-   - 配置文件（application.yml等）
-   - 任何影响后端运行的文件
-```
+🔹 新增索引时：
+   CREATE INDEX IF NOT EXISTS `idx_xxx` ON `tb_xxx` (`field`);
 
-### 11. 设备列表排序规则 ⚠️⚠️⚠️
-```
-⚠️ 所有设备列表查询必须按以下规则排序：
-   1. 在线状态优先：在线设备（status=1）排在前面，离线设备（status=0）排在后面
-   2. 创建时间降序：相同状态下，按创建时间降序排列
-⚠️ 排序SQL示例：ORDER BY status DESC, create_time DESC
-⚠️ 此规则适用于所有设备列表查询接口，包括：
-   - 设备管理列表
-   - 报警配置页面设备列表
-   - 批量配置设备选择列表
-   - 任何返回设备列表的接口
-```
+❌ 绝对禁止的操作（会导致数据丢失）：
+   - DROP TABLE（删除表）
+   - TRUNCATE TABLE（清空表）
+   - DELETE FROM（删除数据）
+   - DROP COLUMN（删除字段）
+   - 不带 IF NOT EXISTS 的 CREATE TABLE
 
-### 12. 弹窗设计规则 ⚠️⚠️⚠️
-```
-⚠️ 所有弹窗（Dialog）设计必须遵循以下规则：
-   1. 弹窗打开后，所有内容必须能在当前视窗内完整显示，不需要滚动
-   2. 弹窗最大高度不超过96vh，顶部距离不超过2vh
-   3. 弹窗内容区域使用合理的间距，避免内容过于拥挤
-   4. 如果内容确实过多，应该：
-      - 增加弹窗宽度（最大不超过1200px）
-      - 优化内容布局（使用多列布局、减少间距等）
-      - 将部分内容折叠或使用标签页
-   5. 禁止弹窗内容区域出现滚动条（除非是列表选择区域）
-⚠️ 此规则适用于所有弹窗，包括：
-   - 配置弹窗
-   - 编辑弹窗
-   - 详情弹窗
-   - 批量操作弹窗
-   - 任何Dialog组件
-```
-
-### 13. 时间格式统一规则 ⚠️⚠️⚠️
-```
-⚠️ 所有时间格式必须统一使用以下格式，禁止使用ISO 8601格式（带T的格式）：
-   格式：yyyy-MM-dd HH:mm:ss
-   示例：2026-01-10 08:42:49
-⚠️ 此规则适用于：
-   - 后端Java代码：使用 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-   - 前端JavaScript：使用 dayjs().format("YYYY-MM-DD HH:mm:ss")
-   - 数据库查询结果：格式化时间字段时使用上述格式
-   - API接口返回：所有时间字段统一使用此格式
-   - 前端显示：所有时间显示统一使用此格式
-⚠️ 禁止使用的时间格式：
-   - ❌ ISO 8601格式：2026-01-10T08:42:49
-   - ❌ ISO 8601带时区：2026-01-10T08:42:49+08:00
-   - ❌ 其他非标准格式
-⚠️ 后端Java格式化示例：
-   DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-   String formattedTime = localDateTime.format(formatter);
-⚠️ 前端JavaScript格式化示例：
-   import dayjs from 'dayjs'
-   const formattedTime = dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+⚠️ 迁移脚本编写后：
+   1. 同步更新后端Entity类（如有新字段）
+   2. 同步更新后端Mapper（如有新字段）
+   3. 提醒用户运行 scripts/sync-db.bat 同步到服务器
 ```
 
 ---
 
-## 📚 参考文件
+## 📁 关键文件位置
 
-### 关键文件位置
-- 数据库初始化：`init.sql`
-- 前端API封装：`frontend/src/api/group.js`、`frontend/src/api/deviceLog.js`
-- 前端请求封装：`frontend/src/utils/request.js`
-- 分组组件：`frontend/src/components/GroupSelector.vue`、`GroupTree.vue`
-- UI样式文件：`frontend/src/styles/common.css`、`frontend/src/styles/element-theme.css`
-- 数据权限示例：`backend/src/main/java/com/iot/platform/controller/DeviceController.java`
-- MQTT配置：`backend/src/main/java/com/iot/platform/mqtt/MqttConfig.java`
-- 设备日志：`backend/src/main/java/com/iot/platform/controller/DeviceLogController.java`
-
-### 参考实现
-- 数据权限实现：参考DeviceController.getDeviceList()方法
-- 分组树实现：参考DeviceGroupController.getGroupTree()方法
-- 前端分组使用：参考GroupSelector.vue组件
-- UI样式参考：参考common.css和element-theme.css中的Apple风格设计
-- 设备日志实现：参考DeviceLogController.pageQuery()方法
+| 类型 | 路径 |
+|------|------|
+| 数据库迁移 | `sql/migrations/` |
+| 前端API | `frontend/src/api/` |
+| 分组组件 | `frontend/src/components/GroupSelector.vue`、`GroupTree.vue` |
+| 数据权限 | `backend/.../controller/DeviceController.java` |
+| MQTT配置 | `backend/.../mqtt/MqttConfig.java` |
+| 数据库同步 | `scripts/sync-db.bat` |
 
 ---
 
-## 💡 代码简洁性原则
+## ❌ 禁止行为
 
-### 代码简洁性要求
-- **在实现功能要求的前提下，代码越简单越好**
-- **代码注释要详细**，关键逻辑、复杂算法、业务规则必须添加注释
-- **避免过度设计**，不要为了展示技术而增加复杂度
-- **优先使用简单直接的实现方式**，除非性能或业务有特殊要求
-
-### 注释规范
-- **方法注释**：说明方法功能、参数含义、返回值含义
-- **业务逻辑注释**：复杂业务逻辑必须添加注释说明
-- **算法注释**：复杂算法必须添加注释说明思路
-- **关键代码注释**：数据权限判断、权限过滤等关键代码必须注释
-
-### 禁止行为
-- ❌ 为了展示技术而增加不必要的复杂度
-- ❌ 过度抽象导致代码难以理解
-- ❌ 关键逻辑没有注释
-- ❌ 复杂业务逻辑没有注释说明
+- 前端硬编码业务数据
+- 不同接口使用不同权限逻辑
+- 跳过数据权限检查
+- 全表扫描、未分页查询
+- 同步处理MQTT消息
+- DROP/TRUNCATE/DELETE 生产数据
 
 ---
 
-*最后更新：2026-01-07*
+*最后更新：2026-01-12*
