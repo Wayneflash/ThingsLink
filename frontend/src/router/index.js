@@ -133,12 +133,8 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   
-  // 设置页面标题
-  if (to.meta.title) {
-    document.title = `${to.meta.title} - IOT Platform`
-  } else {
-    document.title = 'IOT Platform'
-  }
+  // 设置页面标题（固定显示 ThingsLink）
+  document.title = 'ThingsLink'
   
   // 原型页面，免登录
   if (to.meta.noAuth) {

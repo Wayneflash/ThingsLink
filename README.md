@@ -13,8 +13,8 @@ IoT Platform 是一个功能完善的物联网设备管理平台，采用前后�
 - 🌳 **分组管理** - 树形设备分组，支持多级分组
 - 👥 **权限管理** - 基于角色的访问控制 (RBAC)，支持数据权限过滤
 - 📊 **数据采集** - MQTT 协议数据接收与存储
-- 🔔 **告警系统** - 告警规则配置、告警日志、消息通知
-- 📈 **数据查询** - 设备历史数据查询与统计
+- 🔔 **告警系统** - 告警规则配置、告警统计、消息通知
+- 📈 **数据概览** - 设备统计、图表展示
 - 🎨 **现代化界面** - 基于 Element Plus + Tailwind CSS
 
 ## 技术栈
@@ -23,7 +23,7 @@ IoT Platform 是一个功能完善的物联网设备管理平台，采用前后�
 
 | 技术 | 版本 | 说明 |
 |------|------|------|
-| Java | 11 | 开发语言 |
+| Java | 11+ | 开发语言 |
 | Spring Boot | 2.7.18 | 应用框架 |
 | MyBatis Plus | 3.5.3.1 | ORM 框架 |
 | MySQL | 8.0 | 关系数据库 |
@@ -50,6 +50,7 @@ IoT Platform 是一个功能完善的物联网设备管理平台，采用前后�
 |------|------|------|
 | EMQX | 5.3 | MQTT Broker |
 | Nginx | - | 反向代理 |
+| Docker | - | 容器化部署 |
 
 ## 项目结构
 
@@ -57,101 +58,116 @@ IoT Platform 是一个功能完善的物联网设备管理平台，采用前后�
 IOT/
 ├── backend/                    # 后端项目
 │   ├── src/main/java/com/iot/platform/
-│   │   ├── IotPlatformApplication.java    # 启动类
-│   │   ├── common/            # 公共类
-│   │   │   └── Result.java    # 统一响应结果
-│   │   ├── config/            # 配置类
-│   │   │   ├── MybatisPlusConfig.java
-│   │   │   └── WebMvcConfig.java
-│   │   ├── controller/        # 控制器
-│   │   │   ├── DeviceController.java
-│   │   │   ├── ProductController.java
-│   │   │   ├── UserController.java
-│   │   │   ├── NotificationController.java
-│   │   │   └── ...
-│   │   ├── dto/               # 数据传输对象
-│   │   ├── entity/            # 实体类
-│   │   │   ├── Device.java
-│   │   │   ├── Product.java
-│   │   │   ├── DeviceData.java
-│   │   │   ├── Notification.java
-│   │   │   └── ...
-│   │   ├── mapper/            # MyBatis Mapper
-│   │   ├── mqtt/              # MQTT 相关
-│   │   │   ├── MqttConfig.java
-│   │   │   ├── MqttMessageHandler.java
-│   │   │   └── MqttPublisher.java
-│   │   ├── service/           # 业务逻辑层
-│   │   ├── task/              # 定时任务
-│   │   │   └── DeviceStatusCheckTask.java
-│   │   └── util/              # 工具类
+│   │   ├── IotPlatformApplication.java
+│   │   ├── common/             # 公共类
+│   │   ├── config/             # 配置类
+│   │   ├── controller/         # 控制器
+│   │   ├── dto/                # 数据传输对象
+│   │   ├── entity/             # 实体类
+│   │   ├── mapper/             # MyBatis Mapper
+│   │   ├── mqtt/               # MQTT 相关
+│   │   ├── service/            # 业务逻辑层
+│   │   ├── task/               # 定时任务
+│   │   └── util/               # 工具类
 │   ├── src/main/resources/
-│   │   ├── application.yml    # 应用配置
-│   │   └── db/migration/      # 数据库迁移脚本
-│   ├── Dockerfile             # 后端 Docker 镜像
-│   └── pom.xml                # Maven 配置
-├── frontend/                  # 前端项目
+│   │   └── application.yml     # 应用配置
+│   └── pom.xml
+│
+├── frontend/                   # 前端项目
 │   ├── src/
-│   │   ├── api/               # API 接口
-│   │   ├── components/        # 公共组件
-│   │   ├── layouts/           # 布局组件
-│   │   ├── router/            # 路由配置
-│   │   ├── styles/            # 样式文件
-│   │   ├── utils/             # 工具函数
-│   │   ├── views/             # 页面组件
-│   │   │   ├── Login.vue
-│   │   │   ├── Dashboard.vue
-│   │   │   ├── DeviceManagement.vue
-│   │   │   ├── AlarmLog.vue
+│   │   ├── api/                # API 接口
+│   │   ├── components/         # 公共组件
+│   │   │   ├── GroupSelector.vue   # 分组选择器
+│   │   │   ├── GroupTree.vue       # 分组树
+│   │   │   └── NotificationPanel.vue
+│   │   ├── layouts/            # 布局组件
+│   │   │   └── MainLayout.vue  # 主布局
+│   │   ├── router/             # 路由配置
+│   │   ├── views/              # 页面组件
+│   │   │   ├── Overview.vue        # 数据概览
+│   │   │   ├── DeviceManagement.vue # 设备管理
+│   │   │   ├── DeviceDetail.vue    # 设备详情
+│   │   │   ├── DeviceGroups.vue    # 设备分组
+│   │   │   ├── ProductList.vue     # 产品列表
+│   │   │   ├── ProductDetail.vue   # 产品详情
+│   │   │   ├── AlarmLog.vue        # 报警统计
+│   │   │   ├── AlarmThresholdConfig.vue # 报警配置
+│   │   │   ├── UserManagement.vue  # 用户管理
+│   │   │   ├── RoleManagement.vue  # 角色管理
 │   │   │   └── ...
-│   │   ├── App.vue            # 根组件
-│   │   └── main.js            # 入口文件
-│   ├── Dockerfile             # 前端 Docker 镜像
-│   ├── package.json           # 依赖配置
-│   └── vite.config.js         # Vite 配置
-├── docker-compose.yml         # Docker Compose 编排
-├── init.sql                   # 数据库初始化脚本
-└── README.md                  # 项目说明文档
+│   │   ├── App.vue
+│   │   └── main.js
+│   ├── package.json
+│   └── vite.config.js
+│
+├── scripts/                    # 运维脚本
+│   ├── build-frontend.bat      # 前端编译
+│   ├── build-backend.bat       # 后端编译
+│   ├── deploy-frontend.bat     # 前端部署
+│   ├── deploy-backend.bat      # 后端部署
+│   ├── pull-code.bat           # 拉取代码
+│   ├── push-code.bat           # 推送代码
+│   ├── sync-db.bat             # 数据库同步
+│   ├── start-dev.bat           # 启动开发环境
+│   └── deploy-config.template.txt  # 部署配置模板
+│
+├── sql/                        # 数据库脚本
+│   └── migrations/             # 迁移脚本
+│       ├── 001_create_migration_history.sql
+│       └── 002_add_alarm_log_fields.sql
+│
+├── docker-compose.yml          # Docker Compose 编排
+├── init.sql                    # 数据库初始化脚本
+├── .cursorrules                # 项目开发规范
+└── README.md
 ```
 
 ## 核心功能模块
 
-### 1. 设备管理
+### 1. 数据概览 (`/overview`)
+- 设备在线/离线统计
+- 今日告警数量统计
+- 设备状态分布图表
+- 最近告警列表
 
-- 设备注册与配置
-- 设备状态监控（在线/离线）
-- 设备分组管理
+### 2. 设备管理 (`/devices`)
+- 设备列表（在线优先排序）
+- 设备新增/编辑/删除
+- 设备状态监控
+- 设备详情查看
 - 设备数据查询
-- 设备统计数据
 
-### 2. 产品管理
+### 3. 设备分组 (`/groups`)
+- 树形分组结构
+- 分组新增/编辑/删除
+- 分组设备数量统计
 
-- 产品定义与模型配置
-- 产品属性定义（温度、湿度等）
-- 产品命令配置（开关、控制等）
+### 4. 产品管理 (`/products`)
+- 产品列表
+- 产品属性配置
+- 产品命令配置
 - 产品启用/禁用
 
-### 3. 告警系统
+### 5. 报警统计 (`/alarms`)
+- 告警日志列表
+- 告警处理
+- 告警恢复
+- 告警统计分析
 
-- 告警规则配置（阈值告警）
-- 告警级别分类（严重/警告/提示）
-- 告警日志记录
-- 消息通知推送
-- 告警处理与恢复
+### 6. 报警配置 (`/alarm-threshold`)
+- 设备告警规则配置
+- 阈值设置
+- 通知人员配置
 
-### 4. 权限管理
+### 7. 用户管理 (`/users`)
+- 用户列表
+- 用户新增/编辑/删除
+- 用户分组分配
 
-- 用户管理
-- 角色管理
-- 菜单权限控制
-- 数据权限过滤（分组级别）
-
-### 5. 数据采集
-
-- MQTT 消息接收
-- 设备数据上报处理
-- 历史数据存储
-- 数据分区管理
+### 8. 角色管理 (`/roles`)
+- 角色列表
+- 角色权限配置
+- 菜单权限分配
 
 ## 数据库设计
 
@@ -168,9 +184,24 @@ IOT/
 | `tb_command` | 产品命令表 |
 | `tb_device` | 设备表 |
 | `tb_device_data` | 设备数据表 |
+| `tb_device_log` | 设备日志表 |
 | `tb_command_log` | 命令下发记录表 |
 | `tb_notification` | 消息通知表 |
 | `tb_alarm_log` | 告警日志表 |
+| `tb_migration_history` | 数据库迁移记录表 |
+| `system_config` | 系统配置表 |
+
+### 数据库迁移
+
+项目使用迁移脚本管理数据库结构变更：
+
+```bash
+# 迁移脚本位置
+sql/migrations/
+
+# 同步数据库
+双击 scripts/sync-db.bat
+```
 
 ## 快速开始
 
@@ -179,53 +210,49 @@ IOT/
 - JDK 11+
 - Node.js 16+
 - Maven 3.6+
-- Docker & Docker Compose（可选）
+- Docker & Docker Compose
 
-### 使用 Docker Compose 启动（推荐）
+### 1. 启动基础服务
 
 ```bash
-# 启动所有服务（MySQL、Redis、EMQX）
+# 启动 MySQL、Redis、EMQX
 docker-compose up -d
 
 # 查看服务状态
 docker-compose ps
 ```
 
-### 后端启动
+### 2. 编译项目
 
 ```bash
-# 进入后端目录
-cd backend
+# 方式一：使用脚本（推荐）
+双击 scripts/build-backend.bat   # 编译后端
+双击 scripts/build-frontend.bat  # 编译前端
 
-# 编译打包
-mvn clean package
-
-# 运行应用
-java -jar target/iot-platform.jar
-
-# 或使用 Maven 运行
-mvn spring-boot:run
+# 方式二：命令行
+cd backend && mvn clean package -DskipTests
+cd frontend && npm install && npm run build
 ```
 
-### 前端启动
+### 3. 启动开发环境
 
 ```bash
-# 进入前端目录
-cd frontend
+# 方式一：使用脚本
+双击 scripts/start-dev.bat
 
-# 安装依赖
-npm install
+# 方式二：分别启动
+# 后端
+cd backend && mvn spring-boot:run
 
-# 启动开发服务器（运行在 5173 端口）
-npm run dev
-
-# 构建生产版本
-npm run build
+# 前端（新终端）
+cd frontend && npm run dev
 ```
 
-> **端口说明**：
-> - **生产环境**：前端和后端都通过8080端口访问（前后端部署在一起）
-> - **开发环境**：前端开发服务器运行在5173端口，后端运行在8080端口（分开运行便于开发调试）
+### 4. 访问系统
+
+- 前端开发：http://localhost:5173
+- 后端接口：http://localhost:8080
+- EMQX 控制台：http://localhost:18083
 
 ### 默认账号
 
@@ -233,13 +260,43 @@ npm run build
 |--------|------|------|
 | admin | admin123456 | 超级管理员 |
 
+## 常用脚本
+
+| 脚本 | 说明 |
+|------|------|
+| `scripts/build-frontend.bat` | 编译前端 (`npm run build`) |
+| `scripts/build-backend.bat` | 编译后端 (`mvn clean package`) |
+| `scripts/deploy-frontend.bat` | 部署前端到服务器 |
+| `scripts/deploy-backend.bat` | 部署后端到服务器 |
+| `scripts/pull-code.bat` | 从远程拉取代码（会覆盖本地） |
+| `scripts/push-code.bat` | 提交并推送代码到远程 |
+| `scripts/sync-db.bat` | 同步数据库迁移脚本 |
+| `scripts/start-dev.bat` | 启动本地开发环境 |
+
+### 部署配置
+
+首次部署需要配置服务器信息：
+
+```bash
+# 1. 复制配置模板
+copy scripts/deploy-config.template.txt scripts/deploy-config.txt
+
+# 2. 编辑配置文件
+REMOTE_HOST=your-server-ip
+REMOTE_PORT=22
+REMOTE_USER=root
+REMOTE_BACKEND_PATH=/opt/iot-platform/backend
+REMOTE_FRONTEND_PATH=/opt/iot-platform/frontend
+REMOTE_BACKEND_SERVICE=iot-platform
+```
+
 ## 配置说明
 
 ### 后端配置 (application.yml)
 
 ```yaml
 server:
-  port: 8080  # 服务端口
+  port: 8080
 
 spring:
   datasource:
@@ -266,9 +323,9 @@ mqtt:
 | `ssc/+/report` | 设备 → 平台 | 设备数据上报 |
 | `ssc/{deviceCode}/command` | 平台 → 设备 | 命令下发 |
 
-## API 文档
+## API 接口
 
-### 设备相关接口
+### 设备接口
 
 | 接口 | 方法 | 说明 |
 |------|------|------|
@@ -277,109 +334,54 @@ mqtt:
 | `/devices/detail` | POST | 获取设备详情 |
 | `/devices/update` | POST | 更新设备 |
 | `/devices/delete` | POST | 删除设备 |
-| `/devices/{deviceCode}` | GET | 根据设备编码获取设备 |
-| `/devices/latest-data` | POST | 获取设备最新数据 |
 | `/devices/statistics` | POST | 获取设备统计数据 |
 
-### 产品相关接口
+### 告警接口
 
 | 接口 | 方法 | 说明 |
 |------|------|------|
-| `/products` | POST | 创建产品 |
-| `/products/list` | GET | 获取产品列表 |
-| `/products/{id}` | GET | 获取产品详情 |
-| `/products/update` | POST | 更新产品 |
-| `/products/delete` | POST | 删除产品 |
+| `/alarm-logs/list` | POST | 查询告警列表 |
+| `/alarm-logs/handle` | POST | 处理告警 |
+| `/alarm-logs/statistics` | POST | 告警统计 |
 
-### 用户相关接口
+### 用户接口
 
 | 接口 | 方法 | 说明 |
 |------|------|------|
 | `/auth/login` | POST | 用户登录 |
 | `/auth/logout` | POST | 用户登出 |
-| `/users` | POST | 创建用户 |
-| `/users/list` | GET | 获取用户列表 |
+| `/users/list` | POST | 获取用户列表 |
 
-## 部署说明
+## 开发规范
 
-### 快速部署
+项目遵循 `.cursorrules` 中定义的开发规范：
 
-**Linux 服务器（推荐）：**
-```bash
-# 克隆代码
-git clone https://gitee.com/WayneFlash/things-link.git
-cd things-link
-
-# 一键部署
-chmod +x deploy.sh
-./deploy.sh
-```
-
-**Windows 开发环境：**
-```bash
-# 启动所有服务（MySQL + Redis + EMQX）
-start-all-services.bat
-
-# 后端启动（需要先编译）
-cd backend
-mvn spring-boot:run
-
-# 前端启动（新终端）
-cd frontend
-npm install
-npm run dev
-```
-
-### 详细部署文档
-
-- **完整部署指南**: [DEPLOY.md](./DEPLOY.md) - 包含详细的部署步骤、配置说明、故障排查
-- **Docker 镜像加速**: [DOCKER_MIRROR_GUIDE.md](./DOCKER_MIRROR_GUIDE.md) - 国内服务器镜像加速配置
-
-### 常用脚本
-
-| 脚本 | 说明 |
-|------|------|
-| `deploy.sh` | Linux 一键部署脚本 |
-| `start-all-services.bat` | Windows 启动所有服务 |
-| `backup-database.bat` | 数据库备份 |
-| `restore-database.bat` | 数据库恢复 |
-| `git-pull.bat` | Git 拉取代码 |
-| `git-push.bat` | Git 推送代码 |
-
-## 开发指南
-
-### 添加新的设备类型
-
-1. 在 `tb_product` 表中创建产品定义
-2. 在 `tb_attribute` 表中配置产品属性
-3. 在 `tb_command` 表中配置产品命令
-4. 设备按照 MQTT 协议格式上报数据
-
-### 添加新的告警规则
-
-1. 在设备配置中设置告警参数
-2. 告警规则存储在 `tb_device.alarm_config` 字段（JSON 格式）
-3. 系统自动检测并触发告警
-
-### 自定义权限
-
-1. 在 `tb_role` 表中定义角色
-2. 在 `tb_menu` 表中配置菜单权限
-3. 将角色分配给用户
+1. **修改优先级**：优先修改前端，后端修改需确认
+2. **数据权限**：超级管理员查看所有，普通用户按分组过滤
+3. **API 规范**：统一 POST 方法，JSON 格式
+4. **分组组件**：统一使用 `GroupSelector` 和 `GroupTree`
+5. **时间格式**：`yyyy-MM-dd HH:mm:ss`
+6. **数据库迁移**：通过 `sql/migrations/` 管理，禁止直接修改表结构
 
 ## 常见问题
 
 ### 1. 设备离线检测
 
-系统默认每 5 分钟检查一次设备在线状态，超时时间可在 `tb_device.offline_timeout` 字段配置。
+系统默认每 5 分钟检查一次设备在线状态，超时时间可在设备配置中设置。
 
-### 2. 数据分区管理
+### 2. 数据库字段缺失
 
-设备数据表按月分区，需要定期创建新的分区，参考 `init.sql` 中的分区定义。
+如果出现字段不存在错误，运行数据库同步脚本：
+```bash
+双击 scripts/sync-db.bat
+```
 
-### 3. 告警通知
+### 3. 编译失败
 
-告警通知通过 `tb_notification` 表记录，前端轮询获取未读通知。
+确保环境变量正确配置：
+- `JAVA_HOME` 指向 JDK 11+
+- Maven 在 PATH 中
+- Node.js 16+ 已安装
 
 ## 许可证
 
@@ -388,7 +390,3 @@ MIT License
 ## 贡献
 
 欢迎提交 Issue 和 Pull Request！
-
-## 联系方式
-
-如有问题，请提交 Issue 或联系项目维护者。

@@ -733,15 +733,17 @@ const loadDevices = async () => {
       devices.value = deviceList
       pagination.total = res.total || 0
       
-      // 预加载所有产品的物模型属性，确保报警条件能正确显示名称
-      const productIds = [...new Set(deviceList.map(d => d.productId).filter(Boolean))]
-      await Promise.all(productIds.map(pid => loadProductAttributes(pid)))
-      
-      updateStats()
+      // 使用返回的 total 计算统计（不再发额外请求）
+      // 统计数据基于当前筛选条件下的总数
+      stats.total = res.total || 0
+      stats.configured = deviceList.filter(d => d.alarmConfig).length
+      stats.unconfigured = deviceList.filter(d => !d.alarmConfig).length
     } else {
       devices.value = []
       pagination.total = 0
-      updateStats()
+      stats.total = 0
+      stats.configured = 0
+      stats.unconfigured = 0
     }
   } catch (error) {
     console.error('加载设备列表失败:', error)
@@ -754,34 +756,6 @@ const loadDevices = async () => {
     stats.unconfigured = 0
   } finally {
     loading.value = false
-  }
-}
-
-// 更新统计数据
-const updateStats = async () => {
-  try {
-    const params = {
-      page: 1,
-      pageSize: 10000,
-      keyword: filters.keyword || undefined,
-      productId: filters.productId || undefined,
-      groupId: filters.groupId || undefined,
-      status: filters.onlineStatus !== null ? filters.onlineStatus : undefined
-    }
-    
-    const res = await getDeviceList(params)
-    if (res && res.list) {
-      const allDevices = res.list || []
-      stats.total = allDevices.length
-      stats.configured = allDevices.filter(d => d.alarmConfig).length
-      stats.unconfigured = stats.total - stats.configured
-    } else {
-      stats.total = 0
-      stats.configured = 0
-      stats.unconfigured = 0
-    }
-  } catch (error) {
-    console.error('更新统计数据失败:', error)
   }
 }
 
@@ -837,7 +811,8 @@ const openConfigModal = async (device) => {
   
   // 加载产品的物模型属性
   const attrs = await loadProductAttributes(device.productId)
-  deviceAttributes.value = attrs
+  // 在数组前添加一个占位项，用于显示"离线报警"行
+  deviceAttributes.value = [{ addr: '__offline__', attrName: '离线报警' }, ...attrs]
   
   // 初始化 metrics Map，为每个属性创建配置对象
   const metricsMap = {}
@@ -893,7 +868,14 @@ const openConfigModal = async (device) => {
       stackMode: device.alarmConfigObj.stackMode !== false,
       mailEnabled: device.alarmConfigObj.mailEnabled || false,
       smsEnabled: device.alarmConfigObj.smsEnabled || false,
-      metrics: metricsMap
+      metrics: metricsMap,
+      offlineAlarm: {
+        enabled: false,
+        operator: '>',
+        threshold: 5,
+        unit: 'min',
+        level: 'warning'
+      }
     }
   } else {
     // 未配置
@@ -1028,7 +1010,8 @@ const openBatchModal = () => {
 const onProductChange = async () => {
   if (batchModal.productId) {
     const attrs = await loadProductAttributes(batchModal.productId)
-    batchDeviceAttributes.value = attrs
+    // 在数组前添加一个占位项，用于显示"离线报警"行
+    batchDeviceAttributes.value = [{ addr: '__offline__', attrName: '离线报警' }, ...attrs]
     
     // 初始化 metrics Map
     const metricsMap = {}
@@ -1192,31 +1175,6 @@ const saveBatchConfig = async () => {
       ElMessage.error('配置失败：' + (error.response?.data?.message || error.message))
     }
   }
-}
-
-// 辅助方法
-const getMetricLabel = (identifier, productId) => {
-  if (!productId) return identifier
-  const attrs = productAttributesCache.value[productId] || []
-  const attr = attrs.find(a => a.addr === identifier)
-  return attr?.attrName || identifier
-}
-
-const getMetricUnit = (identifier, productId) => {
-  if (!productId) return ''
-  const attrs = productAttributesCache.value[productId] || []
-  const attr = attrs.find(a => a.addr === identifier)
-  return attr?.unit ? attr.unit : ''
-}
-
-const getLevelIcon = (level) => {
-  const icons = { critical: '🔴', warning: '🟡', info: '🔵' }
-  return icons[level] || '-'
-}
-
-const getLevelLabel = (level) => {
-  const labels = { critical: '严重', warning: '警告', info: '提示' }
-  return labels[level] || level
 }
 
 // 获取用户名称（单个用户ID）
