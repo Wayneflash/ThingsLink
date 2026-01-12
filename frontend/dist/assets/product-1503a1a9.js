@@ -1,0 +1,1 @@
+import{r}from"./index-df07b552.js";const s=t=>r({url:"/products/list",method:"post",data:t}),e=t=>r({url:`/products/${t}/attributes`,method:"get"}),u=t=>r({url:`/products/${t}/commands`,method:"get"});export{e as a,u as b,s as g};
