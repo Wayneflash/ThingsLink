@@ -6,8 +6,8 @@ REM 获取脚本所在目录（自动适配不同路径）
 set SCRIPT_DIR=%~dp0
 set SCRIPT_DIR=!SCRIPT_DIR:~0,-1!
 
-REM 切换到脚本所在目录
-cd /d "!SCRIPT_DIR!"
+REM 切换到项目根目录（scripts目录的上一级）
+cd /d "!SCRIPT_DIR!\.."
 
 echo ========================================
 echo   Git Push Script (Auto Commit and Push)
