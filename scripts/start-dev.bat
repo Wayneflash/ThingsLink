@@ -123,21 +123,15 @@ for /f "tokens=1" %%v in ('node --version 2^>nul') do set NODE_VERSION=%%v
 echo ✅ Node.js 环境正常: !NODE_VERSION!
 echo.
 
-echo [3/5] 检查并编译后端...
+echo [3/5] 检查后端JAR文件...
 if not exist "backend\target\iot-platform.jar" (
-    echo ⚠️  后端未编译，正在编译（这可能需要几分钟）...
-    cd backend
-    call mvn clean package -DskipTests
-    if errorlevel 1 (
-        echo ❌ 后端编译失败
-        cd ..
-        pause
-        exit /b 1
-    )
-    cd ..
-    echo ✅ 后端编译完成
+    echo ❌ 错误: 后端JAR文件不存在
+    echo 请先手动编译后端: cd backend ^&^& mvn package -DskipTests
+    echo.
+    pause
+    exit /b 1
 ) else (
-    echo ✅ 后端已编译
+    echo ✅ 后端JAR文件存在
 )
 echo.
 

@@ -116,6 +116,34 @@ export const getDeviceLatestData = (params) => {
   })
 }
 
+/**
+ * 批量导入设备
+ * @param {Object} data - 导入数据
+ * @param {Array} data.devices - 设备列表
+ * @returns {Promise} 返回导入结果
+ */
+export const batchImportDevices = (data) => {
+  return request({
+    url: '/devices/batch-import',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 检查设备编码是否存在
+ * @param {Object} data - 检查数据
+ * @param {Array} data.deviceCodes - 设备编码列表
+ * @returns {Promise} 返回已存在的设备编码列表
+ */
+export const checkDeviceExists = (data) => {
+  return request({
+    url: '/devices/check-exists',
+    method: 'post',
+    data
+  })
+}
+
 export default {
   getDeviceList,
   createDevice,
@@ -123,5 +151,7 @@ export default {
   updateDevice,
   deleteDevice,
   updateDeviceStatus,
-  getDeviceLatestData
+  getDeviceLatestData,
+  batchImportDevices,
+  checkDeviceExists
 }

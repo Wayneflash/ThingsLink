@@ -211,7 +211,7 @@
             <label class="field-label">短信通知</label>
             <div class="switch-field">
               <el-switch v-model="configModal.form.smsEnabled" />
-              <span class="switch-label">开启后，报警时将发送短信通知处理人（暂未实现）</span>
+              <span class="switch-label">开启后，报警时将发送短信通知处理人</span>
             </div>
           </div>
         </div>
@@ -474,7 +474,7 @@
             <label class="field-label">短信通知</label>
             <div class="switch-field">
               <el-switch v-model="batchModal.form.smsEnabled" />
-              <span class="switch-label">开启后，报警时将发送短信通知处理人（暂未实现）</span>
+              <span class="switch-label">开启后，报警时将发送短信通知处理人</span>
             </div>
           </div>
 

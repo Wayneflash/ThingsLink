@@ -41,51 +41,46 @@
       <!-- 右侧设备列表 -->
       <el-card class="device-panel" shadow="hover">
         <template #header>
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
-            <h3 style="margin: 0; font-size: 16px;">{{ currentGroupTitle }}</h3>
-            <div style="display: flex; gap: 12px;">
-              <el-input
-                v-model="searchQuery"
-                placeholder="🔍 搜索设备名称或编码"
-                clearable
-                style="width: 240px;"
-                @keyup.enter="handleSearch"
-              />
-              <el-select
-                v-model="filterStatus"
-                placeholder="设备状态"
-                clearable
-                filterable
-                style="width: 120px;"
-              >
-                <el-option label="全部状态" value="" />
-                <el-option label="在线" value="online" />
-                <el-option label="离线" value="offline" />
-              </el-select>
-              <el-select
-                v-model="filterProduct"
-                placeholder="产品类型"
-                clearable
-                filterable
-                style="width: 200px;"
-                @visible-change="(visible) => { if(visible) console.log('产品下拉框展开，productList长度:', productList.length) }"
-              >
-                <el-option label="全部产品" value="" />
-                <el-option v-for="product in productList" :key="product.id" :label="getProductLabel(product)" :value="product.id" />
-              </el-select>
-              <el-button type="primary" size="default" @click="handleSearch">
-                <el-icon><Search /></el-icon>
-                查询
-              </el-button>
-              <el-button size="default" @click="refreshDevices">
-                <el-icon><Refresh /></el-icon>
-                刷新
-              </el-button>
-              <el-button type="primary" size="default" @click="openAddDialog">
-                <el-icon><Plus /></el-icon>
-                添加设备
-              </el-button>
-            </div>
+          <div class="panel-header">
+            <h3 class="panel-title">{{ currentGroupTitle }}</h3>
+            <el-select
+              v-model="filterStatus"
+              placeholder="设备状态"
+              clearable
+              class="filter-select status-select"
+            >
+              <el-option label="全部状态" value="" />
+              <el-option label="在线" value="online" />
+              <el-option label="离线" value="offline" />
+            </el-select>
+            <el-input
+              v-model="searchQuery"
+              placeholder="🔍 搜索设备名称或编码"
+              clearable
+              class="search-input"
+              @keyup.enter="handleSearch"
+            />
+            <el-select
+              v-model="filterProduct"
+              placeholder="产品类型"
+              clearable
+              class="filter-select product-select"
+            >
+              <el-option label="全部产品" value="" />
+              <el-option v-for="product in productList" :key="product.id" :label="getProductLabel(product)" :value="product.id" />
+            </el-select>
+            <el-button type="primary" @click="handleSearch">
+              <el-icon><Search /></el-icon>查询
+            </el-button>
+            <el-button @click="refreshDevices">
+              <el-icon><Refresh /></el-icon>刷新
+            </el-button>
+            <el-button type="primary" @click="openAddDialog">
+              <el-icon><Plus /></el-icon>添加设备
+            </el-button>
+            <el-button type="primary" @click="openBatchImport">
+              <el-icon><Upload /></el-icon>批量导入
+            </el-button>
           </div>
         </template>
         
@@ -188,6 +183,14 @@
         <el-button type="primary" @click="saveDevice" :loading="saving">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量导入对话框 -->
+    <BatchImportDialog
+      v-model:visible="batchImportVisible"
+      :product-list="productList"
+      :group-list="groups"
+      @import-success="handleImportSuccess"
+    />
   </div>
 </template>
 
@@ -195,12 +198,13 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, List, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, List, Search, Refresh, Upload } from '@element-plus/icons-vue'
 import { getDeviceList, createDevice, updateDevice, deleteDevice as deleteDeviceAPI } from '@/api/device'
 import { getGroupTree } from '@/api/group'
 import { getProductList } from '@/api/product'
 import GroupTree from '@/components/GroupTree.vue'
 import GroupSelector from '@/components/GroupSelector.vue'
+import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import { flattenTree } from '@/utils/tree'
 
 const router = useRouter()
@@ -209,6 +213,7 @@ const saving = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加设备')
 const isEditMode = ref(false)
+const batchImportVisible = ref(false)
 const deviceFormRef = ref(null)
 const groupSelectorRef = ref(null) // 分组选择器引用
 
@@ -392,6 +397,18 @@ const refreshDevices = () => {
   currentPage.value = 1
   loadDevices()
   ElMessage.success('刷新成功')
+}
+
+// 打开批量导入对话框
+const openBatchImport = () => {
+  batchImportVisible.value = true
+}
+
+// 批量导入成功回调
+const handleImportSuccess = (result) => {
+  // 刷新设备列表
+  loadDevices()
+  // 关闭对话框（组件内部会处理）
 }
 
 // 打开添加对话框
@@ -636,14 +653,73 @@ onMounted(() => {
   border-top: 1px solid #e5e5e7;
 }
 
-/* Element Plus 样式覆盖 */
-:deep(.el-card__header) {
-  padding: 20px 24px;
-  border-bottom: 1px solid #e5e5e7;
-  background: #fafafa;
-  min-height: 64px;
+/* Header 布局样式 - 舒适一行显示 */
+.panel-header {
   display: flex;
   align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d1d1f;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-right: 4px;
+  min-width: auto;
+}
+
+/* 设备状态下拉框 - 舒适宽度 */
+.status-select {
+  width: 105px;
+  flex-shrink: 0;
+}
+
+/* 搜索框 - 舒适宽度 */
+.search-input {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+/* 产品类型下拉框 - 舒适宽度 */
+.product-select {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+/* 通用下拉框样式 */
+.filter-select {
+  flex-shrink: 0;
+}
+
+/* 按钮组 - 舒适样式 */
+.panel-header .el-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 6px 12px;
+  font-size: 13px;
+  height: 32px;
+  min-width: auto;
+  line-height: 1.4;
+}
+
+.panel-header .el-button .el-icon {
+  font-size: 14px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* Element Plus 样式覆盖 */
+:deep(.el-card__header) {
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e5e7;
+  background: #fafafa;
 }
 
 :deep(.el-card__body) {
@@ -656,12 +732,67 @@ onMounted(() => {
   width: 100%;
 }
 
-:deep(.el-input__wrapper) {
-  border-radius: 8px;
+/* 输入框样式优化 - 舒适型 */
+:deep(.panel-header .el-input__wrapper) {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  padding: 0 10px;
+  height: 32px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
 }
 
+:deep(.panel-header .el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset;
+}
+
+:deep(.panel-header .el-input__inner) {
+  height: 32px;
+  line-height: 32px;
+  font-size: 13px;
+}
+
+/* 下拉框样式优化 - 舒适型 */
+:deep(.panel-header .el-select .el-input__wrapper) {
+  transition: all 0.2s ease;
+  padding: 0 10px;
+  height: 32px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+
+:deep(.panel-header .el-select:hover .el-input__wrapper) {
+  box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset;
+}
+
+:deep(.panel-header .el-select .el-input__inner) {
+  height: 32px;
+  line-height: 32px;
+  font-size: 13px;
+}
+
+:deep(.panel-header .el-input__suffix) {
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+:deep(.panel-header .el-select__caret) {
+  font-size: 13px;
+}
+
+/* 按钮样式优化 */
 :deep(.el-button) {
   border-radius: 8px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+:deep(.el-button--primary) {
+  box-shadow: 0 2px 4px rgba(0, 122, 255, 0.15);
+}
+
+:deep(.el-button--primary:hover) {
+  box-shadow: 0 4px 8px rgba(0, 122, 255, 0.25);
+  transform: translateY(-1px);
 }
 
 :deep(.el-table) {
@@ -673,10 +804,91 @@ onMounted(() => {
   padding: 4px 8px;
 }
 
-/* 响应式设计 */
+/* 响应式设计 - 舒适布局，确保一行显示 */
+@media (min-width: 1600px) {
+  .search-input {
+    width: 220px;
+  }
+  
+  .status-select {
+    width: 110px;
+  }
+  
+  .product-select {
+    width: 130px;
+  }
+}
+
+@media (max-width: 1600px) {
+  .search-input {
+    width: 180px;
+  }
+  
+  .status-select {
+    width: 100px;
+  }
+  
+  .product-select {
+    width: 115px;
+  }
+  
+  .panel-header {
+    gap: 8px;
+  }
+  
+  .panel-header .el-button {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 1400px) {
+  .search-input {
+    width: 150px;
+  }
+  
+  .status-select {
+    width: 80px;
+  }
+  
+  .product-select {
+    width: 95px;
+  }
+  
+  .panel-header {
+    gap: 6px;
+  }
+  
+  .panel-title {
+    font-size: 13px;
+  }
+}
+
 @media (max-width: 1200px) {
   .device-container {
-    grid-template-columns: 250px 1fr;
+    grid-template-columns: 220px 1fr;
+  }
+  
+  .search-input {
+    width: 140px;
+  }
+  
+  .status-select {
+    width: 75px;
+  }
+  
+  .product-select {
+    width: 90px;
+  }
+  
+  .panel-header {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  
+  .panel-header .el-button {
+    padding: 6px 8px;
+    font-size: 12px;
   }
 }
 
@@ -693,6 +905,15 @@ onMounted(() => {
   
   .device-panel {
     height: auto;
+  }
+  
+  .panel-header {
+    flex-wrap: wrap;
+  }
+  
+  .header-actions {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
 </style>

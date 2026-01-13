@@ -13,7 +13,8 @@
     "element-plus": "^2.3.14",
     "paho-mqtt": "^1.1.0",
     "vue": "^3.3.4",
-    "vue-router": "^4.2.4"
+    "vue-router": "^4.2.4",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",

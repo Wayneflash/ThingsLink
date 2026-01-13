@@ -24,22 +24,48 @@ if defined JAVA_HOME (
     )
 )
 
-"!JAVA_CMD!" -version >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] Java not installed or not in PATH
-    echo Please install JDK 11+ and set JAVA_HOME
-    echo Download: https://adoptium.net/
-    pause
-    exit /b 1
+REM 检查Java是否可用（使用引号包裹路径，避免空格问题）
+if exist "!JAVA_CMD!" (
+    "!JAVA_CMD!" -version >nul 2>&1
+    if errorlevel 1 (
+        REM 如果直接路径失败，尝试使用java命令
+        java -version >nul 2>&1
+        if errorlevel 1 (
+            echo [ERROR] Java not installed or not in PATH
+            echo Please install JDK 11+ and set JAVA_HOME
+            echo Download: https://adoptium.net/
+            pause
+            exit /b 1
+        )
+        set "JAVA_CMD=java"
+    )
+) else (
+    REM 如果JAVA_HOME路径不存在，尝试使用PATH中的java
+    java -version >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] Java not installed or not in PATH
+        echo Please install JDK 11+ and set JAVA_HOME
+        echo Download: https://adoptium.net/
+        pause
+        exit /b 1
+    )
+    set "JAVA_CMD=java"
 )
 
-REM 显示 Java 版本
-for /f "tokens=3" %%v in ('"!JAVA_CMD!" -version 2^>^&1 ^| findstr /i "version"') do (
+REM 显示 Java 版本（使用临时文件避免引号问题）
+set "TEMP_FILE=%TEMP%\java_version_%RANDOM%.txt"
+"!JAVA_CMD!" -version > "!TEMP_FILE!" 2>&1
+for /f "tokens=3" %%v in ('type "!TEMP_FILE!" ^| findstr /i "version"') do (
     echo [INFO] Java version: %%v
     goto :java_done
 )
 :java_done
-echo [INFO] JAVA_HOME: !JAVA_HOME!
+del /q "!TEMP_FILE!" >nul 2>&1
+if defined JAVA_HOME (
+    echo [INFO] JAVA_HOME: !JAVA_HOME!
+) else (
+    echo [INFO] JAVA_HOME: (not set, using PATH)
+)
 
 REM 检查 Maven 是否安装
 where mvn >nul 2>&1

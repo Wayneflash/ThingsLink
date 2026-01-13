@@ -522,4 +522,175 @@ public class DeviceController {
         private Long groupId;           // 分组ID筛选
         private String status;          // 状态筛选（online/offline）
     }
+    
+    /**
+     * 批量导入设备
+     */
+    @PostMapping("/batch-import")
+    public Result<Map<String, Object>> batchImportDevices(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @RequestBody Map<String, Object> params) {
+        try {
+            // 1. 获取设备列表
+            List<Map<String, Object>> devices = (List<Map<String, Object>>) params.get("devices");
+            if (devices == null || devices.isEmpty()) {
+                return Result.error("设备列表不能为空");
+            }
+            
+            // 2. 检查单次导入数量限制
+            if (devices.size() > 1000) {
+                return Result.error("单次导入数量不能超过1000条");
+            }
+            
+            // 3. 初始化统计
+            int successCount = 0;
+            int failCount = 0;
+            List<Map<String, Object>> errors = new ArrayList<>();
+            
+            // 4. 逐条处理设备
+            for (int i = 0; i < devices.size(); i++) {
+                Map<String, Object> deviceData = devices.get(i);
+                int rowNum = i + 1; // 行号从1开始
+                
+                try {
+                    // 4.1 提取和校验参数
+                    String deviceCode = (String) deviceData.get("deviceCode");
+                    String deviceName = (String) deviceData.get("deviceName");
+                    String productModel = (String) deviceData.get("productModel");
+                    Object groupIdObj = deviceData.get("groupId");
+                    
+                    // 4.2 必填字段校验
+                    if (deviceCode == null || deviceCode.trim().isEmpty()) {
+                        throw new Exception("设备编码不能为空");
+                    }
+                    if (deviceName == null || deviceName.trim().isEmpty()) {
+                        throw new Exception("设备名称不能为空");
+                    }
+                    if (productModel == null || productModel.trim().isEmpty()) {
+                        throw new Exception("产品型号不能为空");
+                    }
+                    if (groupIdObj == null) {
+                        throw new Exception("分组ID不能为空");
+                    }
+                    
+                    // 4.3 格式校验
+                    if (deviceCode.length() > 50) {
+                        throw new Exception("设备编码长度不能超过50");
+                    }
+                    if (deviceName.length() > 100) {
+                        throw new Exception("设备名称长度不能超过100");
+                    }
+                    if (productModel.length() > 100) {
+                        throw new Exception("产品型号长度不能超过100");
+                    }
+                    
+                    // 转换分组ID
+                    Long groupId;
+                    try {
+                        groupId = Long.valueOf(groupIdObj.toString());
+                    } catch (NumberFormatException e) {
+                        throw new Exception("分组ID必须是数字");
+                    }
+                    
+                    // 4.4 业务逻辑校验
+                    
+                    // 检查设备编码是否已存在
+                    Device existingDevice = deviceService.getByDeviceCode(deviceCode.trim());
+                    if (existingDevice != null) {
+                        throw new Exception("设备编码已存在: " + deviceCode);
+                    }
+                    
+                    // 验证产品是否存在（根据产品型号）
+                    Product product = productService.getByModel(productModel.trim());
+                    if (product == null) {
+                        throw new Exception("产品型号不存在: " + productModel);
+                    }
+                    Long productId = product.getId();
+                    
+                    // 验证分组是否存在
+                    DeviceGroup group = deviceGroupService.getById(groupId);
+                    if (group == null) {
+                        throw new Exception("分组ID不存在: " + groupId);
+                    }
+                    
+                    // 4.5 创建设备对象
+                    Device device = new Device();
+                    device.setDeviceCode(deviceCode.trim());
+                    device.setDeviceName(deviceName.trim());
+                    device.setProductId(productId);
+                    device.setGroupId(groupId);
+                    device.setLocation(null); // 位置字段为空
+                    device.setOfflineTimeout(300); // 默认5分钟超时
+                    device.setStatus(0); // 默认离线
+                    
+                    // 4.6 保存设备（使用Service的save方法）
+                    deviceService.save(device);
+                    
+                    successCount++;
+                    log.info("批量导入设备成功: {} ({})", deviceName, deviceCode);
+                    
+                } catch (Exception e) {
+                    failCount++;
+                    
+                    // 记录错误信息
+                    Map<String, Object> errorInfo = new HashMap<>();
+                    errorInfo.put("row", rowNum);
+                    errorInfo.put("deviceCode", deviceData.get("deviceCode"));
+                    errorInfo.put("error", e.getMessage());
+                    errors.add(errorInfo);
+                    
+                    log.warn("批量导入设备失败 (行{}): {}", rowNum, e.getMessage());
+                }
+            }
+            
+            // 5. 构建返回结果
+            Map<String, Object> result = new HashMap<>();
+            result.put("successCount", successCount);
+            result.put("failCount", failCount);
+            result.put("totalCount", devices.size());
+            result.put("errors", errors);
+            
+            String message = String.format("导入完成: 成功%d条，失败%d条", successCount, failCount);
+            return Result.success(result, message);
+            
+        } catch (Exception e) {
+            log.error("批量导入设备失败", e);
+            return Result.error("批量导入失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 检查设备编码是否存在
+     */
+    @PostMapping("/check-exists")
+    public Result<Map<String, Object>> checkDeviceExists(@RequestBody Map<String, Object> params) {
+        try {
+            // 1. 获取设备编码列表
+            List<String> deviceCodes = (List<String>) params.get("deviceCodes");
+            if (deviceCodes == null || deviceCodes.isEmpty()) {
+                return Result.error("设备编码列表不能为空");
+            }
+            
+            // 2. 查询已存在的设备编码
+            List<String> existingCodes = new ArrayList<>();
+            for (String deviceCode : deviceCodes) {
+                if (deviceCode != null && !deviceCode.trim().isEmpty()) {
+                    Device device = deviceService.getByDeviceCode(deviceCode.trim());
+                    if (device != null) {
+                        existingCodes.add(device.getDeviceCode());
+                    }
+                }
+            }
+            
+            // 3. 构建返回结果
+            Map<String, Object> result = new HashMap<>();
+            result.put("existingCodes", existingCodes);
+            
+            return Result.success(result);
+            
+        } catch (Exception e) {
+            log.error("检查设备编码是否存在失败", e);
+            return Result.error("检查失败: " + e.getMessage());
+        }
+    }
 }
