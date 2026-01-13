@@ -2,11 +2,11 @@
 setlocal enabledelayedexpansion
 chcp 65001 >nul
 
-REM 获取脚本所在目录（自动适配不同路径）
+REM Get script directory (auto adapt different paths)
 set SCRIPT_DIR=%~dp0
 set SCRIPT_DIR=!SCRIPT_DIR:~0,-1!
 
-REM 切换到项目根目录（scripts目录的上一级）
+REM Change to project root directory (parent of scripts directory)
 cd /d "!SCRIPT_DIR!\.."
 
 echo ========================================

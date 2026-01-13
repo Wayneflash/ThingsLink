@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT物联网设备管理平台 API 文档</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 左侧导航栏 */
+        .sidebar {
+            width: 280px;
+            background: #ffffff;
+            border-right: 1px solid #e5e5e7;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: fixed;
+            height: 100vh;
+            left: 0;
+            top: 0;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid #e5e5e7;
+            background: #ffffff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .sidebar-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-header .version {
+            font-size: 12px;
+            color: #86868b;
+        }
+
+        .nav-menu {
+            padding: 16px 0;
+        }
+
+        .nav-item {
+            padding: 0;
+        }
+
+        .nav-item > a {
+            display: block;
+            padding: 12px 20px;
+            color: #1d1d1f;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item > a:hover {
+            background: #f5f5f7;
+            color: #007aff;
+        }
+
+        .nav-item > a.active {
+            background: #f0f7ff;
+            color: #007aff;
+            border-left-color: #007aff;
+        }
+
+        .nav-submenu {
+            padding-left: 20px;
+            display: none;
+        }
+
+        .nav-item.expanded .nav-submenu {
+            display: block;
+        }
+
+        .nav-submenu a {
+            display: block;
+            padding: 8px 20px;
+            color: #86868b;
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .nav-submenu a:hover {
+            color: #007aff;
+            background: #f5f5f7;
+        }
+
+        .nav-submenu a.active {
+            color: #007aff;
+            background: #f0f7ff;
+        }
+
+        .nav-toggle {
+            float: right;
+            font-size: 12px;
+            color: #86868b;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* 右侧内容区 */
+        .content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 0;
+            overflow-y: auto;
+            background: #ffffff;
+        }
+
+        .content-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        /* Markdown内容样式 */
+        .markdown-body {
+            font-size: 16px;
+            line-height: 1.8;
+        }
+
+        .markdown-body h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e5e5e7;
+        }
+
+        .markdown-body h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-top: 48px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e5e5e7;
+            scroll-margin-top: 20px;
+        }
+
+        .markdown-body h3 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-top: 32px;
+            margin-bottom: 16px;
+        }
+
+        .markdown-body h4 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #007aff;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+
+        .markdown-body code {
+            background: #f5f5f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 14px;
+            color: #007aff;
+        }
+
+        .markdown-body pre {
+            background: #1d1d1f;
+            color: #f5f5f7;
+            padding: 16px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 16px 0;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .markdown-body pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+
+        .markdown-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .markdown-body table th,
+        .markdown-body table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e5e5e7;
+        }
+
+        .markdown-body table th {
+            background: #f5f5f7;
+            font-weight: 600;
+            font-size: 13px;
+            color: #1d1d1f;
+        }
+
+        .markdown-body table td {
+            font-size: 14px;
+        }
+
+        .markdown-body ul, .markdown-body ol {
+            margin: 16px 0;
+            padding-left: 24px;
+        }
+
+        .markdown-body li {
+            margin: 8px 0;
+        }
+
+        .markdown-body blockquote {
+            border-left: 4px solid #007aff;
+            padding: 16px;
+            margin: 16px 0;
+            background: #f0f7ff;
+            border-radius: 8px;
+        }
+
+        .markdown-body hr {
+            border: none;
+            border-top: 1px solid #e5e5e7;
+            margin: 32px 0;
+        }
+
+        .markdown-body p {
+            margin: 16px 0;
+        }
+
+        .markdown-body strong {
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .content {
+                margin-left: 0;
+            }
+
+            .content-wrapper {
+                padding: 24px;
+            }
+        }
+
+        /* 滚动条样式 */
+        .sidebar::-webkit-scrollbar,
+        .content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track,
+        .content::-webkit-scrollbar-track {
+            background: #f5f5f7;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb,
+        .content::-webkit-scrollbar-thumb {
+            background: #d1d1d6;
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover,
+        .content::-webkit-scrollbar-thumb:hover {
+            background: #86868b;
+        }
+
+        /* 加载提示 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #86868b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧导航栏 -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>API 文档</h1>
+                <div class="version">v1.0.0</div>
+            </div>
+            <div class="nav-menu" id="navMenu">
+                <div class="loading">加载中...</div>
+            </div>
+        </nav>
+
+        <!-- 右侧内容区 -->
+        <main class="content">
+            <div class="content-wrapper">
+                <div class="markdown-body" id="markdownContent">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 解析Markdown并生成导航
+        function parseMarkdownAndGenerateNav(markdown) {
+            const navMenu = document.getElementById('navMenu');
+            const lines = markdown.split('\n');
+            let navHtml = '';
+            let currentSection = null;
+            let sectionIndex = 0;
+            let skipDirectory = false;
+
+            lines.forEach((line) => {
+                const trimmedLine = line.trim();
+                
+                // 跳过目录部分（只跳过目录列表，不跳过标题）
+                if (trimmedLine === '## 📋 目录' || trimmedLine.includes('📋 目录')) {
+                    skipDirectory = true;
+                    return;
+                }
+                if (skipDirectory && trimmedLine.startsWith('---')) {
+                    skipDirectory = false;
+                    return;
+                }
+                if (skipDirectory && trimmedLine.startsWith('-')) {
+                    // 跳过目录列表项
+                    return;
+                }
+                if (skipDirectory) {
+                    return;
+                }
+                
+                // 匹配一级标题（## 数字. 标题）
+                const h2Match = trimmedLine.match(/^##\s+(\d+)\.\s+(.+)$/);
+                if (h2Match) {
+                    // 关闭上一个section
+                    if (currentSection) {
+                        navHtml += '</div></div>';
+                    }
+                    
+                    sectionIndex = parseInt(h2Match[1]);
+                    const sectionId = `section-${sectionIndex}`;
+                    const sectionTitle = h2Match[2].trim();
+                    
+                    navHtml += `
+                        <div class="nav-item" data-section="${sectionId}">
+                            <a href="#${sectionId}" onclick="event.preventDefault(); scrollToSection('${sectionId}'); return false;">
+                                ${sectionIndex}. ${sectionTitle}
+                                <span class="nav-toggle" onclick="event.stopPropagation(); toggleSubmenu(this);">▼</span>
+                            </a>
+                            <div class="nav-submenu">
+                    `;
+                    currentSection = sectionId;
+                    console.log('找到一级标题:', sectionIndex, sectionTitle);
+                }
+                
+                // 匹配二级标题（### 数字.数字 标题）
+                const h3Match = trimmedLine.match(/^###\s+(\d+)\.(\d+)\s+(.+)$/);
+                if (h3Match) {
+                    if (!currentSection) {
+                        console.warn('找到二级标题但没有当前section:', h3Match[0]);
+                        return;
+                    }
+                    const itemId = `${currentSection}-${h3Match[2]}`;
+                    const itemTitle = h3Match[3].trim();
+                    navHtml += `
+                        <a href="#${itemId}" onclick="event.preventDefault(); scrollToSection('${itemId}'); return false;">
+                            ${h3Match[1]}.${h3Match[2]} ${itemTitle}
+                        </a>
+                    `;
+                    console.log('找到二级标题:', h3Match[1] + '.' + h3Match[2], itemTitle, '添加到section:', currentSection);
+                }
+            });
+
+            // 关闭最后一个section
+            if (currentSection) {
+                navHtml += '</div></div>';
+            }
+
+            // 如果没有生成任何导航，显示提示
+            if (!navHtml || !currentSection) {
+                navHtml = '<div style="padding: 20px; color: #ff3b30; font-size: 14px;">⚠️ 未找到导航项<br>请检查Markdown文件格式是否正确</div>';
+                console.error('导航生成失败，Markdown前500字符:', markdown.substring(0, 500));
+            }
+
+            navMenu.innerHTML = navHtml;
+            console.log('导航HTML长度:', navHtml.length);
+            console.log('导航HTML预览:', navHtml.substring(0, 500));
+            
+            // 检查是否有子菜单项
+            const submenuItems = navMenu.querySelectorAll('.nav-submenu a');
+            console.log('找到', submenuItems.length, '个子菜单项');
+            
+            // 默认展开所有section（方便查看）
+            const navItems = navMenu.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.classList.add('expanded');
+            });
+            
+            console.log('导航生成完成，共', navItems.length, '个一级菜单');
+        }
+
+        // 处理Markdown内容，添加ID锚点
+        function processMarkdownContent(markdown) {
+            const lines = markdown.split('\n');
+            let processedLines = [];
+            let skipDirectory = false;
+
+            lines.forEach((line) => {
+                const trimmedLine = line.trim();
+                
+                // 跳过目录部分
+                if (trimmedLine.includes('📋 目录') || trimmedLine === '## 📋 目录') {
+                    skipDirectory = true;
+                    processedLines.push(line);
+                    return;
+                }
+                if (skipDirectory && trimmedLine.startsWith('---')) {
+                    skipDirectory = false;
+                    processedLines.push(line);
+                    return;
+                }
+                if (skipDirectory) {
+                    processedLines.push(line);
+                    return;
+                }
+                
+                // 为一级标题添加ID
+                const h2Match = trimmedLine.match(/^##\s+(\d+)\.\s+(.+)$/);
+                if (h2Match) {
+                    const sectionIndex = h2Match[1];
+                    const sectionTitle = h2Match[2].trim();
+                    processedLines.push(`<h2 id="section-${sectionIndex}">${sectionIndex}. ${sectionTitle}</h2>`);
+                    return;
+                }
+
+                // 为二级标题添加ID
+                const h3Match = trimmedLine.match(/^###\s+(\d+)\.(\d+)\s+(.+)$/);
+                if (h3Match) {
+                    const sectionId = `section-${h3Match[1]}`;
+                    const itemId = `${sectionId}-${h3Match[2]}`;
+                    const itemTitle = h3Match[3].trim();
+                    processedLines.push(`<h3 id="${itemId}">${h3Match[1]}.${h3Match[2]} ${itemTitle}</h3>`);
+                    return;
+                }
+
+                // 保留其他行
+                processedLines.push(line);
+            });
+
+            return processedLines.join('\n');
+        }
+
+        // 滚动到指定章节
+        function scrollToSection(sectionId) {
+            console.log('尝试滚动到:', sectionId);
+            const element = document.getElementById(sectionId);
+            if (element) {
+                console.log('找到元素，开始滚动');
+                // 等待一下确保DOM已更新
+                setTimeout(() => {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    updateActiveNav(sectionId);
+                }, 50);
+            } else {
+                console.error('未找到元素:', sectionId);
+                // 尝试查找所有可能的ID
+                const allIds = Array.from(document.querySelectorAll('[id]')).map(el => el.id);
+                console.log('页面中所有ID:', allIds.filter(id => id.includes('section')));
+            }
+        }
+
+        // 更新导航激活状态
+        function updateActiveNav(sectionId) {
+            document.querySelectorAll('.nav-item > a, .nav-submenu a').forEach(a => {
+                a.classList.remove('active');
+            });
+
+            const navLink = document.querySelector(`a[href="#${sectionId}"]`);
+            if (navLink) {
+                navLink.classList.add('active');
+                const navItem = navLink.closest('.nav-item');
+                if (navItem && navLink.parentElement.classList.contains('nav-submenu')) {
+                    navItem.classList.add('expanded');
+                }
+            }
+        }
+
+        // 切换子菜单
+        function toggleSubmenu(toggle) {
+            const navItem = toggle.closest('.nav-item');
+            navItem.classList.toggle('expanded');
+        }
+
+        // 加载Markdown文件
+        async function loadMarkdown() {
+            // 优先尝试fetch（适用于HTTP服务器）
+            if (window.location.protocol !== 'file:') {
+                try {
+                    const response = await fetch('API.md');
+                    if (response.ok) {
+                        const markdown = await response.text();
+                        renderMarkdown(markdown);
+                        return;
+                    }
+                } catch (error) {
+                    console.log('Fetch failed, trying file input...');
+                }
+            }
+
+            // 如果是file://协议，显示文件选择提示
+            showFileInputPrompt();
+        }
+
+        // 显示文件选择提示
+        function showFileInputPrompt() {
+            const errorHtml = `
+                <div style="padding: 40px; max-width: 800px; margin: 0 auto;">
+                    <h2 style="color: #007aff; margin-bottom: 24px;">📄 请选择API.md文件</h2>
+                    <p style="margin-bottom: 24px; font-size: 16px; line-height: 1.8;">
+                        由于浏览器安全限制，请手动选择API.md文件加载：
+                    </p>
+                    
+                    <div style="text-align: center; margin: 32px 0;">
+                        <input type="file" id="fileInput" accept=".md" style="display: none;">
+                        <button onclick="document.getElementById('fileInput').click();" 
+                                style="background: #007aff; color: white; border: none; padding: 16px 32px; 
+                                       border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer;
+                                       transition: all 0.2s;">
+                            📂 选择 API.md 文件
+                        </button>
+                    </div>
+
+                    <div style="background: #f0f7ff; padding: 20px; border-radius: 10px; margin-top: 24px;">
+                        <p style="margin-bottom: 12px; font-weight: 600; color: #1d1d1f;">💡 提示：</p>
+                        <p style="margin-bottom: 8px; font-size: 14px; color: #86868b;">
+                            • 文件通常位于：<code>docs/API.md</code>
+                        </p>
+                        <p style="margin-bottom: 8px; font-size: 14px; color: #86868b;">
+                            • 选择文件后会自动加载并显示文档
+                        </p>
+                        <p style="font-size: 14px; color: #86868b;">
+                            • 或者使用HTTP服务器访问（无需手动选择文件）
+                        </p>
+                    </div>
+
+                    <div style="background: #f5f5f7; padding: 24px; border-radius: 10px; margin-top: 24px;">
+                        <h3 style="margin-bottom: 16px; color: #1d1d1f;">🚀 使用HTTP服务器（推荐）</h3>
+                        <p style="margin-bottom: 12px; font-size: 14px; color: #86868b;">
+                            运行启动脚本：<code>docs/start-api-doc-server.bat</code>
+                        </p>
+                        <p style="font-size: 14px; color: #86868b;">
+                            然后在浏览器访问：<code>http://localhost:8080/API.html</code>
+                        </p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('markdownContent').innerHTML = errorHtml;
+            document.getElementById('navMenu').innerHTML = '<div class="loading">请选择API.md文件</div>';
+
+            // 监听文件选择
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.md';
+            fileInput.style.display = 'none';
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const markdown = e.target.result;
+                        renderMarkdown(markdown);
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            document.body.appendChild(fileInput);
+
+            // 绑定按钮点击事件
+            setTimeout(() => {
+                const button = document.querySelector('button');
+                if (button) {
+                    button.onclick = () => fileInput.click();
+                }
+            }, 100);
+        }
+
+        // 渲染Markdown内容
+        function renderMarkdown(markdown) {
+            console.log('开始渲染Markdown，内容长度:', markdown.length);
+            
+            // 先生成导航
+            parseMarkdownAndGenerateNav(markdown);
+            console.log('导航生成完成');
+            
+            // 处理并渲染内容
+            const processedMarkdown = processMarkdownContent(markdown);
+            const html = marked.parse(processedMarkdown);
+            document.getElementById('markdownContent').innerHTML = html;
+            console.log('内容渲染完成');
+            
+            // 页面加载完成后，如果有hash，滚动到对应位置
+            if (window.location.hash) {
+                const sectionId = window.location.hash.substring(1);
+                setTimeout(() => scrollToSection(sectionId), 100);
+            }
+        }
+
+        // 监听滚动，更新导航激活状态
+        let scrollTimeout;
+        window.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                const headings = document.querySelectorAll('h2[id], h3[id]');
+                let currentHeading = null;
+
+                headings.forEach(heading => {
+                    const rect = heading.getBoundingClientRect();
+                    if (rect.top <= 100) {
+                        currentHeading = heading.id;
+                    }
+                });
+
+                if (currentHeading) {
+                    updateActiveNav(currentHeading);
+                }
+            }, 100);
+        });
+
+        // 初始化
+        loadMarkdown();
+    </script>
+</body>
+</html>

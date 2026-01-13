@@ -106,6 +106,10 @@
                   <el-icon><User /></el-icon>
                   个人资料
                 </el-dropdown-item>
+                <el-dropdown-item command="change-password">
+                  <el-icon><Lock /></el-icon>
+                  修改密码
+                </el-dropdown-item>
                 <el-dropdown-item command="system-settings">
                   <el-icon><Setting /></el-icon>
                   系统设置
@@ -152,7 +156,8 @@ import {
   TrendCharts,
   BellFilled,
   Warning,
-  Tools
+  Tools,
+  Lock
 } from '@element-plus/icons-vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
 
@@ -212,6 +217,7 @@ const pageTitleMap = {
   '/users': '用户管理',
   '/roles': '角色管理',
   '/system': '系统管理',
+  '/system-config/change-password': '修改密码',
   '/profile': '个人资料'
 }
 
@@ -239,8 +245,13 @@ const loadUserInfo = () => {
   if (menusData) {
     try {
       const menus = JSON.parse(menusData)
-      // 过滤掉"数据查询"菜单项（兼容旧数据）
-      menuList.value = menus.filter(menu => menu.code !== 'data-query' && menu.path !== '/data-query')
+      // 过滤掉"数据查询"和"系统配置"菜单项（兼容旧数据）
+      menuList.value = menus.filter(menu => 
+        menu.code !== 'data-query' && 
+        menu.path !== '/data-query' &&
+        menu.code !== 'system-config' &&
+        menu.path !== '/system-config'
+      )
     } catch (e) {
       console.error('解析菜单数据失败:', e)
       menuList.value = []
@@ -255,6 +266,9 @@ const handleCommand = async (command) => {
   switch (command) {
     case 'profile':
       router.push('/profile')
+      break
+    case 'change-password':
+      router.push('/system-config/change-password')
       break
     case 'system-settings':
       // 检查是否为admin

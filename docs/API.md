@@ -1,0 +1,2360 @@
+# IoT物联网设备管理平台 API 文档
+
+> **版本**: v1.0.0  
+> **基础URL**: `http://localhost:8080`  
+> **更新时间**: 2026-01-13
+
+---
+
+## 📋 目录
+
+- [1. 通用说明](#1-通用说明)
+- [2. 认证授权](#2-认证授权)
+- [3. 用户管理](#3-用户管理)
+- [4. 角色管理](#4-角色管理)
+- [5. 设备分组](#5-设备分组)
+- [6. 产品管理](#6-产品管理)
+- [7. 设备管理](#7-设备管理)
+- [8. 设备数据](#8-设备数据)
+- [9. 设备日志](#9-设备日志)
+- [10. 命令下发](#10-命令下发)
+- [11. 报警日志](#11-报警日志)
+- [12. 设备报警配置](#12-设备报警配置)
+- [13. 消息通知](#13-消息通知)
+- [14. 统计查询](#14-统计查询)
+- [15. 系统配置](#15-系统配置)
+
+---
+
+## 1. 通用说明
+
+### 1.1 请求规范
+
+- **请求方法**: 统一使用 `POST`（除特殊说明外）
+- **请求头**: 
+  ```http
+  Content-Type: application/json
+  Authorization: Bearer {token}  # 需要认证的接口
+  ```
+- **请求体**: JSON格式
+
+### 1.2 响应规范
+
+所有接口统一返回格式：
+
+```json
+{
+  "code": 200,           // 状态码：200=成功，其他=失败
+  "message": "操作成功",  // 提示信息
+  "data": {}             // 响应数据
+}
+```
+
+**状态码说明**:
+- `200`: 成功
+- `400`: 参数错误
+- `401`: 未授权
+- `403`: 无权限
+- `500`: 服务器错误
+
+### 1.3 数据权限
+
+- **超级管理员**: 可查看所有数据（不过滤）
+- **普通用户**: 只能查看本分组及下级分组数据
+- **过滤字段**: 用户表、设备表、告警日志表都使用 `group_id` 过滤
+
+### 1.4 分页参数
+
+```json
+{
+  "page": 1,        // 页码，从1开始
+  "pageSize": 20    // 每页数量
+}
+```
+
+### 1.5 时间格式
+
+统一使用格式：`yyyy-MM-dd HH:mm:ss`  
+示例：`2026-01-13 08:42:49`
+
+---
+
+## 2. 认证授权
+
+### 2.1 用户登录
+
+**接口**: `POST /auth/login`
+
+**请求参数**:
+```json
+{
+  "username": "admin",
+  "password": "123456"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "登录成功",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "refresh_token_xxx",
+    "expiresIn": 7200,
+    "user": {
+      "id": 1,
+      "username": "admin",
+      "realName": "管理员",
+      "roleId": 1,
+      "roleName": "超级管理员",
+      "menus": []
+    }
+  }
+}
+```
+
+---
+
+### 2.2 用户登出
+
+**接口**: `POST /auth/logout`
+
+**请求头**: `Authorization: Bearer {token}`
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "登出成功",
+  "data": null
+}
+```
+
+---
+
+### 2.3 刷新Token
+
+**接口**: `POST /auth/refresh`
+
+**请求参数**:
+```json
+{
+  "refreshToken": "refresh_token_xxx"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "token": "new_token_xxx",
+    "expiresIn": 7200
+  }
+}
+```
+
+---
+
+### 2.4 获取当前用户信息
+
+**接口**: `POST /auth/current`
+
+**请求头**: `Authorization: Bearer {token}`
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "username": "admin",
+    "realName": "管理员",
+    "phone": "13800138000",
+    "email": "admin@example.com",
+    "groupId": 0,
+    "roleId": 1,
+    "status": 1,
+    "createTime": "2026-01-01 00:00:00"
+  }
+}
+```
+
+---
+
+### 2.5 修改密码
+
+**接口**: `POST /auth/change-password`
+
+**请求头**: `Authorization: Bearer {token}`
+
+**请求参数**:
+```json
+{
+  "newPassword": "654321"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "密码修改成功",
+  "data": null
+}
+```
+
+**说明**:
+- 不需要输入旧密码，直接设置新密码即可
+- 新密码长度至少6位
+
+---
+
+## 3. 用户管理
+
+### 3.1 用户列表
+
+**接口**: `POST /users/list`
+
+**请求头**: `Authorization: Bearer {token}`
+
+**请求参数**:
+```json
+{
+  "page": 1,
+  "pageSize": 20,
+  "groupId": 1,        // 可选：分组ID筛选
+  "keyword": "admin",  // 可选：关键词搜索（用户名或姓名）
+  "status": 1          // 可选：状态筛选（0=禁用，1=启用）
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "total": 100,
+    "page": 1,
+    "pageSize": 20,
+    "list": [
+      {
+        "id": 1,
+        "username": "admin",
+        "realName": "管理员",
+        "phone": "13800138000",
+        "email": "admin@example.com",
+        "groupId": 0,
+        "groupName": "默认分组",
+        "roleId": 1,
+        "roleName": "超级管理员",
+        "status": 1,
+        "isSuper": true,
+        "createTime": "2026-01-01 00:00:00"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 3.2 创建用户
+
+**接口**: `POST /users/create`
+
+**权限**: 仅超级管理员
+
+**请求头**: `Authorization: Bearer {token}`
+
+**请求参数**:
+```json
+{
+  "username": "user001",      // 必填
+  "password": "123456",        // 必填
+  "realname": "用户001",       // 必填
+  "phone": "13800138000",     // 可选
+  "email": "user001@example.com",  // 可选
+  "groupId": 1,               // 必填：分组ID
+  "roleId": 2,                // 必填：角色ID
+  "status": 1                 // 可选：默认1（启用）
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 2,
+    "username": "user001",
+    "realname": "用户001",
+    "phone": "13800138000",
+    "email": "user001@example.com",
+    "groupId": 1,
+    "roleId": 2,
+    "status": 1,
+    "createTime": "2026-01-13 08:42:49"
+  }
+}
+```
+
+---
+
+### 3.3 更新用户
+
+**接口**: `POST /users/update`
+
+**权限**: 仅超级管理员
+
+**请求头**: `Authorization: Bearer {token}`
+
+**请求参数**:
+```json
+{
+  "id": 2,                    // 必填
+  "realname": "用户001更新",   // 可选
+  "phone": "13800138001",     // 可选
+  "email": "user001_new@example.com",  // 可选
+  "groupId": 2,               // 可选
+  "roleId": 3,                // 可选
+  "status": 1                 // 可选
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": 2,
+    "username": "user001",
+    "realname": "用户001更新",
+    "phone": "13800138001",
+    "email": "user001_new@example.com",
+    "groupId": 2,
+    "roleId": 3,
+    "status": 1,
+    "updateTime": "2026-01-13 09:00:00"
+  }
+}
+```
+
+---
+
+### 3.4 删除用户
+
+**接口**: `POST /users/delete`
+
+**权限**: 仅超级管理员
+
+**请求头**: `Authorization: Bearer {token}`
+
+**请求参数**:
+```json
+{
+  "id": 2
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+---
+
+### 3.5 启用/禁用用户
+
+**接口**: `POST /users/status`
+
+**权限**: 仅超级管理员
+
+**请求头**: `Authorization: Bearer {token}`
+
+**请求参数**:
+```json
+{
+  "id": 2,
+  "status": 0  // 1=启用，0=禁用
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "状态已更新",
+  "data": null
+}
+```
+
+---
+
+### 3.6 重置密码
+
+**接口**: `POST /users/password`
+
+**请求参数**:
+```json
+{
+  "id": 2,
+  "newPassword": "newpass123"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "密码重置成功",
+  "data": null
+}
+```
+
+---
+
+### 3.7 获取个人资料
+
+**接口**: `GET /users/profile`
+
+**请求头**: `Authorization: Bearer {token}`
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "username": "admin",
+    "realName": "管理员",
+    "phone": "13800138000",
+    "email": "admin@example.com",
+    "groupId": 0,
+    "groupName": "默认分组",
+    "roleId": 1,
+    "roleName": "超级管理员",
+    "status": 1,
+    "isSuper": true,
+    "createTime": "2026-01-01 00:00:00",
+    "updateTime": "2026-01-13 08:00:00"
+  }
+}
+```
+
+---
+
+### 3.8 更新个人资料
+
+**接口**: `POST /users/profile`
+
+**请求头**: `Authorization: Bearer {token}`
+
+**请求参数**:
+```json
+{
+  "realName": "管理员更新",  // 必填
+  "phone": "13800138001",   // 可选
+  "email": "admin_new@example.com"  // 可选
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "个人资料更新成功",
+  "data": {
+    "id": 1,
+    "username": "admin",
+    "realName": "管理员更新",
+    "phone": "13800138001",
+    "email": "admin_new@example.com",
+    "updateTime": "2026-01-13 09:00:00"
+  }
+}
+```
+
+---
+
+## 4. 角色管理
+
+### 4.1 角色列表
+
+**接口**: `POST /roles/list`
+
+**请求参数**:
+```json
+{
+  "page": 1,
+  "pageSize": 20
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "name": "超级管理员",
+        "code": "super_admin",
+        "description": "拥有所有权限",
+        "status": 1,
+        "userCount": 1,
+        "isSuperAdmin": true,
+        "createTime": "2026-01-01 00:00:00"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 1
+  }
+}
+```
+
+---
+
+### 4.2 角色详情
+
+**接口**: `POST /roles/detail`
+
+**请求参数**:
+```json
+{
+  "id": 1
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "roleInfo": {
+      "id": 1,
+      "name": "超级管理员",
+      "code": "super_admin",
+      "description": "拥有所有权限",
+      "isSuperAdmin": true,
+      "userCount": 1,
+      "createTime": "2026-01-01 00:00:00"
+    },
+    "permissions": [
+      {
+        "code": "overview",
+        "name": "数据概览",
+        "icon": "📊",
+        "sort": 1,
+        "granted": true,
+        "children": null
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 4.3 创建角色
+
+**接口**: `POST /roles/create`
+
+**权限**: 仅超级管理员
+
+**请求头**: `Authorization: Bearer {token}`
+
+**请求参数**:
+```json
+{
+  "name": "普通管理员",
+  "code": "ROLE_ADMIN",  // 可选，不传则自动生成
+  "description": "普通管理员角色",
+  "permissions": [
+    {
+      "code": "devices",
+      "granted": true,
+      "actions": ["create", "update", "delete"]
+    }
+  ]
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 2,
+    "name": "普通管理员",
+    "code": "ROLE_ADMIN",
+    "description": "普通管理员角色",
+    "status": 1,
+    "createTime": "2026-01-13 08:42:49"
+  }
+}
+```
+
+---
+
+### 4.4 更新角色
+
+**接口**: `POST /roles/update`
+
+**权限**: 仅超级管理员
+
+**请求头**: `Authorization: Bearer {token}`
+
+**请求参数**:
+```json
+{
+  "id": 2,
+  "name": "普通管理员更新",
+  "description": "更新后的描述",
+  "menuIds": "devices,products",  // 方式1：直接传menuIds字符串
+  "permissions": [                // 方式2：传permissions数组
+    {
+      "code": "devices",
+      "granted": true,
+      "actions": ["create", "update"]
+    }
+  ]
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": null
+}
+```
+
+---
+
+### 4.5 删除角色
+
+**接口**: `POST /roles/delete`
+
+**权限**: 仅超级管理员
+
+**请求头**: `Authorization: Bearer {token}`
+
+**请求参数**:
+```json
+{
+  "id": 2
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+---
+
+## 5. 设备分组
+
+### 5.1 创建分组
+
+**接口**: `POST /device-groups/create`
+
+**请求参数**:
+```json
+{
+  "name": "办公区域",      // 必填，也支持"groupName"
+  "parentId": 0,          // 可选，默认0（顶级分组）
+  "description": "办公区域分组",
+  "sort": 1,
+  "groupType": "default"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 1,
+    "groupName": "办公区域",
+    "parentId": 0,
+    "description": "办公区域分组",
+    "sort": 1,
+    "groupType": "default",
+    "createTime": "2026-01-13 08:42:49"
+  }
+}
+```
+
+---
+
+### 5.2 分组树形列表
+
+**接口**: `POST /device-groups/tree`
+
+**请求头**: `Authorization: Bearer {token}` （可选，用于权限过滤）
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "tree": [
+      {
+        "id": 1,
+        "name": "办公区域",
+        "icon": null,
+        "parentId": 0,
+        "path": "办公区域",
+        "deviceCount": 10,
+        "level": 1,
+        "sort": 1,
+        "description": "办公区域分组",
+        "children": [
+          {
+            "id": 2,
+            "name": "一楼",
+            "parentId": 1,
+            "path": "办公区域/一楼",
+            "deviceCount": 5,
+            "level": 2,
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 5.3 分组平铺列表
+
+**接口**: `POST /device-groups/list`
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "name": "办公区域",
+        "parentId": 0,
+        "path": "办公区域",
+        "level": 1
+      },
+      {
+        "id": 2,
+        "name": "一楼",
+        "parentId": 1,
+        "path": "办公区域/一楼",
+        "level": 2
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 5.4 更新分组
+
+**接口**: `POST /device-groups/update`
+
+**请求参数**:
+```json
+{
+  "id": 1,
+  "groupName": "办公区域更新",
+  "parentId": 0,
+  "description": "更新后的描述",
+  "sort": 2
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": 1,
+    "groupName": "办公区域更新",
+    "parentId": 0,
+    "description": "更新后的描述",
+    "sort": 2
+  }
+}
+```
+
+---
+
+### 5.5 删除分组
+
+**接口**: `POST /device-groups/delete`
+
+**请求参数**:
+```json
+{
+  "id": 1
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+---
+
+## 6. 产品管理
+
+### 6.1 创建产品
+
+**接口**: `POST /products/create`
+
+**请求参数**:
+```json
+{
+  "name": "温湿度传感器",        // 必填，也支持"productName"
+  "model": "TH-SENSOR-001",     // 必填，也支持"productModel"或"code"
+  "protocol": "MQTT",
+  "description": "温湿度传感器产品",
+  "status": 1                   // 可选，默认1（启用）
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 1,
+    "productName": "温湿度传感器",
+    "productModel": "TH-SENSOR-001",
+    "protocol": "MQTT",
+    "description": "温湿度传感器产品",
+    "status": 1,
+    "createTime": "2026-01-13 08:42:49"
+  }
+}
+```
+
+---
+
+### 6.2 产品列表
+
+**接口**: `POST /products/list`
+
+**请求参数**:
+```json
+{
+  "page": 1,
+  "pageSize": 20,
+  "keyword": "传感器",    // 可选：关键词搜索
+  "category": "sensor"    // 可选：分类筛选
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "total": 10,
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 1,
+    "list": [
+      {
+        "id": 1,
+        "productName": "温湿度传感器",
+        "productModel": "TH-SENSOR-001",
+        "protocol": "MQTT",
+        "description": "温湿度传感器产品",
+        "status": 1,
+        "attrCount": 2,
+        "cmdCount": 3,
+        "createTime": "2026-01-13 08:42:49",
+        "updateTime": "2026-01-13 08:42:49"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 6.3 产品详情
+
+**接口**: `POST /products/detail`
+
+**请求参数**:
+```json
+{
+  "id": 1
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "productName": "温湿度传感器",
+    "productModel": "TH-SENSOR-001",
+    "protocol": "MQTT",
+    "description": "温湿度传感器产品",
+    "status": 1,
+    "attrs": [
+      {
+        "id": 1,
+        "productId": 1,
+        "attrName": "温度",
+        "attrCode": "temperature",
+        "dataType": "float",
+        "unit": "℃"
+      }
+    ],
+    "commands": [
+      {
+        "id": 1,
+        "productId": 1,
+        "commandName": "设置温度阈值",
+        "commandCode": "set_temp_threshold",
+        "addr": "0x01",
+        "commandValue": "25"
+      }
+    ],
+    "createTime": "2026-01-13 08:42:49",
+    "updateTime": "2026-01-13 08:42:49"
+  }
+}
+```
+
+---
+
+### 6.4 更新产品
+
+**接口**: `POST /products/update`
+
+**请求参数**:
+```json
+{
+  "id": 1,
+  "productName": "温湿度传感器更新",
+  "productModel": "TH-SENSOR-001",
+  "protocol": "MQTT",
+  "description": "更新后的描述",
+  "status": 1
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": 1,
+    "productName": "温湿度传感器更新",
+    "productModel": "TH-SENSOR-001",
+    "protocol": "MQTT",
+    "description": "更新后的描述",
+    "status": 1
+  }
+}
+```
+
+---
+
+### 6.5 删除产品
+
+**接口**: `POST /products/delete`
+
+**请求参数**:
+```json
+{
+  "id": 1
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+**注意**: 如果产品下有设备，将返回错误提示。
+
+---
+
+### 6.6 添加产品属性
+
+**接口**: `POST /products/attribute/create`
+
+**请求参数**:
+```json
+{
+  "productId": 1,
+  "attrName": "温度",
+  "attrCode": "temperature",
+  "dataType": "float",
+  "unit": "℃",
+  "addr": "0x01"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "添加成功",
+  "data": {
+    "id": 1,
+    "productId": 1,
+    "attrName": "温度",
+    "attrCode": "temperature",
+    "dataType": "float",
+    "unit": "℃",
+    "addr": "0x01"
+  }
+}
+```
+
+---
+
+### 6.7 获取产品属性列表
+
+**接口**: `GET /products/{productId}/attributes`
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": 1,
+      "productId": 1,
+      "attrName": "温度",
+      "attrCode": "temperature",
+      "dataType": "float",
+      "unit": "℃",
+      "addr": "0x01"
+    }
+  ]
+}
+```
+
+---
+
+### 6.8 删除产品属性
+
+**接口**: `POST /products/attribute/delete`
+
+**请求参数**:
+```json
+{
+  "id": 1
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+---
+
+### 6.9 添加产品命令
+
+**接口**: `POST /products/command/create`
+
+**请求参数**:
+```json
+{
+  "productId": 1,
+  "commandName": "设置温度阈值",
+  "commandCode": "set_temp_threshold",
+  "addr": "0x01",
+  "commandValue": "25"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "添加成功",
+  "data": {
+    "id": 1,
+    "productId": 1,
+    "commandName": "设置温度阈值",
+    "commandCode": "set_temp_threshold",
+    "addr": "0x01",
+    "commandValue": "25"
+  }
+}
+```
+
+---
+
+### 6.10 获取产品命令列表
+
+**接口**: `GET /products/{productId}/commands`
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": 1,
+      "productId": 1,
+      "commandName": "设置温度阈值",
+      "commandCode": "set_temp_threshold",
+      "addr": "0x01",
+      "commandValue": "25"
+    }
+  ]
+}
+```
+
+---
+
+### 6.11 删除产品命令
+
+**接口**: `POST /products/command/delete`
+
+**请求参数**:
+```json
+{
+  "id": 1
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+---
+
+## 7. 设备管理
+
+### 7.1 创建设备
+
+**接口**: `POST /devices`
+
+**请求参数**:
+```json
+{
+  "name": "设备001",              // 必填，也支持"deviceName"
+  "code": "DEVICE-001",          // 必填，也支持"deviceCode"
+  "productId": 1,                // 必填
+  "groupId": 1,                  // 必填
+  "remark": "备注信息"            // 可选
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 1,
+    "deviceName": "设备001",
+    "deviceCode": "DEVICE-001",
+    "productId": 1,
+    "groupId": 1,
+    "status": 0,
+    "offlineTimeout": 300,
+    "createTime": "2026-01-13 08:42:49"
+  }
+}
+```
+
+---
+
+### 7.2 设备列表
+
+**接口**: `POST /devices/list`
+
+**请求头**: `Authorization: Bearer {token}` （可选，用于数据权限过滤）
+
+**请求参数**:
+```json
+{
+  "page": 1,
+  "pageSize": 20,
+  "keyword": "设备001",    // 可选：搜索设备名称或编码
+  "productId": 1,          // 可选：产品ID筛选
+  "groupId": 1,            // 可选：分组ID筛选
+  "status": "online"       // 可选：状态筛选（online/offline）
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "total": 100,
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 5,
+    "list": [
+      {
+        "id": 1,
+        "deviceName": "设备001",
+        "deviceCode": "DEVICE-001",
+        "productId": 1,
+        "productName": "温湿度传感器",
+        "productModel": "TH-SENSOR-001",
+        "groupId": 1,
+        "groupName": "办公区域",
+        "groupPath": "办公区域/一楼",
+        "status": 1,
+        "lastOnlineTime": "2026-01-13 08:40:00",
+        "alarmConfig": "{}",
+        "alarmEnabled": true,
+        "createTime": "2026-01-13 08:42:49",
+        "updateTime": "2026-01-13 08:42:49"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 7.3 设备详情
+
+**接口**: `POST /devices/detail`
+
+**请求参数**:
+```json
+{
+  "deviceCode": "DEVICE-001"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "deviceName": "设备001",
+    "deviceCode": "DEVICE-001",
+    "productId": 1,
+    "productName": "温湿度传感器",
+    "groupId": 1,
+    "groupName": "办公区域",
+    "status": 1,
+    "lastOnlineTime": "2026-01-13 08:40:00",
+    "createTime": "2026-01-13 08:42:49"
+  }
+}
+```
+
+---
+
+### 7.4 获取设备（根据设备编码）
+
+**接口**: `GET /devices/{deviceCode}`
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "deviceName": "设备001",
+    "deviceCode": "DEVICE-001",
+    "productId": 1,
+    "groupId": 1,
+    "status": 1
+  }
+}
+```
+
+---
+
+### 7.5 更新设备
+
+**接口**: `POST /devices/update`
+
+**请求参数**:
+```json
+{
+  "id": 1,
+  "deviceName": "设备001更新",
+  "deviceCode": "DEVICE-001",
+  "productId": 1,
+  "groupId": 2,
+  "status": 1
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": 1,
+    "deviceName": "设备001更新",
+    "deviceCode": "DEVICE-001",
+    "productId": 1,
+    "groupId": 2,
+    "status": 1
+  }
+}
+```
+
+---
+
+### 7.6 删除设备
+
+**接口**: `POST /devices/delete`
+
+**请求参数**:
+```json
+{
+  "deviceCode": "DEVICE-001"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+---
+
+### 7.7 获取设备最新数据
+
+**接口**: `POST /devices/latest-data`
+
+**请求参数**:
+```json
+{
+  "deviceCode": "DEVICE-001"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "deviceId": 1,
+    "deviceCode": "DEVICE-001",
+    "data": {
+      "0x01": "25.5",
+      "0x02": "60.0"
+    },
+    "reportTime": "2026-01-13 08:42:49"
+  }
+}
+```
+
+---
+
+### 7.8 更新设备在线状态
+
+**接口**: `POST /devices/{deviceCode}/status`
+
+**请求参数**: `online=true` （Query参数）
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": null
+}
+```
+
+---
+
+### 7.9 获取设备统计数据
+
+**接口**: `POST /devices/statistics`
+
+**请求头**: `Authorization: Bearer {token}` （可选，用于数据权限过滤）
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "totalDevices": 100,
+    "onlineDevices": 85,
+    "offlineDevices": 15,
+    "todayDataCount": 10000
+  }
+}
+```
+
+---
+
+### 7.10 批量导入设备
+
+**接口**: `POST /devices/batch-import`
+
+**请求头**: `Authorization: Bearer {token}` （可选）
+
+**请求参数**:
+```json
+{
+  "devices": [
+    {
+      "deviceCode": "DEVICE-001",
+      "deviceName": "设备001",
+      "productModel": "TH-SENSOR-001",
+      "groupId": 1
+    },
+    {
+      "deviceCode": "DEVICE-002",
+      "deviceName": "设备002",
+      "productModel": "TH-SENSOR-001",
+      "groupId": 1
+    }
+  ]
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "导入完成: 成功2条，失败0条",
+  "data": {
+    "successCount": 2,
+    "failCount": 0,
+    "totalCount": 2,
+    "errors": []
+  }
+}
+```
+
+---
+
+### 7.11 检查设备编码是否存在
+
+**接口**: `POST /devices/check-exists`
+
+**请求参数**:
+```json
+{
+  "deviceCodes": ["DEVICE-001", "DEVICE-002"]
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "existingCodes": ["DEVICE-001"]
+  }
+}
+```
+
+---
+
+## 8. 设备数据
+
+### 8.1 获取设备最新数据
+
+**接口**: `GET /device-data/latest/{deviceCode}`
+
+**请求头**: `Authorization: Bearer {token}` （可选，用于数据权限验证）
+
+**请求参数**: 
+- `limit`: 可选，默认10（Query参数）
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": 1,
+      "deviceCode": "DEVICE-001",
+      "addr": "0x01",
+      "addrv": "25.5",
+      "ctime": "2026-01-13 08:42:49",
+      "receiveTime": "2026-01-13 08:42:49"
+    }
+  ]
+}
+```
+
+---
+
+### 8.2 查询设备历史数据
+
+**接口**: `POST /device-data/list`
+
+**请求头**: `Authorization: Bearer {token}` （可选，用于数据权限验证）
+
+**请求参数**:
+```json
+{
+  "deviceCode": "DEVICE-001",
+  "startTime": "2026-01-13 00:00:00",  // 可选
+  "endTime": "2026-01-13 23:59:59",    // 可选
+  "attrs": "0x01,0x02"                  // 可选：属性标识符（多个用逗号分隔）
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": 1,
+      "deviceCode": "DEVICE-001",
+      "addr": "0x01",
+      "addrv": "25.5",
+      "ctime": "2026-01-13 08:42:49",
+      "receiveTime": "2026-01-13 08:42:49"
+    }
+  ]
+}
+```
+
+**注意**: 最多返回1000条数据。
+
+---
+
+## 9. 设备日志
+
+### 9.1 设备日志列表
+
+**接口**: `POST /device-logs/list`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**请求参数**:
+```json
+{
+  "page": 1,
+  "pageSize": 20,
+  "deviceCode": "DEVICE-001",        // 可选
+  "logType": "command",              // 可选：日志类型
+  "startTime": "2026-01-13 00:00:00", // 可选
+  "endTime": "2026-01-13 23:59:59"    // 可选
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "deviceId": 1,
+        "deviceCode": "DEVICE-001",
+        "logType": "command",
+        "logDetail": "设置温度阈值",
+        "createTime": "2026-01-13 08:42:49"
+      }
+    ],
+    "total": 100
+  }
+}
+```
+
+---
+
+## 10. 命令下发
+
+### 10.1 查询产品命令列表
+
+**接口**: `POST /commands/product`
+
+**请求参数**:
+```json
+{
+  "productId": 1
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "productId": 1,
+        "commandName": "设置温度阈值",
+        "commandCode": "set_temp_threshold",
+        "addr": "0x01",
+        "commandValue": "25"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 10.2 下发命令给设备
+
+**接口**: `POST /commands/send`
+
+**说明**: 异步下发模式，接口仅负责将命令发送到MQTT，不等待设备响应。
+
+**请求参数**:
+```json
+{
+  "deviceCode": "DEVICE-001",
+  "commands": [
+    {
+      "addr": "0x01",
+      "addrv": "25"
+    }
+  ]
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "commandId": "CMD1705124569000",
+    "status": "已下发",
+    "deviceCode": "DEVICE-001",
+    "sendTime": "2026-01-13 08:42:49",
+    "message": "命令已通过MQTT下发到设备，设备收到后会自行执行"
+  }
+}
+```
+
+---
+
+## 11. 报警日志
+
+### 11.1 报警日志列表
+
+**接口**: `POST /alarm-log/list`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**请求参数**:
+```json
+{
+  "page": 1,
+  "pageSize": 20,
+  "deviceCode": "DEVICE-001",        // 可选
+  "alarmLevel": "critical",           // 可选：critical/warning/info
+  "status": 0,                        // 可选：0=未处理，1=已处理
+  "startTime": "2026-01-13 00:00:00", // 可选
+  "endTime": "2026-01-13 23:59:59"    // 可选
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "deviceId": 1,
+        "deviceCode": "DEVICE-001",
+        "alarmLevel": "critical",
+        "alarmMessage": "温度超过阈值",
+        "status": 0,
+        "createTime": "2026-01-13 08:42:49",
+        "handleTime": null,
+        "handlerName": null,
+        "handleDescription": null
+      }
+    ],
+    "total": 100
+  }
+}
+```
+
+---
+
+### 11.2 处理报警
+
+**接口**: `POST /alarm-log/handle`
+
+**权限**: 只有通知人员才能处理
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**请求参数**:
+```json
+{
+  "alarmId": 1,
+  "handleDescription": "已处理，温度已恢复正常",
+  "handleImages": ["image_url_1", "image_url_2"]  // 可选
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": null
+}
+```
+
+---
+
+### 11.3 获取未处理报警数量
+
+**接口**: `POST /alarm-log/unhandled-count`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": 10
+}
+```
+
+---
+
+### 11.4 获取报警级别枚举列表
+
+**接口**: `POST /alarm-log/alarm-levels`
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "value": "critical",
+      "label": "严重"
+    },
+    {
+      "value": "warning",
+      "label": "警告"
+    },
+    {
+      "value": "info",
+      "label": "提示"
+    }
+  ]
+}
+```
+
+---
+
+### 11.5 获取报警统计信息
+
+**接口**: `POST /alarm-log/statistics`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "total": 100,
+    "unhandled": 10,
+    "critical": 5,
+    "warning": 30,
+    "info": 65
+  }
+}
+```
+
+---
+
+### 11.6 获取报警分析数据
+
+**接口**: `POST /alarm-log/analysis`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**请求参数**:
+```json
+{
+  "deviceCodes": ["DEVICE-001", "DEVICE-002"],
+  "timeRange": "7days",                    // 可选：7days/30days/custom
+  "startTime": "2026-01-06 00:00:00",     // 可选：timeRange为custom时必填
+  "endTime": "2026-01-13 23:59:59"        // 可选：timeRange为custom时必填
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "trend": {
+      "labels": ["01-06", "01-07", "01-08", "01-09", "01-10", "01-11", "01-12"],
+      "critical": [2, 1, 3, 2, 1, 0, 1],
+      "warning": [5, 4, 6, 5, 4, 3, 4],
+      "info": [10, 8, 12, 10, 9, 7, 9]
+    },
+    "levelDistribution": {
+      "critical": 10,
+      "warning": 31,
+      "info": 59
+    },
+    "efficiency": {
+      "avgHandleTime": 3600,
+      "handleRate": 0.9
+    }
+  }
+}
+```
+
+---
+
+## 12. 设备报警配置
+
+### 12.1 配置设备报警阈值（单个或批量）
+
+**接口**: `POST /device-alarm/configure`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**请求参数**:
+```json
+{
+  "deviceId": 1,                    // 单个配置时使用
+  "deviceIds": [1, 2, 3],          // 批量配置时使用
+  "enabled": true,                  // 可选，默认true
+  "alarmConfig": {
+    "notifyUser": 1,                // 必填：处理人ID
+    "smsEnabled": true,             // 可选：是否启用短信通知
+    "metrics": {
+      "temperature": {
+        "enabled": true,
+        "operator": ">",
+        "threshold": 30.0,
+        "level": "critical"
+      },
+      "humidity": {
+        "enabled": true,
+        "operator": "<",
+        "threshold": 20.0,
+        "level": "warning"
+      }
+    }
+  }
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "count": 3,
+    "message": "成功配置 3 台设备"
+  }
+}
+```
+
+---
+
+### 12.2 获取设备报警配置
+
+**接口**: `GET /device-alarm/config/{deviceId}`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "notifyUser": 1,
+    "smsEnabled": true,
+    "metrics": {
+      "temperature": {
+        "enabled": true,
+        "operator": ">",
+        "threshold": 30.0,
+        "level": "critical"
+      }
+    }
+  }
+}
+```
+
+---
+
+### 12.3 切换设备报警启用状态
+
+**接口**: `POST /device-alarm/toggle/{deviceId}`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**请求参数**: `enabled=true` （Query参数）
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "切换成功",
+  "data": "切换成功"
+}
+```
+
+---
+
+## 13. 消息通知
+
+### 13.1 通知列表
+
+**接口**: `POST /notification/list`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**请求参数**:
+```json
+{
+  "page": 1,
+  "pageSize": 20,
+  "isRead": 0  // 可选：0=未读，1=已读
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "userId": 1,
+        "title": "报警通知",
+        "content": "设备DEVICE-001温度超过阈值",
+        "type": "alarm",
+        "isRead": 0,
+        "createTime": "2026-01-13 08:42:49"
+      }
+    ],
+    "total": 10
+  }
+}
+```
+
+---
+
+### 13.2 获取未读通知数量
+
+**接口**: `POST /notification/unread-count`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": 5
+}
+```
+
+---
+
+### 13.3 标记通知为已读
+
+**接口**: `POST /notification/mark-read`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**请求参数**:
+```json
+{
+  "notificationId": 1              // 单个标记
+}
+```
+或
+```json
+{
+  "notificationIds": [1, 2, 3]    // 批量标记
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": null
+}
+```
+
+---
+
+### 13.4 标记所有通知为已读
+
+**接口**: `POST /notification/mark-all-read`
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "count": 10
+  }
+}
+```
+
+---
+
+## 14. 统计查询
+
+### 14.1 获取平台统计数据概览
+
+**接口**: `POST /statistics/overview`
+
+**请求头**: `Authorization: Bearer {token}` （可选，用于数据权限过滤）
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "deviceTotal": 100,
+    "deviceOnline": 85,
+    "deviceOffline": 15,
+    "alarmCount": 10,
+    "productCount": 5,
+    "userCount": 20,
+    "todayDataCount": 10000
+  }
+}
+```
+
+---
+
+### 14.2 获取数据上报量趋势
+
+**接口**: `POST /statistics/data-trend`
+
+**请求头**: `Authorization: Bearer {token}` （可选，用于数据权限过滤）
+
+**请求参数**:
+```json
+{
+  "range": "24h"  // 可选：24h/7d/30d，默认24h
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "timeLabels": ["00:00", "01:00", "02:00", ...],
+    "dataCounts": [100, 120, 110, ...]
+  }
+}
+```
+
+---
+
+### 14.3 设备分布统计
+
+**接口**: `POST /statistics/device-distribution`
+
+**请求参数**:
+```json
+{
+  "type": "group"  // group=按分组统计，product=按产品统计
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "items": [
+      {
+        "name": "办公区域",
+        "count": 56,
+        "percentage": 35.9
+      },
+      {
+        "name": "生产区域",
+        "count": 100,
+        "percentage": 64.1
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 15. 系统配置
+
+### 15.1 获取设备连接MQTT配置
+
+**接口**: `GET /system/mqtt-config`
+
+**说明**: 从数据库读取，仅用于显示
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "broker": "localhost",
+    "port": 1883,
+    "username": "admin",
+    "password": "admin123."
+  }
+}
+```
+
+---
+
+### 15.2 获取平台连接MQTT配置
+
+**接口**: `GET /system/platform-mqtt-config`
+
+**说明**: 从数据库读取，支持动态重新连接
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "broker": "localhost",
+    "port": 1883,
+    "clientId": "iot-platform-server",
+    "username": "admin",
+    "password": "admin123."
+  }
+}
+```
+
+---
+
+### 15.3 获取系统配置
+
+**接口**: `GET /system/config`
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "systemName": "IoT物联网平台",
+    "version": "1.0.0",
+    "mqttConfig": {
+      "broker": "localhost",
+      "port": 1883,
+      "username": "admin",
+      "password": "admin123."
+    },
+    "platformMqttConfig": {
+      "broker": "localhost",
+      "port": 1883,
+      "clientId": "iot-platform-server",
+      "username": "admin",
+      "password": "admin123."
+    }
+  }
+}
+```
+
+---
+
+### 15.4 更新设备MQTT配置
+
+**接口**: `POST /system/device-mqtt-config`
+
+**权限**: 仅admin账号
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**请求参数**:
+```json
+{
+  "deviceMqttBroker": "localhost",
+  "deviceMqttPort": 1883,
+  "deviceMqttUsername": "admin",
+  "deviceMqttPassword": "admin123."
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "设备MQTT配置更新成功",
+  "data": {
+    "message": "设备MQTT配置更新成功！此配置仅用于在设备详情页显示",
+    "config": {
+      "broker": "localhost",
+      "port": 1883,
+      "username": "admin",
+      "password": "admin123."
+    }
+  }
+}
+```
+
+---
+
+### 15.5 更新平台MQTT配置
+
+**接口**: `POST /system/platform-mqtt-config`
+
+**权限**: 仅admin账号
+
+**请求头**: `Authorization: Bearer {token}` （必填）
+
+**请求参数**:
+```json
+{
+  "platformMqttBroker": "localhost",
+  "platformMqttPort": 1883,
+  "platformMqttClientId": "iot-platform-server",
+  "platformMqttUsername": "admin",
+  "platformMqttPassword": "admin123."
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "平台MQTT配置更新成功",
+  "data": {
+    "message": "平台MQTT配置更新成功！MQTT连接已使用新配置重新连接",
+    "config": {
+      "broker": "localhost",
+      "port": 1883,
+      "clientId": "iot-platform-server",
+      "username": "admin",
+      "password": "admin123."
+    }
+  }
+}
+```
+
+---
+
+## 📝 更新日志
+
+### v1.0.0 (2026-01-13)
+- 初始版本
+- 包含所有现有API接口文档
+
+---
+
+## 🔗 相关文档
+
+- [开发规约](../.cursorrules)
+- [数据库迁移脚本](../sql/migrations/)
+
+---
+
+*最后更新：2026-01-13*

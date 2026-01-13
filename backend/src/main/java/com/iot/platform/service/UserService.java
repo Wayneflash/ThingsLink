@@ -268,15 +268,10 @@ public class UserService extends ServiceImpl<UserMapper, User> {
      * 修改密码
      */
     @Transactional(rollbackFor = Exception.class)
-    public void changePassword(Long userId, String oldPassword, String newPassword) {
+    public void changePassword(Long userId, String newPassword) {
         User user = this.getById(userId);
         if (user == null) {
             throw new RuntimeException("用户不存在");
-        }
-        
-        // 验证旧密码（明文比对）
-        if (!oldPassword.equals(user.getPassword())) {
-            throw new RuntimeException("原密码错误");
         }
         
         // 更新密码（明文）

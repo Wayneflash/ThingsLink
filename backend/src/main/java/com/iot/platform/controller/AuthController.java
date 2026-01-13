@@ -43,7 +43,8 @@ public class AuthController {
     @PostMapping("/logout")
     public Result<Void> logout(@RequestHeader("Authorization") String token) {
         try {
-            userService.logout(token);
+            String actualToken = extractToken(token);
+            userService.logout(actualToken);
             return Result.success("登出成功");
         } catch (Exception e) {
             log.error("用户登出失败", e);
@@ -81,7 +82,8 @@ public class AuthController {
     @PostMapping("/current")
     public Result<User> getCurrentUser(@RequestHeader("Authorization") String token) {
         try {
-            Long userId = userService.validateToken(token);
+            String actualToken = extractToken(token);
+            Long userId = userService.validateToken(actualToken);
             if (userId == null) {
                 return Result.error("Token无效或已过期");
             }
@@ -104,12 +106,21 @@ public class AuthController {
     public Result<Void> changePassword(@RequestHeader("Authorization") String token,
                                        @RequestBody ChangePasswordRequest request) {
         try {
-            Long userId = userService.validateToken(token);
+            String actualToken = extractToken(token);
+            Long userId = userService.validateToken(actualToken);
             if (userId == null) {
                 return Result.error("Token无效或已过期");
             }
             
-            userService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
+            if (request.getNewPassword() == null || request.getNewPassword().trim().isEmpty()) {
+                return Result.error("新密码不能为空");
+            }
+            
+            if (request.getNewPassword().length() < 6) {
+                return Result.error("密码长度至少6位");
+            }
+            
+            userService.changePassword(userId, request.getNewPassword());
             return Result.success("密码修改成功");
         } catch (Exception e) {
             log.error("修改密码失败", e);
@@ -131,7 +142,16 @@ public class AuthController {
      */
     @Data
     public static class ChangePasswordRequest {
-        private String oldPassword;
         private String newPassword;
+    }
+    
+    /**
+     * 从Authorization头中提取token（去掉Bearer前缀）
+     */
+    private String extractToken(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return authorizationHeader;
+        }
+        return authorizationHeader.substring(7);
     }
 }

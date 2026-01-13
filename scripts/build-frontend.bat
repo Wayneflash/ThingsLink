@@ -2,11 +2,11 @@
 setlocal enabledelayedexpansion
 chcp 65001 >nul
 
-REM 获取脚本所在目录（自动适配不同路径）
+REM Get script directory (auto adapt different paths)
 set SCRIPT_DIR=%~dp0
 set SCRIPT_DIR=!SCRIPT_DIR:~0,-1!
 
-REM 切换到项目根目录
+REM Change to project root directory
 cd /d "!SCRIPT_DIR!\.."
 
 echo ========================================
@@ -16,7 +16,7 @@ echo.
 echo Project: %CD%
 echo.
 
-REM 检查 Node.js 是否安装
+REM Check if Node.js is installed
 where node >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Node.js not installed
@@ -25,27 +25,27 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM 显示 Node.js 版本
+REM Display Node.js version
 for /f "tokens=*" %%v in ('node -v') do echo [INFO] Node.js version: %%v
 
-REM 检查前端目录是否存在
+REM Check if frontend directory exists
 if not exist "frontend" (
     echo [ERROR] frontend directory not found
     pause
     exit /b 1
 )
 
-REM 切换到前端目录
+REM Change to frontend directory
 cd frontend
 
-REM 检查 package.json 是否存在
+REM Check if package.json exists
 if not exist "package.json" (
     echo [ERROR] package.json not found
     pause
     exit /b 1
 )
 
-REM 检查 node_modules 是否存在
+REM Check if node_modules exists
 if not exist "node_modules" (
     echo [INFO] node_modules not found, installing dependencies...
     echo.
@@ -59,7 +59,7 @@ if not exist "node_modules" (
     echo.
 )
 
-REM 执行编译
+REM Execute build
 echo [INFO] Building frontend...
 echo.
 npm run build
@@ -79,7 +79,7 @@ echo.
 echo Output: frontend\dist\
 echo.
 
-REM 检查 dist 目录
+REM Check dist directory
 if exist "dist\index.html" (
     echo [OK] dist\index.html exists
 ) else (

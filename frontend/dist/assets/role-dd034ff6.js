@@ -1,1 +1,0 @@
-import{r as t}from"./index-df07b552.js";const r=e=>t({url:"/roles/list",method:"post",data:e}),s=e=>t({url:"/roles/detail",method:"post",data:{id:e}}),l=e=>t({url:"/roles/create",method:"post",data:e}),a=e=>t({url:"/roles/update",method:"post",data:e}),d=e=>t({url:"/roles/delete",method:"post",data:{id:e}});export{s as a,l as c,d,r as g,a as u};

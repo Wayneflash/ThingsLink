@@ -2,29 +2,29 @@
 setlocal enabledelayedexpansion
 chcp 65001 >nul
 
-REM 获取脚本所在目录
+REM Get script directory
 set SCRIPT_DIR=%~dp0
 set SCRIPT_DIR=!SCRIPT_DIR:~0,-1!
 
-REM 切换到项目根目录
+REM Change to project root directory
 cd /d "!SCRIPT_DIR!\.."
 
 echo ========================================
-echo   部署后端JAR包到服务器
+echo   Deploy Backend JAR to Server
 echo ========================================
 echo.
-echo 项目路径: %CD%
+echo Project Path: %CD%
 echo.
 
-REM 检查配置文件
+REM Check configuration file
 if not exist "scripts\deploy-config.txt" (
-    echo [ERROR] 配置文件 scripts\deploy-config.txt 不存在
-    echo 请先创建配置文件
+    echo [ERROR] Configuration file scripts\deploy-config.txt does not exist
+    echo Please create configuration file first
     pause
     exit /b 1
 )
 
-REM 读取配置（简化版，直接设置变量）
+REM Read configuration (simplified version, directly set variables)
 set REMOTE_HOST=
 set REMOTE_PORT=22
 set REMOTE_USER=root
@@ -41,71 +41,71 @@ for /f "eol=# tokens=1,* delims==" %%a in (scripts\deploy-config.txt) do (
     if "%%a"=="LOCAL_BACKEND_JAR" set LOCAL_BACKEND_JAR=%%b
 )
 
-REM 检查必需配置
+REM Check required configuration
 if "!REMOTE_HOST!"=="" (
-    echo [ERROR] REMOTE_HOST 未配置
+    echo [ERROR] REMOTE_HOST not configured
     pause
     exit /b 1
 )
 
-echo 配置信息:
-echo   服务器: !REMOTE_USER!@!REMOTE_HOST!:!REMOTE_PORT!
-echo   远程路径: !REMOTE_BACKEND_PATH!
-echo   服务名: !REMOTE_BACKEND_SERVICE!
-echo   本地JAR: !LOCAL_BACKEND_JAR!
+echo Configuration:
+echo   Server: !REMOTE_USER!@!REMOTE_HOST!:!REMOTE_PORT!
+echo   Remote Path: !REMOTE_BACKEND_PATH!
+echo   Service Name: !REMOTE_BACKEND_SERVICE!
+echo   Local JAR: !LOCAL_BACKEND_JAR!
 echo.
 
-REM 检查本地jar文件
-echo [1/4] 检查本地文件...
+REM Check local jar file
+echo [1/4] Checking local file...
 if not exist "!LOCAL_BACKEND_JAR!" (
-    echo [ERROR] jar文件不存在: !LOCAL_BACKEND_JAR!
-    echo 请先运行 scripts\build-backend.bat 编译
+    echo [ERROR] JAR file does not exist: !LOCAL_BACKEND_JAR!
+    echo Please run scripts\build-backend.bat to compile first
     pause
     exit /b 1
 )
-echo [OK] jar文件存在
+echo [OK] JAR file exists
 echo.
 
-REM 检查SSH工具
-echo [2/4] 检查SSH工具...
+REM Check SSH tools
+echo [2/4] Checking SSH tools...
 where ssh >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] 未找到ssh命令，请安装OpenSSH
+    echo [ERROR] ssh command not found, please install OpenSSH
     pause
     exit /b 1
 )
 where scp >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] 未找到scp命令，请安装OpenSSH
+    echo [ERROR] scp command not found, please install OpenSSH
     pause
     exit /b 1
 )
-echo [OK] SSH工具可用
+echo [OK] SSH tools available
 echo.
 
-REM 上传jar文件
-echo [3/4] 上传jar包（需要输入密码）...
+REM Upload jar file
+echo [3/4] Uploading JAR package (password required)...
 scp -P !REMOTE_PORT! "!LOCAL_BACKEND_JAR!" !REMOTE_USER!@!REMOTE_HOST!:!REMOTE_BACKEND_PATH!/iot-platform.jar
 if errorlevel 1 (
-    echo [ERROR] 上传失败
+    echo [ERROR] Upload failed
     pause
     exit /b 1
 )
-echo [OK] 上传成功
+echo [OK] Upload successful
 echo.
 
-REM 重启服务
-echo [4/4] 重启后端服务（需要输入密码）...
+REM Restart service
+echo [4/4] Restarting backend service (password required)...
 ssh -p !REMOTE_PORT! !REMOTE_USER!@!REMOTE_HOST! "systemctl restart !REMOTE_BACKEND_SERVICE!"
 if errorlevel 1 (
-    echo [WARNING] 重启服务可能失败，请手动检查
+    echo [WARNING] Service restart may have failed, please check manually
 ) else (
-    echo [OK] 服务已重启
+    echo [OK] Service restarted
 )
 echo.
 
 echo ========================================
-echo   部署完成！
+echo   Deployment Complete!
 echo ========================================
 echo.
 pause

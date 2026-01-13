@@ -2,29 +2,29 @@
 setlocal enabledelayedexpansion
 chcp 65001 >nul
 
-REM 获取脚本所在目录
+REM Get script directory
 set SCRIPT_DIR=%~dp0
 set SCRIPT_DIR=!SCRIPT_DIR:~0,-1!
 
-REM 切换到项目根目录
+REM Change to project root directory
 cd /d "!SCRIPT_DIR!\.."
 
 echo ========================================
-echo   部署前端Dist到服务器
+echo   Deploy Frontend Dist to Server
 echo ========================================
 echo.
-echo 项目路径: %CD%
+echo Project Path: %CD%
 echo.
 
-REM 检查配置文件
+REM Check configuration file
 if not exist "scripts\deploy-config.txt" (
-    echo [ERROR] 配置文件 scripts\deploy-config.txt 不存在
-    echo 请先创建配置文件
+    echo [ERROR] Configuration file scripts\deploy-config.txt does not exist
+    echo Please create configuration file first
     pause
     exit /b 1
 )
 
-REM 读取配置（简化版）
+REM Read configuration (simplified version)
 set REMOTE_HOST=
 set REMOTE_PORT=22
 set REMOTE_USER=root
@@ -39,96 +39,96 @@ for /f "eol=# tokens=1,* delims==" %%a in (scripts\deploy-config.txt) do (
     if "%%a"=="LOCAL_FRONTEND_DIST" set LOCAL_FRONTEND_DIST=%%b
 )
 
-REM 检查必需配置
+REM Check required configuration
 if "!REMOTE_HOST!"=="" (
-    echo [ERROR] REMOTE_HOST 未配置
+    echo [ERROR] REMOTE_HOST not configured
     pause
     exit /b 1
 )
 
-echo 配置信息:
-echo   服务器: !REMOTE_USER!@!REMOTE_HOST!:!REMOTE_PORT!
-echo   远程路径: !REMOTE_FRONTEND_PATH!
-echo   本地Dist: !LOCAL_FRONTEND_DIST!
+echo Configuration:
+echo   Server: !REMOTE_USER!@!REMOTE_HOST!:!REMOTE_PORT!
+echo   Remote Path: !REMOTE_FRONTEND_PATH!
+echo   Local Dist: !LOCAL_FRONTEND_DIST!
 echo.
 
-REM 检查本地dist目录
-echo [1/5] 检查本地文件...
+REM Check local dist directory
+echo [1/5] Checking local file...
 if not exist "!LOCAL_FRONTEND_DIST!" (
-    echo [ERROR] dist目录不存在: !LOCAL_FRONTEND_DIST!
-    echo 请先运行 scripts\build-frontend.bat 编译
+    echo [ERROR] dist directory does not exist: !LOCAL_FRONTEND_DIST!
+    echo Please run scripts\build-frontend.bat to compile first
     pause
     exit /b 1
 )
 if not exist "!LOCAL_FRONTEND_DIST!\index.html" (
-    echo [ERROR] dist目录中未找到 index.html
-    echo 请先运行 scripts\build-frontend.bat 编译
+    echo [ERROR] index.html not found in dist directory
+    echo Please run scripts\build-frontend.bat to compile first
     pause
     exit /b 1
 )
-echo [OK] dist目录存在
+echo [OK] dist directory exists
 echo.
 
-REM 检查SSH工具
-echo [2/5] 检查SSH工具...
+REM Check SSH tools
+echo [2/5] Checking SSH tools...
 where ssh >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] 未找到ssh命令，请安装OpenSSH
+    echo [ERROR] ssh command not found, please install OpenSSH
     pause
     exit /b 1
 )
 where scp >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] 未找到scp命令，请安装OpenSSH
+    echo [ERROR] scp command not found, please install OpenSSH
     pause
     exit /b 1
 )
-echo [OK] SSH工具可用
+echo [OK] SSH tools available
 echo.
 
-REM 创建压缩包
-echo [3/5] 打包前端文件...
+REM Create archive
+echo [3/5] Packaging frontend files...
 cd frontend
 if exist "..\frontend-dist.tar.gz" del /f /q "..\frontend-dist.tar.gz" >nul 2>&1
 tar -czf ..\frontend-dist.tar.gz dist\*
 if errorlevel 1 (
-    echo [ERROR] 打包失败
+    echo [ERROR] Packaging failed
     cd ..
     pause
     exit /b 1
 )
 cd ..
-echo [OK] 打包完成
+echo [OK] Packaging complete
 echo.
 
-REM 上传压缩包
-echo [4/5] 上传前端文件（需要输入密码）...
+REM Upload archive
+echo [4/5] Uploading frontend files (password required)...
 scp -P !REMOTE_PORT! frontend-dist.tar.gz !REMOTE_USER!@!REMOTE_HOST!:!REMOTE_FRONTEND_PATH!/frontend-dist.tar.gz
 if errorlevel 1 (
-    echo [ERROR] 上传失败
+    echo [ERROR] Upload failed
     del frontend-dist.tar.gz 2>nul
     pause
     exit /b 1
 )
-echo [OK] 上传成功
+echo [OK] Upload successful
 echo.
 
-REM 远程解压
-echo [5/5] 解压前端文件（需要输入密码）...
+REM Remote extract
+echo [5/5] Extracting frontend files (password required)...
 ssh -p !REMOTE_PORT! !REMOTE_USER!@!REMOTE_HOST! "cd !REMOTE_FRONTEND_PATH! && rm -rf dist && tar -xzf frontend-dist.tar.gz && rm -f frontend-dist.tar.gz"
 if errorlevel 1 (
-    echo [WARNING] 解压可能失败，请手动检查
+    echo [WARNING] Extraction may have failed, please check manually
 ) else (
-    echo [OK] 解压成功
+    echo [OK] Extraction successful
 )
 del frontend-dist.tar.gz 2>nul
 echo.
 
 echo ========================================
-echo   部署完成！
+echo   Deployment Complete!
 echo ========================================
 echo.
-echo 前端路径: !REMOTE_FRONTEND_PATH!/dist
+echo Frontend Path: !REMOTE_FRONTEND_PATH!/dist
 echo.
 pause
 endlocal

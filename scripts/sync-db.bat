@@ -2,11 +2,11 @@
 setlocal enabledelayedexpansion
 chcp 65001 >nul
 
-REM 获取脚本所在目录
+REM Get script directory
 set SCRIPT_DIR=%~dp0
 set SCRIPT_DIR=!SCRIPT_DIR:~0,-1!
 
-REM 切换到项目根目录
+REM Change to project root directory
 cd /d "!SCRIPT_DIR!\.."
 
 echo ========================================
@@ -14,7 +14,7 @@ echo   Database Migration Script
 echo ========================================
 echo.
 
-REM 配置信息
+REM Configuration
 set REMOTE_HOST=117.72.222.8
 set REMOTE_SSH_USER=root
 set REMOTE_SSH_PORT=22
@@ -33,7 +33,7 @@ echo   Local:  %LOCAL_DOCKER_CONTAINER%
 echo   Remote: SSH %REMOTE_SSH_USER%@%REMOTE_HOST%:%REMOTE_SSH_PORT%
 echo.
 
-REM 检查本地Docker容器
+REM Check local Docker container
 echo [1/3] Checking local Docker container...
 docker ps | findstr /i "%LOCAL_DOCKER_CONTAINER%" >nul 2>&1
 if errorlevel 1 (
@@ -45,7 +45,7 @@ if errorlevel 1 (
 echo [OK] Local Docker container running
 echo.
 
-REM 检查迁移脚本
+REM Check migration scripts
 echo [2/3] Checking migration scripts...
 if not exist "sql\migrations" (
     echo [ERROR] Migration directory not found
@@ -64,7 +64,7 @@ if %MIGRATION_COUNT%==0 (
 echo [OK] Found %MIGRATION_COUNT% migration script(s)
 echo.
 
-REM 执行本地迁移
+REM Execute local migrations
 echo [3/3] Executing migrations...
 echo.
 echo === Local Database ===
@@ -83,7 +83,7 @@ echo.
 echo [OK] Local migrations completed: %LOCAL_SUCCESS%/%MIGRATION_COUNT%
 echo.
 
-REM 询问是否同步到远程
+REM Ask if sync to remote
 echo.
 set /p SYNC_REMOTE="Sync to remote server? (Y/N): "
 if /i not "%SYNC_REMOTE%"=="Y" (

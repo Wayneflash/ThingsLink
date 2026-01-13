@@ -58,7 +58,6 @@ export const getCurrentUser = () => {
 /**
  * 修改密码
  * @param {Object} data - 密码信息
- * @param {string} data.oldPassword - 旧密码
  * @param {string} data.newPassword - 新密码
  * @returns {Promise} 返回修改结果
  */

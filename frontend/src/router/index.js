@@ -85,6 +85,17 @@ const routes = [
         meta: { title: '系统管理' }
       },
       {
+        path: 'system-config',
+        redirect: '/system-config/change-password',
+        meta: { title: '系统配置' }
+      },
+      {
+        path: 'system-config/change-password',
+        name: 'ChangePassword',
+        component: () => import('../views/ChangePassword.vue'),
+        meta: { title: '修改密码' }
+      },
+      {
         path: 'system-settings',
         name: 'SystemSettings',
         component: () => import('../views/SystemSettings.vue'),
