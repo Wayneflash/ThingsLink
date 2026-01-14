@@ -80,6 +80,18 @@ const routes = [
         meta: { title: '设备分组' }
       },
       {
+        path: 'video',
+        name: 'VideoManagement',
+        component: () => import('../views/VideoManagement.vue'),
+        meta: { title: '视频管理' }
+      },
+      {
+        path: 'video/detail/:id',
+        name: 'VideoDetail',
+        component: () => import('../views/VideoDetail.vue'),
+        meta: { title: '视频设备详情' }
+      },
+      {
         path: 'system',
         redirect: '/users',
         meta: { title: '系统管理' }

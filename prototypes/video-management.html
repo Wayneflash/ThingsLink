@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>视频管理 - ThingsLink IoT平台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.3.14/dist/index.css">
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2.3.14/dist/index.full.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+    }
+
+    .video-management-page {
+      padding: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #1d1d1f;
+    }
+
+    .card-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      background: #fafafa;
+      border-bottom: 1px solid #e5e5e7;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .panel-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1d1d1f;
+      margin-right: auto;
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    .el-table {
+      margin-top: 20px;
+    }
+
+    .el-table th.el-table__cell {
+      background-color: #f5f7fa;
+      color: #606266;
+      font-weight: 600;
+    }
+
+    .el-table .el-table__cell {
+      padding: 12px 0;
+    }
+
+    .pagination-container {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e5e7;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    /* 详情页 */
+    .detail-page {
+      padding: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .info-card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .info-card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #e5e5e7;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .info-value {
+      font-size: 14px;
+      color: #1d1d1f;
+      font-weight: 500;
+    }
+
+    .video-container {
+      background: #000;
+      border-radius: 10px;
+      padding: 40px;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .video-placeholder {
+      text-align: center;
+      color: #999;
+    }
+
+    .video-placeholder-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .video-placeholder-text {
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+
+    .play-button {
+      padding: 12px 32px;
+      font-size: 16px;
+      border-radius: 8px;
+      background: #007aff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .play-button:hover {
+      background: #0051d5;
+    }
+
+    .video-player {
+      width: 100%;
+      max-width: 1200px;
+      height: auto;
+      border-radius: 8px;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 列表页 -->
+    <div v-if="currentPage === 'list'" class="video-management-page">
+      <h1 class="page-title">视频管理</h1>
+
+      <div class="card-container">
+        <div class="card-header">
+          <div class="panel-header">
+            <div class="panel-title">全部视频设备 ({{ videoList.length }})</div>
+            <el-input
+              v-model="searchQuery"
+              placeholder="🔍 搜索视频名称或编码"
+              clearable
+              style="width: 250px"
+              @keyup.enter="handleSearch"
+            />
+            <el-select v-model="filterGroup" placeholder="所属分组" clearable style="width: 150px">
+              <el-option label="全部分组" value="" />
+              <el-option label="办公区" value="办公区" />
+              <el-option label="生产区" value="生产区" />
+              <el-option label="仓库区" value="仓库区" />
+            </el-select>
+            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button @click="refreshList">刷新</el-button>
+            <el-button type="primary" @click="openAddDialog">+ 添加视频设备</el-button>
+            <el-button type="primary" plain @click="openBatchImport">↑ 批量导入</el-button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <el-table :data="displayList" stripe v-loading="loading" border style="width: 100%">
+            <el-table-column type="index" label="序号" width="80" align="center" />
+            <el-table-column prop="name" label="视频名称" min-width="150" show-overflow-tooltip />
+            <el-table-column prop="deviceId" label="视频编码" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="channelId" label="通道编码" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="groupName" label="所属分组" min-width="120" />
+            <el-table-column label="操作" width="240" align="center">
+              <template #default="scope">
+                <el-button size="small" type="primary" link @click="viewDetail(scope.row)">详情</el-button>
+                <el-button size="small" type="primary" link @click="editDevice(scope.row)">编辑</el-button>
+                <el-button size="small" type="danger" link @click="deleteDevice(scope.row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="currentPageNum"
+              v-model:page-size="pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="displayList.length"
+              layout="total, sizes, prev, pager, next, jumper"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 详情页 -->
+    <div v-if="currentPage === 'detail'" class="detail-page">
+      <el-button @click="currentPage = 'list'" style="margin-bottom: 20px">
+        ← 返回列表
+      </el-button>
+
+      <h1 class="page-title">视频设备详情</h1>
+
+      <div class="info-card">
+        <div class="info-card-title">设备状态信息</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">视频名称</div>
+            <div class="info-value">{{ currentDevice.name }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">视频编码</div>
+            <div class="info-value">{{ currentDevice.deviceId }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">通道编码</div>
+            <div class="info-value">{{ currentDevice.channelId }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">所属分组</div>
+            <div class="info-value">{{ currentDevice.groupName }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">设备状态</div>
+            <div class="info-value">
+              <span :class="['status-tag', currentDevice.status === 'online' ? 'status-online' : 'status-offline']">
+                {{ currentDevice.status === 'online' ? '在线 ✓' : '离线' }}
+              </span>
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">设备IP</div>
+            <div class="info-value">{{ deviceStatus.ip }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">设备端口</div>
+            <div class="info-value">{{ deviceStatus.port }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">通道数量</div>
+            <div class="info-value">{{ deviceStatus.channelCount }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">传输协议</div>
+            <div class="info-value">{{ deviceStatus.transport }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">注册时间</div>
+            <div class="info-value">{{ formatDateTime(deviceStatus.registerTime) }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">最后心跳</div>
+            <div class="info-value">{{ formatDateTime(deviceStatus.keepaliveTime) }}</div>
+          </div>
+        </div>
+        <div style="margin-top: 20px;">
+          <el-button type="primary" @click="refreshDeviceStatus">刷新状态</el-button>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-card-title">实时视频播放</div>
+        <div class="video-container">
+          <div v-if="!isPlaying && !isLoading" class="video-placeholder">
+            <div class="video-placeholder-icon">📹</div>
+            <div class="video-placeholder-text">点击播放按钮开始播放实时视频</div>
+            <button class="play-button" @click="startPlay">▶ 点击播放</button>
+          </div>
+
+          <div v-if="isLoading" class="loading-overlay">
+            <div>正在加载视频流...</div>
+          </div>
+
+          <video
+            v-if="isPlaying && hlsUrl"
+            ref="videoPlayer"
+            class="video-player"
+            controls
+            autoplay
+            muted
+            @error="handleVideoError"
+            @loadstart="isLoading = true"
+            @canplay="isLoading = false"
+          >
+            <source :src="hlsUrl" type="application/x-mpegURL">
+            您的浏览器不支持视频播放
+          </video>
+
+          <div v-if="playError" class="video-placeholder">
+            <div class="video-placeholder-icon">⚠️</div>
+            <div class="video-placeholder-text" style="color: #ff3b30;">{{ playError }}</div>
+            <button class="play-button" @click="startPlay" style="margin-top: 10px;">重试播放</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加/编辑对话框 -->
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
+      <el-form :model="form" label-width="100px">
+        <el-form-item label="视频名称" required>
+          <el-input v-model="form.name" placeholder="请输入视频设备名称" />
+        </el-form-item>
+        <el-form-item label="视频编码" required>
+          <el-input v-model="form.deviceId" placeholder="请输入GB28181设备编码（20位）" maxlength="20" />
+        </el-form-item>
+        <el-form-item label="通道编码" required>
+          <el-input v-model="form.channelId" placeholder="请输入GB28181通道编码（20位）" maxlength="20" />
+        </el-form-item>
+        <el-form-item label="所属分组" required>
+          <el-select v-model="form.groupName" placeholder="请选择分组" style="width: 100%">
+            <el-option label="办公区" value="办公区" />
+            <el-option label="生产区" value="生产区" />
+            <el-option label="仓库区" value="仓库区" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注说明">
+          <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入备注说明" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSave">确定</el-button>
+      </template>
+    </el-dialog>
+  </div>
+
+  <script>
+    const App = {
+      data() {
+        return {
+          currentPage: 'list',
+          loading: false,
+          currentPageNum: 1,
+          pageSize: 20,
+          searchQuery: '',
+          filterGroup: '',
+          videoList: [
+            { id: 1, name: '办公区入口摄像头', deviceId: '340200000013202274845', channelId: '34020000001310000001', groupName: '办公区' },
+            { id: 2, name: '生产车间摄像头01', deviceId: '340200000013202274846', channelId: '34020000001310000002', groupName: '生产区' },
+            { id: 3, name: '生产车间摄像头02', deviceId: '340200000013202274846', channelId: '34020000001310000003', groupName: '生产区' },
+            { id: 4, name: '仓库入口摄像头', deviceId: '340200000013202274847', channelId: '34020000001310000004', groupName: '仓库区' },
+            { id: 5, name: '停车场摄像头01', deviceId: '340200000013202274848', channelId: '34020000001310000005', groupName: '办公区' },
+            { id: 6, name: '停车场摄像头02', deviceId: '340200000013202274848', channelId: '34020000001310000006', groupName: '办公区' },
+            { id: 7, name: '会议室摄像头', deviceId: '340200000013202274849', channelId: '34020000001310000007', groupName: '办公区' },
+            { id: 8, name: '实验室摄像头', deviceId: '340200000013202274850', channelId: '34020000001310000008', groupName: '生产区' }
+          ],
+          currentDevice: {},
+          deviceStatus: {
+            ip: '192.168.1.100',
+            port: 5060,
+            channelCount: 4,
+            transport: 'UDP',
+            registerTime: '2026-01-10T10:30:00.000Z',
+            keepaliveTime: new Date().toISOString()
+          },
+          isPlaying: false,
+          isLoading: false,
+          hlsUrl: '',
+          playError: '',
+          dialogVisible: false,
+          dialogTitle: '添加视频设备',
+          form: {
+            name: '',
+            deviceId: '',
+            channelId: '',
+            groupName: '',
+            remark: ''
+          }
+        };
+      },
+      computed: {
+        displayList() {
+          let list = [...this.videoList];
+          
+          if (this.searchQuery) {
+            const query = this.searchQuery.toLowerCase();
+            list = list.filter(item => 
+              item.name.toLowerCase().includes(query) ||
+              item.deviceId.includes(query) ||
+              item.channelId.includes(query)
+            );
+          }
+          
+          if (this.filterGroup) {
+            list = list.filter(item => item.groupName === this.filterGroup);
+          }
+          
+          return list;
+        }
+      },
+      methods: {
+        handleSearch() {
+          ElementPlus.ElMessage.success('查询完成');
+        },
+        refreshList() {
+          this.loading = true;
+          setTimeout(() => {
+            this.loading = false;
+            ElementPlus.ElMessage.success('刷新成功');
+          }, 500);
+        },
+        viewDetail(row) {
+          this.currentDevice = { ...row };
+          this.currentPage = 'detail';
+          this.isPlaying = false;
+          this.hlsUrl = '';
+          this.playError = '';
+          this.refreshDeviceStatus();
+        },
+        refreshDeviceStatus() {
+          ElementPlus.ElMessage.info('正在查询设备状态...');
+          setTimeout(() => {
+            this.deviceStatus = {
+              ip: '192.168.1.' + Math.floor(Math.random() * 255),
+              port: 5060,
+              channelCount: Math.floor(Math.random() * 8) + 1,
+              transport: Math.random() > 0.5 ? 'UDP' : 'TCP',
+              registerTime: '2026-01-10T10:30:00.000Z',
+              keepaliveTime: new Date().toISOString()
+            };
+            ElementPlus.ElMessage.success('设备状态已更新');
+          }, 500);
+        },
+        formatDateTime(utcTimeString) {
+          if (!utcTimeString) return '-';
+          try {
+            const date = new Date(utcTimeString);
+            if (isNaN(date.getTime())) return utcTimeString;
+            
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+          } catch (e) {
+            return utcTimeString;
+          }
+        },
+        startPlay() {
+          this.isLoading = true;
+          this.isPlaying = false;
+          this.playError = '';
+          setTimeout(() => {
+            this.hlsUrl = 'https://lxs.fjqiaolong.com:8443/rtp/340200000013202274845_34020000001310000001/hls.m3u8';
+            this.isPlaying = true;
+            this.isLoading = false;
+            ElementPlus.ElMessage.success('视频流加载成功');
+          }, 1500);
+        },
+        handleVideoError() {
+          this.isLoading = false;
+          this.playError = '视频播放失败，请检查网络连接或设备状态';
+          ElementPlus.ElMessage.error('视频播放失败');
+        },
+        openAddDialog() {
+          this.dialogTitle = '添加视频设备';
+          this.form = { name: '', deviceId: '', channelId: '', groupName: '', remark: '' };
+          this.dialogVisible = true;
+        },
+        editDevice(row) {
+          this.dialogTitle = '编辑视频设备';
+          this.form = { ...row, remark: '' };
+          this.dialogVisible = true;
+        },
+        deleteDevice(row) {
+          ElementPlus.ElMessageBox.confirm(`确定要删除视频设备"${row.name}"吗？`, '确认删除', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            ElementPlus.ElMessage.success('删除成功');
+          }).catch(() => {
+            ElementPlus.ElMessage.info('已取消删除');
+          });
+        },
+        handleSave() {
+          if (!this.form.name || !this.form.deviceId || !this.form.channelId || !this.form.groupName) {
+            ElementPlus.ElMessage.warning('请填写完整信息');
+            return;
+          }
+          ElementPlus.ElMessage.success(this.dialogTitle + '成功');
+          this.dialogVisible = false;
+        },
+        openBatchImport() {
+          ElementPlus.ElMessage.info('批量导入功能开发中...');
+        }
+      }
+    };
+
+    const app = Vue.createApp(App);
+    app.use(ElementPlus);
+    app.mount('#app');
+  </script>
+</body>
+</html>

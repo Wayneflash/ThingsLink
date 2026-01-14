@@ -11,6 +11,7 @@
     "axios": "^1.5.0",
     "echarts": "^5.4.3",
     "element-plus": "^2.3.14",
+    "hls.js": "^1.4.12",
     "paho-mqtt": "^1.1.0",
     "vue": "^3.3.4",
     "vue-router": "^4.2.4",

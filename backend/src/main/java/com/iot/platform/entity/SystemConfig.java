@@ -1,6 +1,7 @@
 package com.iot.platform.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -24,11 +25,13 @@ public class SystemConfig {
     /**
      * 配置键
      */
+    @TableField("`key`")
     private String configKey;
     
     /**
      * 配置值
      */
+    @TableField("`value`")
     private String configValue;
     
     /**

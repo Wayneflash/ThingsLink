@@ -153,17 +153,22 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             menus.add(createMenu("products", "产品管理", "/products", "Box", null, sort++));
         }
         
-        // 5. 报警统计
+        // 5. 视频管理
+        if (isSuperAdmin || permissions.contains("video")) {
+            menus.add(createMenu("video", "视频管理", "/video", "VideoCamera", null, sort++));
+        }
+        
+        // 6. 报警统计
         if (isSuperAdmin || permissions.contains("alarms")) {
             menus.add(createMenu("alarms", "报警统计", "/alarms", "BellFilled", null, sort++));
         }
         
-        // 6. 报警配置
+        // 7. 报警配置
         if (isSuperAdmin || permissions.contains("alarm-threshold")) {
             menus.add(createMenu("alarm-threshold", "报警配置", "/alarm-threshold", "Warning", null, sort++));
         }
         
-        // 7. 用户管理（仅超级管理员或有权限的角色）
+        // 8. 用户管理（仅超级管理员或有权限的角色）
         if (isSuperAdmin || permissions.contains("users")) {
             menus.add(createMenu("users", "用户管理", "/users", "User", null, sort++));
         }
