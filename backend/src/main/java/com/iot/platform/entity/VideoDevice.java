@@ -22,13 +22,13 @@ public class VideoDevice {
     private Long id;
     
     /**
-     * GB28181设备编码（20位）
+     * GB28181设备编码
      */
     @TableField("device_id")
     private String deviceId;
     
     /**
-     * GB28181通道编码（20位）
+     * GB28181通道编码
      */
     @TableField("channel_id")
     private String channelId;

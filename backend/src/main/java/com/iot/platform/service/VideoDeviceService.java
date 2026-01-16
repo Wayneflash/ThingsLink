@@ -203,10 +203,71 @@ public class VideoDeviceService extends ServiceImpl<VideoDeviceMapper, VideoDevi
         // 查询WVP设备状态
         try {
             JSONObject status = wvpService.queryDeviceStatus(device.getDeviceId());
-            result.put("status", status);
+            if (status != null) {
+                result.put("status", status);
+            } else {
+                // WVP查询返回null，可能是设备不存在或WVP服务异常
+                log.warn("WVP设备状态查询返回null: deviceId={}", device.getDeviceId());
+                result.put("status", null);
+                result.put("statusError", "无法获取设备状态，可能是设备未在WVP平台注册或WVP服务异常");
+            }
         } catch (Exception e) {
             log.error("查询WVP设备状态失败: deviceId={}", device.getDeviceId(), e);
             result.put("status", null);
+            result.put("statusError", "查询设备状态失败: " + e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 通过设备编码获取视频设备详情（包含WVP状态）
+     * 
+     * @param deviceId GB28181设备编码
+     * @param channelId GB28181通道编码
+     * @param userGroupIds 用户可见分组ID列表
+     * @return 设备详情（含状态）
+     */
+    public JSONObject getVideoDeviceDetailByCode(String deviceId, String channelId, List<Long> userGroupIds) {
+        // 通过设备编码和通道编码查询设备
+        LambdaQueryWrapper<VideoDevice> query = new LambdaQueryWrapper<>();
+        query.eq(VideoDevice::getDeviceId, deviceId)
+             .eq(VideoDevice::getChannelId, channelId);
+        
+        // 数据权限过滤
+        if (userGroupIds != null && !userGroupIds.isEmpty()) {
+            query.in(VideoDevice::getGroupId, userGroupIds);
+        }
+        
+        VideoDevice device = this.getOne(query);
+        if (device == null) {
+            throw new RuntimeException("设备不存在或无权限访问");
+        }
+        
+        // 转换为JSON
+        JSONObject result = (JSONObject) JSONObject.toJSON(device);
+        
+        // 添加分组名称
+        DeviceGroup group = deviceGroupService.getById(device.getGroupId());
+        if (group != null) {
+            result.put("groupName", group.getGroupName());
+        }
+        
+        // 查询WVP设备状态
+        try {
+            JSONObject status = wvpService.queryDeviceStatus(device.getDeviceId());
+            if (status != null) {
+                result.put("status", status);
+            } else {
+                // WVP查询返回null，可能是设备不存在或WVP服务异常
+                log.warn("WVP设备状态查询返回null: deviceId={}", device.getDeviceId());
+                result.put("status", null);
+                result.put("statusError", "无法获取设备状态，可能是设备未在WVP平台注册或WVP服务异常");
+            }
+        } catch (Exception e) {
+            log.error("查询WVP设备状态失败: deviceId={}", device.getDeviceId(), e);
+            result.put("status", null);
+            result.put("statusError", "查询设备状态失败: " + e.getMessage());
         }
         
         return result;

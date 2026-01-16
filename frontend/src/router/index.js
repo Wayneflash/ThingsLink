@@ -86,7 +86,7 @@ const routes = [
         meta: { title: '视频管理' }
       },
       {
-        path: 'video/detail/:id',
+        path: 'video/detail/:deviceId/:channelId',
         name: 'VideoDetail',
         component: () => import('../views/VideoDetail.vue'),
         meta: { title: '视频设备详情' }

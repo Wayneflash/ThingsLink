@@ -97,21 +97,21 @@ public class WvpService {
     /**
      * 登录WVP获取Token
      * 
-     * @return 访问Token
-     */
-    /**
-     * 登录WVP获取Token
-     * 注意：WVP登录接口要求使用GET方法，参数通过query传递
+     * 注意：
+     * 1. WVP登录接口要求使用GET方法，参数通过query传递
+     * 2. 密码直接使用配置中的MD5加密值，不进行二次加密
+     * 3. 用户需要在系统配置中配置MD5加密后的密码（32位小写十六进制字符串）
      *
      * @return 访问Token
      */
     private String login() {
         try {
             // 构建URL，参数通过query传递
+            // 注意：密码直接使用配置中的MD5加密值，不进行二次加密
             String baseUrl = wvpConfigService.getWvpServerUrl() + "/api/user/login";
             HttpUrl url = HttpUrl.parse(baseUrl).newBuilder()
                     .addQueryParameter("username", wvpConfigService.getWvpUsername())
-                    .addQueryParameter("password", wvpConfigService.getWvpPassword())
+                    .addQueryParameter("password", wvpConfigService.getWvpPassword()) // 直接使用MD5加密后的密码值
                     .build();
 
             // 发送GET请求
@@ -169,18 +169,28 @@ public class WvpService {
             Response response = httpClient.newCall(request).execute();
             String responseBody = response.body().string();
             
-            log.debug("WVP设备状态响应: {}", responseBody);
+            log.info("WVP设备状态响应: deviceId={}, response={}", deviceId, responseBody);
             
             JSONObject json = JSON.parseObject(responseBody);
             if (json.getInteger("code") == 0) {
-                return json.getJSONObject("data");
+                JSONObject data = json.getJSONObject("data");
+                if (data != null) {
+                    return data;
+                } else {
+                    log.warn("WVP返回数据为空: deviceId={}", deviceId);
+                    return null;
+                }
             } else {
-                log.error("查询设备状态失败: {}", json.getString("msg"));
-                return null;
+                String errorMsg = json.getString("msg");
+                log.error("查询设备状态失败: deviceId={}, error={}", deviceId, errorMsg);
+                throw new RuntimeException("WVP查询设备状态失败: " + errorMsg);
             }
+        } catch (RuntimeException e) {
+            // 重新抛出业务异常
+            throw e;
         } catch (Exception e) {
             log.error("查询设备状态异常: deviceId={}", deviceId, e);
-            return null;
+            throw new RuntimeException("查询设备状态异常: " + e.getMessage(), e);
         }
     }
     

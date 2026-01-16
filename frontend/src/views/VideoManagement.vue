@@ -46,13 +46,13 @@
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="primary" link @click="viewDetail(row)">
-              <el-icon><View /></el-icon>详情
+              详情
             </el-button>
             <el-button size="small" type="primary" link @click="editDevice(row)">
-              <el-icon><Edit /></el-icon>编辑
+              编辑
             </el-button>
             <el-button size="small" type="danger" link @click="deleteDevice(row)">
-              <el-icon><Delete /></el-icon>删除
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -90,16 +90,16 @@
         <el-form-item label="视频编码" prop="deviceId">
           <el-input 
             v-model="form.deviceId" 
-            placeholder="请输入GB28181设备编码（20位数字）" 
-            maxlength="20"
+            placeholder="请输入GB28181设备编码（数字）" 
+            maxlength="50"
             :disabled="dialogMode === 'edit'"
           />
         </el-form-item>
         <el-form-item label="通道编码" prop="channelId">
           <el-input 
             v-model="form.channelId" 
-            placeholder="请输入GB28181通道编码（20位数字）" 
-            maxlength="20"
+            placeholder="请输入GB28181通道编码（数字）" 
+            maxlength="50"
             :disabled="dialogMode === 'edit'"
           />
         </el-form-item>
@@ -133,7 +133,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Plus, View, Edit, Delete } from '@element-plus/icons-vue'
+import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import { getVideoList, addVideoDevice, updateVideoDevice, deleteVideoDevice } from '../api/video'
 import GroupSelector from '../components/GroupSelector.vue'
 
@@ -175,11 +175,11 @@ const formRules = {
   ],
   deviceId: [
     { required: true, message: '请输入设备编码', trigger: 'blur' },
-    { pattern: /^\d{20}$/, message: '设备编码必须为20位数字', trigger: 'blur' }
+    { pattern: /^\d+$/, message: '设备编码必须为数字', trigger: 'blur' }
   ],
   channelId: [
     { required: true, message: '请输入通道编码', trigger: 'blur' },
-    { pattern: /^\d{20}$/, message: '通道编码必须为20位数字', trigger: 'blur' }
+    { pattern: /^\d+$/, message: '通道编码必须为数字', trigger: 'blur' }
   ],
   groupId: [
     { required: true, message: '请选择所属分组', trigger: 'change' }
@@ -230,7 +230,7 @@ const handlePageChange = () => {
 
 // 查看详情
 const viewDetail = (row) => {
-  router.push(`/video/detail/${row.id}`)
+  router.push(`/video/detail/${row.deviceId}/${row.channelId}`)
 }
 
 // 打开添加对话框
@@ -340,6 +340,23 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
+/* 按钮组 - 舒适样式 - 复用设备管理页面样式 */
+.panel-header .el-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 6px 12px;
+  font-size: 13px;
+  height: 32px;
+  min-width: auto;
+  line-height: 1.4;
+}
+
+.panel-header .el-button .el-icon {
+  font-size: 14px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
 .panel-title {
   font-size: 16px;
   font-weight: 600;
@@ -353,6 +370,53 @@ onMounted(() => {
 
 .filter-select {
   width: 160px;
+}
+
+/* 输入框样式优化 - 舒适型 - 复用设备管理页面样式 */
+:deep(.panel-header .el-input__wrapper) {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  padding: 0 10px;
+  height: 32px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+
+:deep(.panel-header .el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset;
+}
+
+:deep(.panel-header .el-input__inner) {
+  height: 32px;
+  line-height: 32px;
+  font-size: 13px;
+}
+
+/* 下拉框样式优化 - 舒适型 - 复用设备管理页面样式 */
+:deep(.panel-header .el-select .el-input__wrapper) {
+  transition: all 0.2s ease;
+  padding: 0 10px;
+  height: 32px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+
+:deep(.panel-header .el-select:hover .el-input__wrapper) {
+  box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset;
+}
+
+:deep(.panel-header .el-select .el-input__inner) {
+  height: 32px;
+  line-height: 32px;
+  font-size: 13px;
+}
+
+:deep(.panel-header .el-input__suffix) {
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+:deep(.panel-header .el-select__caret) {
+  font-size: 13px;
 }
 
 .pagination-container {
@@ -369,5 +433,45 @@ onMounted(() => {
   background-color: #f5f7fa;
   color: #606266;
   font-weight: 600;
+}
+
+/* 按钮样式优化 - 复用设备管理页面样式 */
+:deep(.el-button) {
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+:deep(.el-button--primary) {
+  box-shadow: 0 2px 4px rgba(0, 122, 255, 0.15);
+}
+
+:deep(.el-button--primary:hover) {
+  box-shadow: 0 4px 8px rgba(0, 122, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+:deep(.el-button--small) {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+/* 操作列按钮样式 - link类型按钮也添加阴影效果 */
+:deep(.el-button--link.el-button--primary) {
+  box-shadow: 0 1px 2px rgba(0, 122, 255, 0.1);
+}
+
+:deep(.el-button--link.el-button--primary:hover) {
+  box-shadow: 0 2px 4px rgba(0, 122, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+:deep(.el-button--link.el-button--danger) {
+  box-shadow: 0 1px 2px rgba(245, 108, 108, 0.1);
+}
+
+:deep(.el-button--link.el-button--danger:hover) {
+  box-shadow: 0 2px 4px rgba(245, 108, 108, 0.2);
+  transform: translateY(-1px);
 }
 </style>

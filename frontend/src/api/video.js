@@ -19,12 +19,13 @@ export function getVideoList(params) {
 
 /**
  * 查询视频设备详情
- * @param {Number} id 设备数据库ID
+ * @param {String} deviceId GB28181设备编码
+ * @param {String} channelId GB28181通道编码
  * @returns {Promise}
  */
-export function getVideoDetail(id) {
+export function getVideoDetail(deviceId, channelId) {
   return request({
-    url: `/api/video/detail/${id}`,
+    url: `/api/video/detail/${deviceId}/${channelId}`,
     method: 'get'
   })
 }

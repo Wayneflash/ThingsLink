@@ -47,9 +47,13 @@ public class WvpConfigService {
     }
     
     /**
-     * 获取WVP登录密码（MD5加密）
+     * 获取WVP登录密码（MD5加密后的值）
      * 
-     * @return WVP密码（MD5）
+     * 注意：此方法返回的是MD5加密后的密码值，不是明文密码
+     * 用户需要在系统配置中直接配置MD5加密后的密码（32位小写十六进制字符串）
+     * 配置键：wvp.server.password
+     * 
+     * @return WVP密码（MD5加密后的值，32位小写十六进制字符串）
      */
     public String getWvpPassword() {
         return getConfig("wvp.server.password", "b59c67bf196a4758191e42f76670ceba");

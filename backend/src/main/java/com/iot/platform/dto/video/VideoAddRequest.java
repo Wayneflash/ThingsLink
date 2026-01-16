@@ -23,17 +23,19 @@ public class VideoAddRequest {
     private String name;
     
     /**
-     * GB28181设备编码（20位数字）
+     * GB28181设备编码
      */
     @NotBlank(message = "设备编码不能为空")
-    @Pattern(regexp = "^\\d{20}$", message = "设备编码必须为20位数字")
+    @Pattern(regexp = "^\\d+$", message = "设备编码必须为数字")
+    @Size(max = 50, message = "设备编码最多50字符")
     private String deviceId;
     
     /**
-     * GB28181通道编码（20位数字）
+     * GB28181通道编码
      */
     @NotBlank(message = "通道编码不能为空")
-    @Pattern(regexp = "^\\d{20}$", message = "通道编码必须为20位数字")
+    @Pattern(regexp = "^\\d+$", message = "通道编码必须为数字")
+    @Size(max = 50, message = "通道编码最多50字符")
     private String channelId;
     
     /**

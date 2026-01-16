@@ -159,10 +159,11 @@ public class VideoController {
     }
     
     /**
-     * 16.2 视频设备详情
+     * 16.2 视频设备详情（通过设备编码和通道编码）
      */
-    @GetMapping("/detail/{id}")
-    public Result<?> detail(@PathVariable Long id,
+    @GetMapping("/detail/{deviceId}/{channelId}")
+    public Result<?> detail(@PathVariable String deviceId,
+                            @PathVariable String channelId,
                             @RequestHeader(value = "Authorization", required = false) String token) {
         try {
             // 获取当前用户
@@ -175,11 +176,11 @@ public class VideoController {
             List<Long> userGroupIds = getUserVisibleGroupIds(user);
             
             // 查询设备详情（含WVP状态）
-            JSONObject detail = videoDeviceService.getVideoDeviceDetail(id, userGroupIds);
+            JSONObject detail = videoDeviceService.getVideoDeviceDetailByCode(deviceId, channelId, userGroupIds);
             
             return Result.success(detail);
         } catch (Exception e) {
-            log.error("查询视频设备详情失败: id={}", id, e);
+            log.error("查询视频设备详情失败: deviceId={}, channelId={}", deviceId, channelId, e);
             return Result.error(e.getMessage());
         }
     }
