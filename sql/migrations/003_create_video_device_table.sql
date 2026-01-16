@@ -8,8 +8,8 @@
 -- 创建视频设备表
 CREATE TABLE IF NOT EXISTS `tb_video_device` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
-  `device_id` VARCHAR(20) NOT NULL COMMENT 'GB28181设备编码（20位）',
-  `channel_id` VARCHAR(20) NOT NULL COMMENT 'GB28181通道编码（20位）',
+  `device_id` VARCHAR(50) NOT NULL COMMENT 'GB28181设备编码',
+  `channel_id` VARCHAR(50) NOT NULL COMMENT 'GB28181通道编码',
   `name` VARCHAR(100) NOT NULL COMMENT '视频设备名称',
   `group_id` BIGINT COMMENT '所属分组ID',
   `remark` VARCHAR(500) COMMENT '备注说明',

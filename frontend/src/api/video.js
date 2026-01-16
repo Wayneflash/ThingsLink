@@ -80,3 +80,29 @@ export function deleteVideoDevice(id) {
     method: 'delete'
   })
 }
+
+/**
+ * 查询录像列表
+ * @param {Object} params 查询参数 {deviceId, channelId, startTime, endTime}
+ * @returns {Promise}
+ */
+export function queryRecord(params) {
+  return request({
+    url: '/api/video/record/query',
+    method: 'post',
+    data: params
+  })
+}
+
+/**
+ * 获取录像回放流地址
+ * @param {Object} params 回放参数 {deviceId, channelId, startTime, endTime}
+ * @returns {Promise}
+ */
+export function playbackRecord(params) {
+  return request({
+    url: '/api/video/record/playback',
+    method: 'post',
+    data: params
+  })
+}

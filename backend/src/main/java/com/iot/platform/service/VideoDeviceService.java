@@ -14,6 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -204,6 +208,8 @@ public class VideoDeviceService extends ServiceImpl<VideoDeviceMapper, VideoDevi
         try {
             JSONObject status = wvpService.queryDeviceStatus(device.getDeviceId());
             if (status != null) {
+                // 转换UTC时间为中国时区（UTC+8）
+                convertUtcTimeToChinaTime(status);
                 result.put("status", status);
             } else {
                 // WVP查询返回null，可能是设备不存在或WVP服务异常
@@ -257,6 +263,8 @@ public class VideoDeviceService extends ServiceImpl<VideoDeviceMapper, VideoDevi
         try {
             JSONObject status = wvpService.queryDeviceStatus(device.getDeviceId());
             if (status != null) {
+                // 转换UTC时间为中国时区（UTC+8）
+                convertUtcTimeToChinaTime(status);
                 result.put("status", status);
             } else {
                 // WVP查询返回null，可能是设备不存在或WVP服务异常
@@ -271,6 +279,91 @@ public class VideoDeviceService extends ServiceImpl<VideoDeviceMapper, VideoDevi
         }
         
         return result;
+    }
+    
+    /**
+     * 将WVP返回的UTC时间转换为中国时区（UTC+8）
+     * 
+     * @param status WVP设备状态JSON对象
+     */
+    private void convertUtcTimeToChinaTime(JSONObject status) {
+        if (status == null) {
+            return;
+        }
+        
+        // 常见的时间字段名
+        String[] timeFields = {"registerTime", "keepaliveTime", "createTime", "updateTime", "time"};
+        
+        for (String field : timeFields) {
+            Object timeValue = status.get(field);
+            if (timeValue != null) {
+                try {
+                    String timeStr = timeValue.toString();
+                    if (timeStr != null && !timeStr.isEmpty()) {
+                        // 尝试解析时间字符串（支持多种格式）
+                        LocalDateTime utcTime = parseTimeString(timeStr);
+                        if (utcTime != null) {
+                            // 转换为中国时区（UTC+8）
+                            ZonedDateTime utcZoned = utcTime.atZone(ZoneId.of("UTC"));
+                            ZonedDateTime chinaZoned = utcZoned.withZoneSameInstant(ZoneId.of("Asia/Shanghai"));
+                            LocalDateTime chinaTime = chinaZoned.toLocalDateTime();
+                            
+                            // 格式化为 yyyy-MM-dd HH:mm:ss 格式
+                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                            String chinaTimeStr = chinaTime.format(formatter);
+                            status.put(field, chinaTimeStr);
+                            
+                            log.debug("时间字段 {} 转换: UTC {} -> China {}", field, timeStr, chinaTimeStr);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("转换时间字段失败: field={}, value={}, error={}", field, timeValue, e.getMessage());
+                }
+            }
+        }
+    }
+    
+    /**
+     * 解析时间字符串（支持多种格式）
+     * 
+     * @param timeStr 时间字符串
+     * @return LocalDateTime对象（UTC时区），解析失败返回null
+     */
+    private LocalDateTime parseTimeString(String timeStr) {
+        if (timeStr == null || timeStr.isEmpty()) {
+            return null;
+        }
+        
+        // 先尝试解析带时区的格式（ISO格式，如 2026-01-16T10:30:00Z）
+        try {
+            // 如果包含Z或+/-时区标识，使用ZonedDateTime解析
+            if (timeStr.contains("Z") || timeStr.contains("+") || timeStr.matches(".*\\d{2}:\\d{2}$")) {
+                ZonedDateTime zonedDateTime = ZonedDateTime.parse(timeStr, DateTimeFormatter.ISO_DATE_TIME);
+                // 转换为UTC时区的LocalDateTime
+                return zonedDateTime.withZoneSameInstant(ZoneId.of("UTC")).toLocalDateTime();
+            }
+        } catch (Exception e) {
+            // 继续尝试其他格式
+        }
+        
+        // 支持的格式列表（假设都是UTC时间）
+        DateTimeFormatter[] formatters = {
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS"),
+            DateTimeFormatter.ISO_LOCAL_DATE_TIME
+        };
+        
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                return LocalDateTime.parse(timeStr, formatter);
+            } catch (Exception e) {
+                // 继续尝试下一个格式
+            }
+        }
+        
+        log.warn("无法解析时间字符串: {}", timeStr);
+        return null;
     }
     
     /**
@@ -312,6 +405,83 @@ public class VideoDeviceService extends ServiceImpl<VideoDeviceMapper, VideoDevi
         result.put("hlsUrl", hlsUrl);
         result.put("deviceId", deviceId);
         result.put("channelId", channelId);
+        
+        return result;
+    }
+    
+    /**
+     * 查询录像列表（含权限校验）
+     * 
+     * @param deviceId GB28181设备编码
+     * @param channelId GB28181通道编码
+     * @param startTime 开始时间（设备时间，格式：yyyy-MM-dd HH:mm:ss）
+     * @param endTime 结束时间（设备时间，格式：yyyy-MM-dd HH:mm:ss）
+     * @param userGroupIds 用户可见分组ID列表
+     * @return 录像信息
+     */
+    public JSONObject queryRecord(String deviceId, String channelId, String startTime, String endTime, List<Long> userGroupIds) {
+        // 校验设备权限
+        LambdaQueryWrapper<VideoDevice> query = new LambdaQueryWrapper<>();
+        query.eq(VideoDevice::getDeviceId, deviceId)
+             .eq(VideoDevice::getChannelId, channelId);
+        
+        // 数据权限过滤
+        if (userGroupIds != null && !userGroupIds.isEmpty()) {
+            query.in(VideoDevice::getGroupId, userGroupIds);
+        }
+        
+        VideoDevice device = this.getOne(query);
+        if (device == null) {
+            throw new RuntimeException("设备不存在或无权限访问");
+        }
+        
+        // 调用WVP查询录像（时间直接传递，不做转换）
+        return wvpService.queryRecord(deviceId, channelId, startTime, endTime);
+    }
+    
+    /**
+     * 获取录像回放流地址（含权限校验）
+     * 
+     * @param deviceId GB28181设备编码
+     * @param channelId GB28181通道编码
+     * @param startTime 开始时间（设备时间，格式：yyyy-MM-dd HH:mm:ss）
+     * @param endTime 结束时间（设备时间，格式：yyyy-MM-dd HH:mm:ss）
+     * @param userGroupIds 用户可见分组ID列表
+     * @return 回放流地址信息
+     */
+    public JSONObject getPlaybackUrl(String deviceId, String channelId, String startTime, String endTime, List<Long> userGroupIds) {
+        // 校验设备权限
+        LambdaQueryWrapper<VideoDevice> query = new LambdaQueryWrapper<>();
+        query.eq(VideoDevice::getDeviceId, deviceId)
+             .eq(VideoDevice::getChannelId, channelId);
+        
+        // 数据权限过滤
+        if (userGroupIds != null && !userGroupIds.isEmpty()) {
+            query.in(VideoDevice::getGroupId, userGroupIds);
+        }
+        
+        VideoDevice device = this.getOne(query);
+        if (device == null) {
+            throw new RuntimeException("设备不存在或无权限访问");
+        }
+        
+        // 调用WVP获取回放地址（时间直接传递，不做转换）
+        JSONObject playbackInfo = wvpService.getPlaybackUrl(deviceId, channelId, startTime, endTime);
+        
+        // 提取HTTPS HLS地址（优先使用HTTPS HLS，与实时播放保持一致）
+        String hlsUrl = playbackInfo.getString("https_hls");
+        if (!StringUtils.hasText(hlsUrl)) {
+            // 如果没有HTTPS HLS，尝试使用普通HLS
+            hlsUrl = playbackInfo.getString("hls");
+        }
+        
+        // 构建响应
+        JSONObject result = new JSONObject();
+        result.put("hlsUrl", hlsUrl);
+        result.put("deviceId", deviceId);
+        result.put("channelId", channelId);
+        result.put("startTime", startTime);
+        result.put("endTime", endTime);
         
         return result;
     }

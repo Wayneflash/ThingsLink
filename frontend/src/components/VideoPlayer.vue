@@ -42,6 +42,11 @@ const props = defineProps({
   videoUrl: {
     type: String,
     required: true
+  },
+  // 是否为录像回放模式（默认false，实时播放模式）
+  isPlayback: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -78,21 +83,57 @@ const initPlayer = () => {
     })
   } else if (Hls.isSupported()) {
     // 使用hls.js
+    // 录像回放模式：关闭低延迟模式，增加缓冲长度，确保完整播放
+    // 实时播放模式：开启低延迟模式，适合实时流
     hls.value = new Hls({
       enableWorker: true,
-      lowLatencyMode: true,
-      backBufferLength: 90
+      lowLatencyMode: !props.isPlayback, // 录像回放时关闭低延迟模式
+      backBufferLength: props.isPlayback ? 300 : 90, // 录像回放时增加缓冲长度
+      maxBufferLength: props.isPlayback ? 300 : 30, // 录像回放时增加最大缓冲长度
+      maxMaxBufferLength: props.isPlayback ? 600 : 600, // 录像回放时允许更大的缓冲
+      maxBufferSize: props.isPlayback ? 60 * 1000 * 1000 : 30 * 1000 * 1000, // 录像回放时增加缓冲区大小（60MB）
+      liveSyncDurationCount: props.isPlayback ? 3 : 3, // 回放时使用固定值
+      liveMaxLatencyDurationCount: props.isPlayback ? Infinity : Infinity // 回放时不限制延迟
     })
     
     hls.value.loadSource(props.videoUrl)
     hls.value.attachMedia(video)
     
     hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
+      // 录像回放模式：监听播放结束事件
+      if (props.isPlayback) {
+        video.addEventListener('ended', () => {
+          console.log('录像播放完成')
+        })
+        
+        // 监听时间更新，确保播放进度正常
+        video.addEventListener('timeupdate', () => {
+          // 如果播放进度异常（比如卡住），尝试恢复
+          if (video.readyState >= 2 && video.paused && !video.ended) {
+            video.play().catch(() => {
+              // 忽略播放错误
+            })
+          }
+        })
+      }
+      
       // 尝试自动播放（如果浏览器允许）
       video.play().catch(err => {
         console.warn('自动播放失败（可能需要用户交互）:', err)
       })
     })
+    
+    // 监听片段加载，确保录像回放时持续加载
+    if (props.isPlayback) {
+      hls.value.on(Hls.Events.FRAG_LOADED, () => {
+        // 片段加载完成，确保继续播放
+        if (video.readyState >= 2 && video.paused && !video.ended) {
+          video.play().catch(() => {
+            // 忽略播放错误（可能是用户暂停）
+          })
+        }
+      })
+    }
     
     hls.value.on(Hls.Events.ERROR, (event, data) => {
       console.error('HLS错误:', data)

@@ -63,10 +63,10 @@ public class WvpService {
             javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
             sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
             
-            // 创建OkHttpClient
+            // 创建OkHttpClient（默认超时时间，录像查询会使用专用客户端）
             httpClient = new OkHttpClient.Builder()
                     .connectTimeout(10, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS) // 默认30秒，录像查询会使用3秒超时
                     .writeTimeout(10, TimeUnit.SECONDS)
                     .sslSocketFactory(sslContext.getSocketFactory(), (javax.net.ssl.X509TrustManager) trustAllCerts[0])
                     .hostnameVerifier((hostname, session) -> true) // 信任所有主机名
@@ -141,8 +141,13 @@ public class WvpService {
                 log.info("WVP登录成功, Token: {}, 有效期: {}秒", accessToken, expiresIn);
                 return accessToken;
             } else {
-                log.error("WVP登录失败: {}", json.getString("msg"));
-                throw new RuntimeException("WVP登录失败: " + json.getString("msg"));
+                String errorMsg = json.getString("msg");
+                log.error("WVP登录失败: {}", errorMsg);
+                // 登录失败时清除Token和配置缓存，确保下次重新读取配置
+                accessToken = null;
+                tokenExpireTime = 0;
+                wvpConfigService.refreshCache();
+                throw new RuntimeException("WVP登录失败: " + errorMsg);
             }
         } catch (IOException e) {
             log.error("WVP登录请求失败", e);
@@ -226,6 +231,126 @@ public class WvpService {
         } catch (IOException e) {
             log.error("获取播放地址异常: deviceId={}, channelId={}", deviceId, channelId, e);
             throw new RuntimeException("获取播放地址失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 查询录像列表
+     * 
+     * @param deviceId GB28181设备编码
+     * @param channelId GB28181通道编码
+     * @param startTime 开始时间（设备时间，格式：yyyy-MM-dd HH:mm:ss）
+     * @param endTime 结束时间（设备时间，格式：yyyy-MM-dd HH:mm:ss）
+     * @return 录像信息
+     */
+    public JSONObject queryRecord(String deviceId, String channelId, String startTime, String endTime) {
+        // 创建专用的HTTP客户端，超时时间3秒（避免无录像时长时间等待）
+        OkHttpClient recordClient = httpClient.newBuilder()
+                .readTimeout(3, TimeUnit.SECONDS)
+                .build();
+        
+        try {
+            // 构建URL，参数通过query传递
+            String baseUrl = wvpConfigService.getWvpServerUrl() + "/api/gb_record/query/" + deviceId + "/" + channelId;
+            HttpUrl url = HttpUrl.parse(baseUrl).newBuilder()
+                    .addQueryParameter("startTime", startTime)
+                    .addQueryParameter("endTime", endTime)
+                    .build();
+            
+            Request request = new Request.Builder()
+                    .url(url)
+                    .addHeader("access-token", getAccessToken())
+                    .get()
+                    .build();
+            
+            Response response = recordClient.newCall(request).execute();
+            String responseBody = response.body().string();
+            
+            log.info("WVP录像查询响应: deviceId={}, channelId={}, response={}", deviceId, channelId, responseBody);
+            
+            JSONObject json = JSON.parseObject(responseBody);
+            if (json.getInteger("code") == 0) {
+                JSONObject data = json.getJSONObject("data");
+                // 如果没有data或recordList为空，返回空的数据结构
+                if (data == null) {
+                    JSONObject emptyData = new JSONObject();
+                    emptyData.put("recordList", new java.util.ArrayList<>());
+                    return emptyData;
+                }
+                // 确保recordList字段存在
+                if (!data.containsKey("recordList") || data.get("recordList") == null) {
+                    data.put("recordList", new java.util.ArrayList<>());
+                }
+                return data;
+            } else {
+                String errorMsg = json.getString("msg");
+                log.warn("查询录像失败: deviceId={}, channelId={}, error={}", deviceId, channelId, errorMsg);
+                // 查询失败时返回空数据，而不是抛出异常（可能是没有录像）
+                JSONObject emptyData = new JSONObject();
+                emptyData.put("recordList", new java.util.ArrayList<>());
+                return emptyData;
+            }
+        } catch (java.net.SocketTimeoutException e) {
+            log.warn("查询录像超时（3秒）: deviceId={}, channelId={}", deviceId, channelId);
+            // 超时时返回空数据
+            JSONObject emptyData = new JSONObject();
+            emptyData.put("recordList", new java.util.ArrayList<>());
+            return emptyData;
+        } catch (RuntimeException e) {
+            // 重新抛出业务异常
+            throw e;
+        } catch (Exception e) {
+            log.warn("查询录像异常: deviceId={}, channelId={}, error={}", deviceId, channelId, e.getMessage());
+            // 异常时返回空数据，而不是抛出异常（避免前端卡顿）
+            JSONObject emptyData = new JSONObject();
+            emptyData.put("recordList", new java.util.ArrayList<>());
+            return emptyData;
+        }
+    }
+    
+    /**
+     * 获取录像回放流地址
+     * 
+     * @param deviceId GB28181设备编码
+     * @param channelId GB28181通道编码
+     * @param startTime 开始时间（设备时间，格式：yyyy-MM-dd HH:mm:ss）
+     * @param endTime 结束时间（设备时间，格式：yyyy-MM-dd HH:mm:ss）
+     * @return 视频流信息
+     */
+    public JSONObject getPlaybackUrl(String deviceId, String channelId, String startTime, String endTime) {
+        try {
+            // 构建URL，参数通过query传递
+            String baseUrl = wvpConfigService.getWvpServerUrl() + "/api/playback/start/" + deviceId + "/" + channelId;
+            HttpUrl url = HttpUrl.parse(baseUrl).newBuilder()
+                    .addQueryParameter("startTime", startTime)
+                    .addQueryParameter("endTime", endTime)
+                    .build();
+            
+            Request request = new Request.Builder()
+                    .url(url)
+                    .addHeader("access-token", getAccessToken())
+                    .get()
+                    .build();
+            
+            Response response = httpClient.newCall(request).execute();
+            String responseBody = response.body().string();
+            
+            log.debug("WVP回放地址响应: deviceId={}, channelId={}, response={}", deviceId, channelId, responseBody);
+            
+            JSONObject json = JSON.parseObject(responseBody);
+            if (json.getInteger("code") == 0) {
+                return json.getJSONObject("data");
+            } else {
+                String errorMsg = json.getString("msg");
+                log.error("获取回放地址失败: deviceId={}, channelId={}, error={}", deviceId, channelId, errorMsg);
+                throw new RuntimeException("WVP获取回放地址失败: " + errorMsg);
+            }
+        } catch (RuntimeException e) {
+            // 重新抛出业务异常
+            throw e;
+        } catch (Exception e) {
+            log.error("获取回放地址异常: deviceId={}, channelId={}", deviceId, channelId, e);
+            throw new RuntimeException("获取回放地址失败: " + e.getMessage(), e);
         }
     }
 }

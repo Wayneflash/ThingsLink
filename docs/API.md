@@ -2189,6 +2189,159 @@
 
 ---
 
+### 16.7 查询录像列表
+
+**接口路径**: `POST /api/video/record/query`
+
+**接口说明**: 查询视频设备的录像列表
+
+**权限要求**: 需要认证，数据权限校验
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| deviceId | String | 是 | GB28181设备编码 |
+| channelId | String | 是 | GB28181通道编码 |
+| startTime | String | 是 | 开始时间，格式：yyyy-MM-dd HH:mm:ss（设备时间） |
+| endTime | String | 是 | 结束时间，格式：yyyy-MM-dd HH:mm:ss（设备时间） |
+
+**请求示例**:
+
+```json
+{
+  "deviceId": "43000000801218000197",
+  "channelId": "43000000801320004237",
+  "startTime": "2026-01-16 00:00:00",
+  "endTime": "2026-01-16 23:59:59"
+}
+```
+
+**响应示例**:
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "deviceId": "43000000801218000197",
+    "channelId": "43000000801320004237",
+    "sn": "248596",
+    "name": "Camera 01",
+    "sumNum": 4,
+    "count": 4,
+    "lastTime": null,
+    "recordList": [
+      {
+        "deviceId": "43000000801320004237",
+        "name": "Camera 01",
+        "filePath": "",
+        "fileSize": null,
+        "address": "",
+        "startTime": "2026-01-16 07:49:57",
+        "endTime": "2026-01-16 07:51:10",
+        "secrecy": 0,
+        "type": "time",
+        "recorderId": ""
+      }
+    ]
+  }
+}
+```
+
+**错误响应**（设备不存在或无权限）:
+
+```json
+{
+  "code": 404,
+  "message": "设备不存在或无权限访问",
+  "data": null
+}
+```
+
+**特殊说明**:
+- 调用WVP接口 `GET /api/gb_record/query/{deviceId}/{channelId}` 查询录像
+- 时间参数直接传递，不做时区转换（设备时间）
+- WVP返回的时间也是设备时间，直接返回给前端
+- 数据权限：校验该设备是否在用户可见分组内
+
+---
+
+### 16.8 获取录像回放流地址
+
+**接口路径**: `POST /api/video/record/playback`
+
+**接口说明**: 获取视频设备的录像回放HLS流地址（HTTPS）
+
+**权限要求**: 需要认证，数据权限校验
+
+**请求参数**:
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| deviceId | String | 是 | GB28181设备编码 |
+| channelId | String | 是 | GB28181通道编码 |
+| startTime | String | 是 | 开始时间，格式：yyyy-MM-dd HH:mm:ss（设备时间） |
+| endTime | String | 是 | 结束时间，格式：yyyy-MM-dd HH:mm:ss（设备时间） |
+
+**请求示例**:
+
+```json
+{
+  "deviceId": "43000000801218000197",
+  "channelId": "43000000801320004237",
+  "startTime": "2026-01-16 07:49:57",
+  "endTime": "2026-01-16 07:51:10"
+}
+```
+
+**响应示例**:
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "hlsUrl": "https://lxs.fjqiaolong.com:8443/rtp/43000000801218000197_43000000801320004237_20260116074957_20260116075110/hls.m3u8",
+    "deviceId": "43000000801218000197",
+    "channelId": "43000000801320004237",
+    "startTime": "2026-01-16 07:49:57",
+    "endTime": "2026-01-16 07:51:10"
+  }
+}
+```
+
+**错误响应**（设备不存在或无权限）:
+
+```json
+{
+  "code": 404,
+  "message": "设备不存在或无权限访问",
+  "data": null
+}
+```
+
+**错误响应**（回放失败）:
+
+```json
+{
+  "code": 500,
+  "message": "获取回放流失败，请稍后重试",
+  "data": null
+}
+```
+
+**特殊说明**:
+- 调用WVP接口 `GET /api/playback/start/{deviceId}/{channelId}` 获取回放流
+- 从WVP响应中提取 `https_hls` 字段（HTTPS的HLS流地址）
+  - 响应示例：`"https_hls": "https://lxs.fjqiaolong.com:8443/rtp/43000000801218000197_43000000801320004237_20260116074957_20260116075110/hls.m3u8"`
+  - 如果没有 `https_hls`，则fallback到 `hls` 字段
+- 前端使用HTML5 video标签或HLS.js播放该地址（复用VideoPlayer组件）
+- 时间参数直接传递，不做时区转换（设备时间）
+- 数据权限：校验该设备是否在用户可见分组内
+
+---
+
 ## 15. 系统配置
 
 ### 15.1 获取设备连接MQTT配置

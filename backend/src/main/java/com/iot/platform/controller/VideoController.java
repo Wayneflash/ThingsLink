@@ -4,6 +4,8 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.iot.platform.common.Result;
 import com.iot.platform.dto.video.*;
+import com.iot.platform.dto.video.VideoRecordQueryRequest;
+import com.iot.platform.dto.video.VideoRecordPlaybackRequest;
 import com.iot.platform.entity.DeviceGroup;
 import com.iot.platform.entity.Role;
 import com.iot.platform.entity.User;
@@ -301,6 +303,72 @@ public class VideoController {
             return Result.success("删除成功");
         } catch (Exception e) {
             log.error("删除视频设备失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    /**
+     * 16.7 查询录像列表
+     */
+    @PostMapping("/record/query")
+    public Result<?> queryRecord(@Validated @RequestBody VideoRecordQueryRequest request,
+                                @RequestHeader(value = "Authorization", required = false) String token) {
+        try {
+            // 获取当前用户
+            User user = getCurrentUser(token);
+            if (user == null) {
+                return Result.error("未登录或登录已过期");
+            }
+            
+            // 获取用户可见分组
+            List<Long> userGroupIds = getUserVisibleGroupIds(user);
+            
+            // 查询录像列表（时间直接传递，不做转换）
+            JSONObject recordInfo = videoDeviceService.queryRecord(
+                    request.getDeviceId(),
+                    request.getChannelId(),
+                    request.getStartTime(),
+                    request.getEndTime(),
+                    userGroupIds
+            );
+            
+            return Result.success(recordInfo);
+        } catch (Exception e) {
+            log.error("查询录像失败: deviceId={}, channelId={}", 
+                    request.getDeviceId(), request.getChannelId(), e);
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    /**
+     * 16.8 获取录像回放流地址
+     */
+    @PostMapping("/record/playback")
+    public Result<?> playbackRecord(@Validated @RequestBody VideoRecordPlaybackRequest request,
+                                    @RequestHeader(value = "Authorization", required = false) String token) {
+        try {
+            // 获取当前用户
+            User user = getCurrentUser(token);
+            if (user == null) {
+                return Result.error("未登录或登录已过期");
+            }
+            
+            // 获取用户可见分组
+            List<Long> userGroupIds = getUserVisibleGroupIds(user);
+            
+            // 获取回放流地址（时间直接传递，不做转换）
+            JSONObject playbackInfo = videoDeviceService.getPlaybackUrl(
+                    request.getDeviceId(),
+                    request.getChannelId(),
+                    request.getStartTime(),
+                    request.getEndTime(),
+                    userGroupIds
+            );
+            
+            return Result.success(playbackInfo);
+        } catch (Exception e) {
+            log.error("获取录像回放流失败: deviceId={}, channelId={}", 
+                    request.getDeviceId(), request.getChannelId(), e);
             return Result.error(e.getMessage());
         }
     }
