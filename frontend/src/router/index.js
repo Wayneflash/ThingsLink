@@ -10,6 +10,12 @@ const routes = [
     meta: { title: '用户登录' }
   },
   {
+    path: '/mobile-prototypes',
+    name: 'MobilePrototypes',
+    component: () => import('../views/MobilePrototypes.vue'),
+    meta: { title: '移动端原型展示', noAuth: true }
+  },
+  {
     path: '/',
     component: MainLayout,
     redirect: '/overview',
