@@ -11,6 +11,33 @@ const request = axios.create({
   }
 })
 
+// Token失效处理函数（统一处理）
+const handleTokenExpired = (message) => {
+  // 清理所有用户相关数据
+  localStorage.removeItem('token')
+  localStorage.removeItem('userInfo')
+  localStorage.removeItem('menus')
+  
+  // 显示错误消息
+  if (message) {
+    ElMessage.error(message)
+  } else {
+    ElMessage.error('登录已过期，请重新登录')
+  }
+  
+  // 如果当前不在登录页，则跳转到登录页
+  if (router.currentRoute.value.path !== '/login') {
+    router.replace({
+      path: '/login',
+      query: { redirect: router.currentRoute.value.fullPath }
+    }).catch(err => {
+      // 如果路由跳转失败，使用window.location作为降级方案
+      console.error('路由跳转失败:', err)
+      window.location.href = '/login'
+    })
+  }
+}
+
 // 请求拦截器
 request.interceptors.request.use(
   config => {
@@ -35,11 +62,11 @@ request.interceptors.response.use(
     
     // 统一处理响应结构 {code, data, message}
     if (res.code !== 200) {
-      // 如果是 401，跳转到登录页
+      // 如果是 401，处理token失效
       if (res.code === 401) {
-        ElMessage.error(res.message || '未授权，请重新登录')
-        localStorage.removeItem('token')
-        router.push('/login')
+        handleTokenExpired(res.message || '未授权，请重新登录')
+        // 返回Promise.reject，阻止后续处理
+        return Promise.reject(new Error(res.message || '登录已过期'))
       }
       
       // 返回Promise.reject，让调用方处理错误提示
@@ -57,9 +84,10 @@ request.interceptors.response.use(
       const status = error.response.status
       
       if (status === 401) {
-        ElMessage.error('未授权，请重新登录')
-        localStorage.removeItem('token')
-        router.push('/login')
+        // Token失效，统一处理
+        handleTokenExpired('未授权，请重新登录')
+        // 返回Promise.reject，阻止后续处理
+        return Promise.reject(new Error('登录已过期'))
       } else if (status === 403) {
         ElMessage.error('没有权限访问')
       } else if (status === 404) {

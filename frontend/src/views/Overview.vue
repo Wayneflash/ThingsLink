@@ -27,7 +27,7 @@
       </div>
 
       <!-- 在线设备 -->
-      <div class="stat-card stat-card-success">
+      <div class="stat-card stat-card-success" @click="goToDevices({ status: 'online' })">
         <div class="stat-icon-wrapper">
           <div class="stat-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -48,7 +48,7 @@
       </div>
 
       <!-- 产品数量 -->
-      <div class="stat-card stat-card-warning">
+      <div class="stat-card stat-card-warning" @click="goToProducts">
         <div class="stat-icon-wrapper">
           <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -66,7 +66,7 @@
       </div>
 
       <!-- 今日数据量 -->
-      <div class="stat-card stat-card-info">
+      <div class="stat-card stat-card-info stat-card-no-click">
         <div class="stat-icon-wrapper">
           <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -89,15 +89,12 @@
       </div>
 
       <!-- 今日报警 -->
-      <div class="stat-card stat-card-danger">
+      <div class="stat-card stat-card-danger" @click="goToAlarmsToday()">
         <div class="stat-icon-wrapper">
           <div class="stat-icon" style="background: linear-gradient(135deg, #f56c6c 0%, #ff8a80 100%);">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z" fill="white"/>
             </svg>
-          </div>
-          <div class="stat-badge" v-if="stats.unhandledAlarmCount > 0">
-            {{ stats.unhandledAlarmCount }}
           </div>
         </div>
         <div class="stat-info">
@@ -110,8 +107,8 @@
         </div>
       </div>
 
-      <!-- 未处理报警 -->
-      <div class="stat-card stat-card-warning-alt">
+      <!-- 今日未处理报警 -->
+      <div class="stat-card stat-card-warning-alt" @click="goToAlarmsTodayUnhandled()">
         <div class="stat-icon-wrapper">
           <div class="stat-icon" style="background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -120,8 +117,8 @@
           </div>
         </div>
         <div class="stat-info">
-          <div class="stat-label">未处理</div>
-          <div class="stat-value">{{ formatNumber(stats.unhandledAlarmCount || 0) }}</div>
+          <div class="stat-label">今日未处理</div>
+          <div class="stat-value">{{ formatNumber(stats.todayUnhandledCount || 0) }}</div>
           <div class="stat-detail">
             <span style="color: #999;">待处理报警</span>
           </div>
@@ -326,7 +323,8 @@ const stats = ref({
   productCount: 0,
   todayAlarmCount: 0,
   todayCriticalCount: 0,
-  todayWarningCount: 0
+  todayWarningCount: 0,
+  todayUnhandledCount: 0
 })
 
 // 图表相关
@@ -406,7 +404,8 @@ const loadStatistics = async () => {
         productCount: data.productCount || 0,
         todayAlarmCount: alarmStats.todayAlarmCount || 0,
         todayCriticalCount: alarmStats.todayCriticalCount || 0,
-        todayWarningCount: alarmStats.todayWarningCount || 0
+        todayWarningCount: alarmStats.todayWarningCount || 0,
+        todayUnhandledCount: alarmStats.todayUnhandledCount || 0
       }
     }
   } catch (error) {
@@ -598,7 +597,7 @@ const loadStatusChart = async () => {
         center: ['40%', '50%'],
         data: [
           { value: stats.value.onlineDevices, name: '在线', itemStyle: { color: '#67c23a' } },
-          { value: stats.value.offlineDevices, name: '离线', itemStyle: { color: '#e6a23c' } }
+          { value: stats.value.offlineDevices, name: '离线', itemStyle: { color: '#909399' } }
         ],
         emphasis: {
           itemStyle: {
@@ -686,6 +685,7 @@ const loadAlarmStatistics = async () => {
     const todayAlarms = todayRes?.list || []
     const todayCriticalCount = todayAlarms.filter(a => a.alarmLevel === 'critical').length
     const todayWarningCount = todayAlarms.filter(a => a.alarmLevel === 'warning').length
+    const todayUnhandledCount = todayAlarms.filter(a => a.status === 0).length
     
     return {
       total: res?.total || 0,
@@ -695,11 +695,12 @@ const loadAlarmStatistics = async () => {
       info: res?.info || 0,
       todayAlarmCount: todayAlarms.length,
       todayCriticalCount: todayCriticalCount,
-      todayWarningCount: todayWarningCount
+      todayWarningCount: todayWarningCount,
+      todayUnhandledCount: todayUnhandledCount
     }
   } catch (error) {
     console.error('加载报警统计失败:', error)
-    return { total: 0, unhandled: 0, critical: 0, warning: 0, info: 0, todayAlarmCount: 0, todayCriticalCount: 0, todayWarningCount: 0 }
+    return { total: 0, unhandled: 0, critical: 0, warning: 0, info: 0, todayAlarmCount: 0, todayCriticalCount: 0, todayWarningCount: 0, todayUnhandledCount: 0 }
   }
 }
 
@@ -776,12 +777,60 @@ const formatDateTime = (date) => {
 }
 
 // 导航方法
-const goToDevices = () => {
-  router.push('/devices')
+const goToDevices = (params = {}) => {
+  router.push({
+    path: '/devices',
+    query: params
+  })
 }
 
-const goToAlarms = () => {
-  router.push('/alarms')
+const goToProducts = () => {
+  router.push('/products/list')
+}
+
+const goToDataQuery = (params = {}) => {
+  router.push({
+    path: '/data-query',
+    query: params
+  })
+}
+
+const goToAlarms = (params = {}) => {
+  router.push({
+    path: '/alarms',
+    query: params
+  })
+}
+
+// 跳转到今日报警（今天0点到24点）
+const goToAlarmsToday = () => {
+  const today = new Date()
+  const startTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0)
+  const endTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+  
+  router.push({
+    path: '/alarms',
+    query: {
+      startTime: formatDateTime(startTime),
+      endTime: formatDateTime(endTime)
+    }
+  })
+}
+
+// 跳转到今日未处理报警（今天0点到24点 + 未处理状态）
+const goToAlarmsTodayUnhandled = () => {
+  const today = new Date()
+  const startTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0)
+  const endTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+  
+  router.push({
+    path: '/alarms',
+    query: {
+      startTime: formatDateTime(startTime),
+      endTime: formatDateTime(endTime),
+      status: 0
+    }
+  })
 }
 
 const goToDeviceDetail = (deviceCode) => {
@@ -873,6 +922,19 @@ onBeforeUnmount(() => {
   cursor: pointer;
   position: relative;
   overflow: hidden;
+}
+
+.stat-card-no-click {
+  cursor: default;
+}
+
+.stat-card-no-click:hover {
+  transform: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card-no-click:hover::before {
+  transform: scaleX(0);
 }
 
 .stat-card::before {
@@ -981,7 +1043,7 @@ onBeforeUnmount(() => {
 }
 
 .stat-detail .offline {
-  color: #e6a23c;
+  color: #909399;
   font-weight: 500;
 }
 
@@ -1259,7 +1321,7 @@ onBeforeUnmount(() => {
 }
 
 .status-dot.offline {
-  background: #e6a23c;
+  background: #909399;
 }
 
 .device-info {

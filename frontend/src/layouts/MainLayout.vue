@@ -31,6 +31,7 @@
         :unique-opened="true"
         class="sidebar-menu"
         router
+        @select="handleMenuSelect"
       >
         <template v-for="menu in menuList" :key="menu.code">
           <!-- 有子菜单 -->
@@ -262,6 +263,15 @@ const loadUserInfo = () => {
 }
 
 // 处理通知（已由NotificationPanel组件处理）
+
+// 菜单选择处理（确保路由跳转正常工作）
+const handleMenuSelect = (index) => {
+  if (index && router.currentRoute.value.path !== index) {
+    router.push(index).catch(err => {
+      console.error('路由跳转失败:', err)
+    })
+  }
+}
 
 // 下拉菜单命令处理
 const handleCommand = async (command) => {

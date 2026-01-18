@@ -354,4 +354,29 @@ public class AlarmLogService extends ServiceImpl<AlarmLogMapper, AlarmLog> {
         
         return this.count(wrapper);
     }
+    
+    /**
+     * 标记离线报警为已恢复
+     * 当设备上线时，将未恢复的离线报警标记为已恢复，这样设备再次离线时可以重新触发报警
+     * @param deviceId 设备ID
+     */
+    public void markOfflineAlarmsAsRecovered(Long deviceId) {
+        try {
+            final String OFFLINE_METRIC = "__offline__";
+            LambdaQueryWrapper<AlarmLog> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(AlarmLog::getDeviceId, deviceId)
+                   .eq(AlarmLog::getMetric, OFFLINE_METRIC)
+                   .eq(AlarmLog::getRecovered, 0); // 未恢复的离线报警
+            
+            AlarmLog updateAlarm = new AlarmLog();
+            updateAlarm.setRecovered(1); // 标记为已恢复
+            
+            int count = this.getBaseMapper().update(updateAlarm, wrapper);
+            if (count > 0) {
+                log.info("设备上线 - 标记 {} 条离线报警为已恢复，设备ID: {}", count, deviceId);
+            }
+        } catch (Exception e) {
+            log.error("标记离线报警为已恢复失败 - 设备ID: {}", deviceId, e);
+        }
+    }
 }

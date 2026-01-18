@@ -19,51 +19,43 @@
     <el-card class="info-card">
       <template #header>
         <div class="card-header">
+          <el-icon class="header-icon"><InfoFilled /></el-icon>
           <span>基本信息</span>
         </div>
       </template>
-      <el-row :gutter="24">
-        <el-col :span="8">
+      <div class="info-grid">
+        <div class="info-row">
           <div class="info-item">
             <div class="info-label">产品名称</div>
             <div class="info-value">{{ product.productName || '-' }}</div>
           </div>
-        </el-col>
-        <el-col :span="8">
           <div class="info-item">
             <div class="info-label">产品型号</div>
             <div class="info-value">{{ product.productModel || '-' }}</div>
           </div>
-        </el-col>
-        <el-col :span="8">
           <div class="info-item">
             <div class="info-label">协议类型</div>
             <div class="info-value">{{ product.protocol || '-' }}</div>
           </div>
-        </el-col>
-        <el-col :span="8">
+        </div>
+        <div class="info-row">
           <div class="info-item">
             <div class="info-label">创建时间</div>
-            <div class="info-value">{{ product.createTime || '-' }}</div>
+            <div class="info-value">{{ formatDateTime(product.createTime) }}</div>
           </div>
-        </el-col>
-        <el-col :span="8">
           <div class="info-item">
             <div class="info-label">属性数量</div>
             <div class="info-value">{{ attributes.length }} 个</div>
           </div>
-        </el-col>
-        <el-col :span="8">
           <div class="info-item">
             <div class="info-label">命令数量</div>
             <div class="info-value">{{ commands.length }} 个</div>
           </div>
-        </el-col>
-      </el-row>
-      <el-divider />
-      <div class="info-item">
-        <div class="info-label">产品描述</div>
-        <div class="info-desc">{{ product.description || '暂无描述' }}</div>
+        </div>
+        <div v-if="product.description" class="info-desc-row">
+          <div class="info-label">产品描述</div>
+          <div class="info-desc">{{ product.description }}</div>
+        </div>
       </div>
     </el-card>
 
@@ -74,46 +66,57 @@
         <el-tab-pane label="属性列表" name="attributes">
           <div class="tab-header">
             <div class="tab-title">设备属性定义</div>
-            <el-button type="primary" @click="showAddAttrDialog">+ 添加属性</el-button>
+            <el-button type="primary" size="small" @click="showAddAttrDialog">
+              <el-icon><Plus /></el-icon>添加属性
+            </el-button>
           </div>
           <div v-if="attributes.length === 0" class="empty-state">
-            <el-icon class="empty-icon" :size="64"><TrendCharts /></el-icon>
-            <div class="empty-text">暂无属性，点击上方"添加属性"开始定义数据点</div>
+            <el-icon class="empty-icon" :size="48"><TrendCharts /></el-icon>
+            <div class="empty-text">暂无属性，点击"添加属性"开始定义数据点</div>
           </div>
-          <div v-else class="attr-list">
-            <div v-for="attr in attributes" :key="attr.id" class="list-card">
-              <div class="list-card-main">
-                <div class="list-card-title">{{ attr.addr }} - {{ attr.attrName }}</div>
-                <div class="list-card-desc">类型：{{ attr.dataType }} | 单位：{{ attr.unit || '无' }}</div>
-              </div>
-              <div class="list-card-actions">
-                <el-button size="small" type="danger" @click="deleteAttribute(attr)">删除</el-button>
-              </div>
-            </div>
-          </div>
+          <el-table v-else :data="attributes" stripe size="small" class="attr-table">
+            <el-table-column prop="addr" label="标识符" width="120" />
+            <el-table-column prop="attrName" label="属性名称" min-width="120" />
+            <el-table-column prop="dataType" label="数据类型" width="100">
+              <template #default="{ row }">
+                <el-tag size="small">{{ row.dataType }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="unit" label="单位" width="100">
+              <template #default="{ row }">
+                {{ row.unit || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="100" fixed="right">
+              <template #default="{ row }">
+                <el-button size="small" type="danger" link @click="deleteAttribute(row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
         </el-tab-pane>
 
         <!-- 命令列表 -->
         <el-tab-pane label="命令列表" name="commands">
           <div class="tab-header">
             <div class="tab-title">设备命令定义</div>
-            <el-button type="primary" @click="showAddCmdDialog">+ 添加命令</el-button>
+            <el-button type="primary" size="small" @click="showAddCmdDialog">
+              <el-icon><Plus /></el-icon>添加命令
+            </el-button>
           </div>
           <div v-if="commands.length === 0" class="empty-state">
-            <el-icon class="empty-icon" :size="64"><Monitor /></el-icon>
-            <div class="empty-text">暂无命令，点击上方"添加命令"开始定义控制指令</div>
+            <el-icon class="empty-icon" :size="48"><Monitor /></el-icon>
+            <div class="empty-text">暂无命令，点击"添加命令"开始定义控制指令</div>
           </div>
-          <div v-else class="cmd-list">
-            <div v-for="cmd in commands" :key="cmd.id" class="list-card">
-              <div class="list-card-main">
-                <div class="list-card-title">{{ cmd.commandName }}</div>
-                <div class="list-card-desc">控制属性：{{ cmd.addr }} | 下发值：{{ cmd.commandValue }}</div>
-              </div>
-              <div class="list-card-actions">
-                <el-button size="small" type="danger" @click="deleteCommand(cmd)">删除</el-button>
-              </div>
-            </div>
-          </div>
+          <el-table v-else :data="commands" stripe size="small" class="cmd-table">
+            <el-table-column prop="commandName" label="命令名称" min-width="150" />
+            <el-table-column prop="addr" label="控制属性" width="120" />
+            <el-table-column prop="commandValue" label="下发值" width="120" />
+            <el-table-column label="操作" width="100" fixed="right">
+              <template #default="{ row }">
+                <el-button size="small" type="danger" link @click="deleteCommand(row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
         </el-tab-pane>
       </el-tabs>
     </el-card>
@@ -263,7 +266,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { TrendCharts, Monitor, InfoFilled, Document } from '@element-plus/icons-vue'
+import { TrendCharts, Monitor, InfoFilled, Document, Plus } from '@element-plus/icons-vue'
 import { productApi } from '@/api'
 
 const route = useRoute()
@@ -304,6 +307,28 @@ const cmdForm = ref({
   addr: '',
   commandValue: ''
 })
+
+// 日期格式化
+const formatDateTime = (dateTime) => {
+  if (!dateTime) return '-'
+  // 如果已经是正确格式，直接返回
+  if (typeof dateTime === 'string' && dateTime.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
+    return dateTime
+  }
+  // 处理ISO 8601格式（带T的格式）
+  if (typeof dateTime === 'string' && dateTime.includes('T')) {
+    return dateTime.replace('T', ' ').substring(0, 19)
+  }
+  // 否则进行格式化
+  const date = new Date(dateTime)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
 
 // 表单验证规则
 const editRules = {
@@ -551,93 +576,127 @@ onMounted(() => {
 
 <style scoped>
 .product-detail {
-  padding: 20px;
+  padding: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 
 .breadcrumb {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .page-title {
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
   color: #1d1d1f;
   margin: 0;
 }
 
 .page-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 
 .info-card {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .card-header {
   font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1d1d1f;
+}
+
+.header-icon {
+  color: #667eea;
   font-size: 16px;
+}
+
+.info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
 }
 
 .info-item {
-  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .info-label {
-  font-size: 13px;
+  font-size: 12px;
   color: #86868b;
-  margin-bottom: 6px;
+  font-weight: 500;
 }
 
 .info-value {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #1d1d1f;
+  line-height: 1.4;
+}
+
+.info-desc-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e5e7;
 }
 
 .info-desc {
   color: #86868b;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .tab-card {
-  margin-top: 24px;
+  margin-top: 12px;
 }
 
 .tab-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .tab-title {
-  font-weight: 500;
-  font-size: 15px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1d1d1f;
 }
 
 .empty-state {
   text-align: center;
-  padding: 60px 20px;
+  padding: 32px 20px;
   color: #86868b;
 }
 
 .empty-icon {
   color: #c7c7cc;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   opacity: 0.6;
 }
 
 .empty-text {
-  font-size: 14px;
+  font-size: 13px;
   color: #86868b;
 }
 
@@ -667,40 +726,62 @@ onMounted(() => {
   color: #409eff;
 }
 
-.attr-list,
-.cmd-list {
-  display: grid;
-  gap: 12px;
+/* Element Plus 样式覆盖 */
+:deep(.el-card__header) {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e5e7;
+  background: #fafafa;
 }
 
-.list-card {
-  background: #f5f5f7;
-  padding: 16px;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* 基本信息卡片移除头部底部边框 */
+.info-card :deep(.el-card__header) {
+  border-bottom: none;
 }
 
-.list-card-main {
-  flex: 1;
+:deep(.el-card__body) {
+  padding: 12px;
 }
 
-.list-card-title {
-  font-size: 15px;
-  font-weight: 500;
-  color: #1d1d1f;
-  margin-bottom: 6px;
+:deep(.el-tabs__header) {
+  margin-bottom: 12px;
 }
 
-.list-card-desc {
+:deep(.el-tabs__item) {
   font-size: 13px;
-  color: #86868b;
+  padding: 8px 16px;
+  height: 36px;
+  line-height: 20px;
 }
 
-.list-card-actions {
-  display: flex;
-  gap: 8px;
+/* 表格紧凑样式 */
+.attr-table,
+.cmd-table {
+  font-size: 13px;
+}
+
+:deep(.attr-table .el-table__header th),
+:deep(.cmd-table .el-table__header th) {
+  padding: 8px 0;
+  background: #fafafa;
+  font-weight: 600;
+  color: #1d1d1f;
+  height: 36px;
+}
+
+:deep(.attr-table .el-table__body td),
+:deep(.cmd-table .el-table__body td) {
+  padding: 8px 0;
+  height: 38px;
+}
+
+:deep(.attr-table .el-table__row),
+:deep(.cmd-table .el-table__row) {
+  height: 38px;
+}
+
+:deep(.attr-table .el-table__cell),
+:deep(.cmd-table .el-table__cell) {
+  padding: 8px 0;
 }
 
 .input-hint {

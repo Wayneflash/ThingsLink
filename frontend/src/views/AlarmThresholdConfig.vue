@@ -905,20 +905,22 @@ const saveConfig = async () => {
     ([_, config]) => config.enabled
   )
   
-  // 如果没有启用任何监控属性，表示要撤销该设备的所有报警配置
-  if (enabledMetrics.length === 0) {
+  // 如果没有启用任何监控属性，且离线报警也关闭，表示要撤销该设备的所有报警配置
+  const hasOfflineAlarm = configModal.form.offlineAlarm?.enabled
+  if (enabledMetrics.length === 0 && !hasOfflineAlarm) {
     try {
       await configureAlarm({
         deviceId: configModal.device.id,
         alarmConfig: {
           notifyUser: configModal.form.notifyUser || null,
           stackMode: configModal.form.stackMode,
-          metrics: configModal.form.metrics
+          metrics: configModal.form.metrics,
+          offlineAlarm: configModal.form.offlineAlarm
         },
         enabled: false  // 全部关闭时设置为false
       })
       
-      ElMessage.success('已撤销该设备的所有报警配置')
+      ElMessage.success('已更新设备报警配置')
       configModal.visible = false
       loadDevices()
       return
@@ -929,8 +931,8 @@ const saveConfig = async () => {
     }
   }
   
-  // 有启用的监控属性时，需要选择处理人
-  if (!configModal.form.notifyUser) {
+  // 有启用的监控属性或离线报警时，需要选择处理人
+  if ((enabledMetrics.length > 0 || hasOfflineAlarm) && !configModal.form.notifyUser) {
     ElMessage.warning('启用监控时必须选择处理人')
     return
   }
@@ -1095,11 +1097,11 @@ const saveBatchConfig = async () => {
   )
   
   // 如果没有启用任何监控属性，表示要撤销这些设备的所有报警配置
-  if (enabledMetrics.length === 0) {
+  if (enabledMetrics.length === 0 && !batchModal.form.offlineAlarm?.enabled) {
     try {
       await ElMessageBox.confirm(
-        `确认撤销 ${batchModal.selectedDeviceIds.length} 台设备的所有报警配置？`,
-        '确认操作',
+        `确认更新 ${batchModal.selectedDeviceIds.length} 台设备的报警配置？\n\n注意：将关闭所有报警监控！`,
+        '确认更新设备报警配置',
         { type: 'warning' }
       )
       
@@ -1108,12 +1110,13 @@ const saveBatchConfig = async () => {
         alarmConfig: {
           notifyUser: batchModal.form.notifyUser || null,
           stackMode: batchModal.form.stackMode,
-          metrics: batchModal.form.metrics
+          metrics: batchModal.form.metrics,
+          offlineAlarm: batchModal.form.offlineAlarm
         },
         enabled: false  // 全部关闭时设置为false
       })
       
-      ElMessage.success(`已撤销 ${batchModal.selectedDeviceIds.length} 台设备的报警配置`)
+      ElMessage.success(`已更新 ${batchModal.selectedDeviceIds.length} 台设备的报警配置`)
       batchModal.visible = false
       loadDevices()
       return
@@ -1126,8 +1129,9 @@ const saveBatchConfig = async () => {
     }
   }
   
-  // 有启用的监控属性时，需要选择处理人
-  if (!batchModal.form.notifyUser) {
+  // 有启用的监控属性或离线报警时，需要选择处理人
+  const hasBatchOfflineAlarm = batchModal.form.offlineAlarm?.enabled
+  if ((enabledMetrics.length > 0 || hasBatchOfflineAlarm) && !batchModal.form.notifyUser) {
     ElMessage.warning('启用监控时必须选择处理人')
     return
   }
@@ -1148,8 +1152,8 @@ const saveBatchConfig = async () => {
   
   try {
     await ElMessageBox.confirm(
-      `确认为 ${batchModal.selectedDeviceIds.length} 台设备批量配置报警阈值？\n\n注意：已配置设备的原有阈值将被覆盖！`,
-      '确认操作',
+      `确认更新 ${batchModal.selectedDeviceIds.length} 台设备的报警配置？\n\n注意：已配置设备的原有阈值将被覆盖！`,
+      '确认更新设备报警配置',
       { type: 'warning' }
     )
     
@@ -1395,8 +1399,8 @@ onMounted(() => {
 }
 
 .status-offline {
-  color: #e6a23c;
-  background: #fef0f0;
+  color: #909399;
+  background: #f5f7fa;
 }
 
 .empty-text {
@@ -1423,7 +1427,7 @@ onMounted(() => {
 }
 
 .status-dot.offline {
-  background: #e6a23c;
+  background: #909399;
 }
 
 /* 标签 */

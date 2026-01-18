@@ -33,6 +33,12 @@ const routes = [
         meta: { title: '设备详情' }
       },
       {
+        path: 'data-query',
+        name: 'DataQuery',
+        component: () => import('../views/DataQuery.vue'),
+        meta: { title: '数据查询' }
+      },
+      {
         path: 'alarms',
         name: 'Alarms',
         component: () => import('../views/AlarmLog.vue'),

@@ -50,6 +50,25 @@ server {
     # 前端静态资源 - 必须配置 try_files 支持 Vue Router 的 history 模式
     location / {
         try_files $uri $uri/ /index.html;
+        
+        # HTML 文件：不缓存，确保每次获取最新版本（支持自动版本更新）
+        location ~* \.html$ {
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+            add_header Pragma "no-cache";
+            add_header Expires "0";
+        }
+    }
+    
+    # JS/CSS 文件（带 hash）：长期缓存（1年），因为文件名包含 hash，内容变化时文件名会变
+    location ~* \.(js|css)$ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        expires 1y;
+    }
+    
+    # 图片、字体等静态资源：中等缓存（1个月）
+    location ~* \.(jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        add_header Cache-Control "public, max-age=2592000";
+        expires 1M;
     }
     
     # 后端 API 代理
@@ -71,16 +90,15 @@ server {
         }
     }
     
-    # 静态资源缓存配置
-    location /assets/ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-    
     # 错误页面
     error_page 404 /index.html;
 }
 ```
+
+> **💡 缓存控制说明：**
+> - **HTML 文件不缓存**：确保每次部署新版本时，浏览器都能获取到最新的 HTML（包含新的构建时间戳）
+> - **JS/CSS 长期缓存**：因为这些文件文件名包含 hash，内容变化时文件名会变，可以安全地长期缓存
+> - **自动版本更新**：前端会在检测到新版本时自动刷新页面，无需手动清空缓存
 
 ### 子目录部署配置（如果需要部署在子路径）
 

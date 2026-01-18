@@ -70,6 +70,7 @@ python3 .shared/ui-ux-pro-max/scripts/search.py "<product_type> <industry> <keyw
 
   - **悬浮导航**: 推荐使用 `top-4 left-4 right-4` 的悬浮式导航栏，并配合 `backdrop-blur-md` 效果，同时考虑内容填充避免遮挡。
   - **容器一致性**: 严格使用相同的 `max-w-6xl` 或 `max-w-7xl` 等自定义全局宽度限制，确保视觉重心集中。
+  - **表单标签与输入框必须同一行**: 所有表单的标签（label）和输入框（input）必须在同一行水平排列，标签在左，输入框在右。禁止标签在上方、输入框在下方的垂直布局。提示文字可放在输入框下方或右侧，但不影响标签与输入框的水平对齐。
 
 ---
 

@@ -34,7 +34,8 @@
         />
         
         <div class="tree-hint">
-          💡 点击分组查看该分组下的设备
+          <el-icon :size="14" class="hint-icon"><InfoFilled /></el-icon>
+          <span>点击分组查看该分组下的设备</span>
         </div>
       </el-card>
 
@@ -84,31 +85,34 @@
           </div>
         </template>
         
-        <el-table 
-          :data="deviceList" 
-          stripe 
-          v-loading="loading"
-          style="width: 100%"
-        >
-          <el-table-column type="index" label="序号" width="80" :index="indexMethod" />
-          <el-table-column prop="deviceName" label="设备名称" min-width="150" />
-          <el-table-column prop="deviceCode" label="设备编码" min-width="150" />
-          <el-table-column prop="productName" label="产品类型" min-width="120" />
-          <el-table-column prop="productModel" label="产品型号" min-width="120" />
-          <el-table-column prop="groupName" label="所属分组" min-width="120" />
-          <el-table-column prop="status" label="状态" width="100">
+        <div class="table-wrapper">
+          <el-table 
+            :data="deviceList" 
+            stripe 
+            v-loading="loading"
+            style="width: 100%"
+            class="device-table"
+            height="100%"
+          >
+          <el-table-column type="index" label="序号" width="70" :index="indexMethod" />
+          <el-table-column prop="deviceName" label="设备名称" min-width="120" />
+          <el-table-column prop="deviceCode" label="设备编码" min-width="130" />
+          <el-table-column prop="productName" label="产品类型" min-width="100" />
+          <el-table-column prop="productModel" label="产品型号" min-width="100" />
+          <el-table-column prop="groupName" label="所属分组" min-width="100" />
+          <el-table-column prop="status" label="状态" width="80">
             <template #default="{ row }">
               <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
                 {{ row.status === 1 ? '在线' : '离线' }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="lastOnlineTime" label="最后上线" min-width="160">
+          <el-table-column prop="lastOnlineTime" label="最后上线" min-width="140">
             <template #default="{ row }">
               {{ formatDateTime(row.lastOnlineTime) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="240" fixed="right">
+          <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
               <el-button size="small" type="primary" link @click="viewDevice(row)">
                 详情
@@ -121,7 +125,8 @@
               </el-button>
             </template>
           </el-table-column>
-        </el-table>
+          </el-table>
+        </div>
 
         <!-- 分页 -->
         <div class="pagination-container">
@@ -196,9 +201,9 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, List, Search, Refresh, Upload } from '@element-plus/icons-vue'
+import { Plus, List, Search, Refresh, Upload, InfoFilled } from '@element-plus/icons-vue'
 import { getDeviceList, createDevice, updateDevice, deleteDevice as deleteDeviceAPI } from '@/api/device'
 import { getGroupTree } from '@/api/group'
 import { getProductList } from '@/api/product'
@@ -208,6 +213,7 @@ import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import { flattenTree } from '@/utils/tree'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 const saving = ref(false)
 const dialogVisible = ref(false)
@@ -538,6 +544,20 @@ const handlePageChange = (val) => {
 }
 
 onMounted(() => {
+  // 从 URL 参数读取筛选条件
+  if (route.query.status) {
+    filterStatus.value = route.query.status
+  }
+  if (route.query.productId) {
+    filterProduct.value = route.query.productId
+  }
+  if (route.query.groupId) {
+    currentGroupId.value = Number(route.query.groupId)
+  }
+  if (route.query.keyword) {
+    searchQuery.value = route.query.keyword
+  }
+  
   loadDevices()
   loadProducts()
   loadGroups()
@@ -551,19 +571,19 @@ onMounted(() => {
 }
 
 .page-title {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 20px;
-  padding: 0 20px;
+  color: #1d1d1f;
+  margin-bottom: 8px;
+  padding: 0 12px;
 }
 
 .device-container {
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 20px;
-  padding: 0 20px;
-  height: calc(100vh - 160px);
+  grid-template-columns: 240px 1fr;
+  gap: 12px;
+  padding: 0 12px;
+  height: calc(100vh - 110px);
 }
 
 .tree-panel {
@@ -587,10 +607,19 @@ onMounted(() => {
 .tree-hint {
   font-size: 12px;
   color: #86868b;
-  margin-top: 16px;
-  padding: 12px;
+  margin-top: 8px;
+  padding: 6px 8px;
   background: #f5f7fa;
-  border-radius: 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.4;
+}
+
+.hint-icon {
+  color: #667eea;
+  flex-shrink: 0;
 }
 
 /* 全部设备按钮样式 */
@@ -598,12 +627,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
-  margin-bottom: 12px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 14px;
+  font-size: 13px;
   color: #303133;
   background: #f0f9ff;
   border: 1px solid #bfdbfe;
@@ -648,9 +677,10 @@ onMounted(() => {
 .pagination-container {
   display: flex;
   justify-content: flex-end;
-  margin-top: 20px;
-  padding-top: 20px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid #e5e5e7;
+  flex-shrink: 0;
 }
 
 /* Header 布局样式 - 舒适一行显示 */
@@ -717,15 +747,18 @@ onMounted(() => {
 
 /* Element Plus 样式覆盖 */
 :deep(.el-card__header) {
-  padding: 14px 18px;
+  padding: 10px 12px;
   border-bottom: 1px solid #e5e5e7;
   background: #fafafa;
 }
 
 :deep(.el-card__body) {
-  padding: 24px;
+  padding: 12px;
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 :deep(.el-select) {
@@ -795,8 +828,59 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
+/* 表格容器 - 固定高度，内容可滚动 */
+.table-wrapper {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.device-table {
+  flex: 1;
+  overflow: hidden;
+}
+
 :deep(.el-table) {
-  font-size: 14px;
+  font-size: 13px;
+  height: 100%;
+}
+
+/* 表格紧凑优化 */
+:deep(.el-table__header-wrapper) {
+  flex-shrink: 0;
+}
+
+:deep(.el-table__header) {
+  font-size: 13px;
+}
+
+:deep(.el-table__header th) {
+  padding: 8px 0;
+  background: #fafafa;
+  font-weight: 600;
+  color: #1d1d1f;
+  height: 36px;
+}
+
+:deep(.el-table__body-wrapper) {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+:deep(.el-table__body td) {
+  padding: 8px 0;
+  height: 38px;
+}
+
+:deep(.el-table__row) {
+  height: 38px;
+}
+
+:deep(.el-table .el-table__cell) {
+  padding: 8px 0;
 }
 
 :deep(.el-button--small) {

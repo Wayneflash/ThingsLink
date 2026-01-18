@@ -321,11 +321,11 @@ watch(() => props.groups, (newGroups) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
-  border-radius: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 14px;
+  font-size: 12px;
   color: #303133;
   user-select: none;
 }
@@ -333,7 +333,7 @@ watch(() => props.groups, (newGroups) => {
 .tree-item-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex: 1;
 }
 
@@ -348,7 +348,7 @@ watch(() => props.groups, (newGroups) => {
   background: #f5f7fa;
   color: #303133;
   font-weight: 500;
-  margin-bottom: 8px;
+  margin-bottom: 3px;
   border: 1px solid #e4e7ed;
   transition: all 0.3s ease;
 }
@@ -380,7 +380,7 @@ watch(() => props.groups, (newGroups) => {
 
 /* 展开图标 */
 .expand-icon {
-  font-size: 16px;
+  font-size: 14px;
   transition: transform 0.3s ease;
   color: #606266;
 }
@@ -395,15 +395,15 @@ watch(() => props.groups, (newGroups) => {
 
 /* 子分组容器 */
 .tree-children {
-  margin-left: 12px;
-  padding-left: 20px;
+  margin-left: 4px;
+  padding-left: 10px;
   border-left: 2px solid #e4e7ed;
   position: relative;
 }
 
 /* 子分组样式 */
 .child-item {
-  margin: 4px 0;
+  margin: 1px 0;
   background: #fafafa;
   border: 1px solid #e4e7ed;
 }
@@ -440,7 +440,8 @@ watch(() => props.groups, (newGroups) => {
 
 .group-name {
   flex: 1;
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .tree-item-actions {

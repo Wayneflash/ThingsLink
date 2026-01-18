@@ -581,7 +581,22 @@ onMounted(async () => {
     // 设置筛选条件为该报警ID
     await loadAlarmLogById(alarmId)
   } else {
-    // 正常加载所有报警日志
+    // 从 URL 参数读取筛选条件
+    if (route.query.startTime && route.query.endTime) {
+      // 设置时间范围
+      dateRange.value = [route.query.startTime, route.query.endTime]
+    }
+    if (route.query.status !== undefined) {
+      filters.value.status = Number(route.query.status)
+    }
+    if (route.query.alarmLevel) {
+      filters.value.alarmLevel = route.query.alarmLevel
+    }
+    if (route.query.deviceCode) {
+      filters.value.deviceCode = route.query.deviceCode
+    }
+    
+    // 加载报警日志（会自动应用筛选条件）
     await loadAlarmLogs()
   }
   

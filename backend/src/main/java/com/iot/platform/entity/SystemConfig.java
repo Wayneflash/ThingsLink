@@ -25,13 +25,13 @@ public class SystemConfig {
     /**
      * 配置键
      */
-    @TableField("`key`")
+    @TableField("config_key")
     private String configKey;
     
     /**
      * 配置值
      */
-    @TableField("`value`")
+    @TableField("config_value")
     private String configValue;
     
     /**

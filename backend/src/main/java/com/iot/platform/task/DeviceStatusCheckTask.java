@@ -1,5 +1,6 @@
 package com.iot.platform.task;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iot.platform.dto.AlarmConfigDTO;
 import com.iot.platform.entity.AlarmLog;
@@ -8,6 +9,8 @@ import com.iot.platform.service.AlarmLogService;
 import com.iot.platform.service.DeviceLogService;
 import com.iot.platform.service.DeviceService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -40,6 +43,10 @@ public class DeviceStatusCheckTask {
     
     @Resource
     private ObjectMapper objectMapper;
+    
+    @Autowired
+    @Lazy
+    private com.iot.platform.service.NotificationService notificationService;
     
     /**
      * 每30秒检查一次设备在线状态
@@ -153,6 +160,39 @@ public class DeviceStatusCheckTask {
      */
     private void triggerOfflineAlarm(Device device, AlarmConfigDTO.OfflineAlarmConfig offlineAlarm, long offlineMinutes) {
         try {
+            // 获取报警配置，检查是否开启堆叠模式
+            AlarmConfigDTO alarmConfig = null;
+            boolean stackMode = true; // 默认开启堆叠模式
+            try {
+                String alarmConfigJson = device.getAlarmConfig();
+                if (alarmConfigJson != null && !alarmConfigJson.isEmpty()) {
+                    alarmConfig = objectMapper.readValue(alarmConfigJson, AlarmConfigDTO.class);
+                    if (alarmConfig != null && alarmConfig.getStackMode() != null) {
+                        stackMode = alarmConfig.getStackMode();
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("解析报警配置失败，使用默认堆叠模式 - 设备: {}", device.getDeviceCode(), e);
+            }
+            
+            // 离线报警使用特殊标识 "__offline__" 作为 metric
+            final String OFFLINE_METRIC = "__offline__";
+            
+            // 如果开启了堆叠模式，检查是否已有未处理的离线报警
+            if (stackMode) {
+                LambdaQueryWrapper<AlarmLog> checkWrapper = new LambdaQueryWrapper<>();
+                checkWrapper.eq(AlarmLog::getDeviceId, device.getId())
+                           .eq(AlarmLog::getMetric, OFFLINE_METRIC)
+                           .eq(AlarmLog::getStatus, 0) // 未处理
+                           .eq(AlarmLog::getRecovered, 0); // 未恢复
+                
+                long existingCount = alarmLogService.count(checkWrapper);
+                if (existingCount > 0) {
+                    log.debug("堆叠模式 - 跳过重复离线报警: 设备={}, 已有未处理的离线报警", device.getDeviceCode());
+                    return; // 已有未处理的离线报警，不重复触发
+                }
+            }
+            
             // 构造报警消息
             String alarmMessage = String.format("设备离线超过%d分钟（阈值：%d分钟）",
                     offlineMinutes, offlineAlarm.getThreshold());
@@ -162,16 +202,16 @@ public class DeviceStatusCheckTask {
             alarmLog.setDeviceId(device.getId());
             alarmLog.setDeviceCode(device.getDeviceCode());
             alarmLog.setDeviceName(device.getDeviceName());
+            alarmLog.setMetric(OFFLINE_METRIC); // 设置离线报警标识
             alarmLog.setAlarmLevel(offlineAlarm.getLevel());
             alarmLog.setAlarmMessage(alarmMessage);
             alarmLog.setTriggerTime(LocalDateTime.now());
             alarmLog.setStatus(0); // 未处理
+            alarmLog.setRecovered(0); // 未恢复
             
             // 设置处理人
             try {
-                String alarmConfigJson = device.getAlarmConfig();
-                AlarmConfigDTO alarmConfig = objectMapper.readValue(alarmConfigJson, AlarmConfigDTO.class);
-                if (alarmConfig.getNotifyUser() != null) {
+                if (alarmConfig != null && alarmConfig.getNotifyUser() != null) {
                     alarmLog.setNotifyUsers(objectMapper.writeValueAsString(
                             java.util.Collections.singletonList(alarmConfig.getNotifyUser())));
                 }
@@ -184,6 +224,25 @@ public class DeviceStatusCheckTask {
             
             log.info("触发离线报警 - 设备: {}, 离线时长: {}分钟, 阈值: {}分钟, 级别: {}",
                     device.getDeviceCode(), offlineMinutes, offlineAlarm.getThreshold(), offlineAlarm.getLevel());
+            
+            // 创建通知消息（给处理人发送邮件和短信通知）
+            if (alarmConfig != null && alarmConfig.getNotifyUser() != null) {
+                try {
+                    notificationService.createNotification(
+                        alarmConfig.getNotifyUser(),
+                        alarmLog.getId(),
+                        device.getId(),
+                        device.getDeviceCode(),
+                        device.getDeviceName(),
+                        offlineAlarm.getLevel(),
+                        alarmMessage
+                    );
+                } catch (Exception e) {
+                    log.error("创建通知消息失败 - 报警ID: {}, 用户ID: {}", 
+                            alarmLog.getId(), alarmConfig.getNotifyUser(), e);
+                    // 通知创建失败不影响报警记录
+                }
+            }
         } catch (Exception e) {
             log.error("触发离线报警失败 - 设备: {}", device.getDeviceCode(), e);
         }

@@ -13,6 +13,8 @@ import com.iot.platform.mapper.DeviceMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +48,10 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
     
     @Resource
     private DeviceLogService deviceLogService;
+    
+    @Autowired
+    @Lazy
+    private com.iot.platform.service.AlarmLogService alarmLogService;
     
     private static final String DEVICE_ONLINE_KEY = "device:online:";
     
@@ -260,6 +266,17 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
         String key = DEVICE_ONLINE_KEY + deviceCode;
         if (online) {
             stringRedisTemplate.opsForValue().set(key, "1", 180, TimeUnit.SECONDS);
+            
+            // 设备上线时，将未恢复的离线报警标记为已恢复
+            // 这样设备再次离线时可以重新触发报警
+            // 使用 @Lazy 注解避免循环依赖
+            if (alarmLogService != null) {
+                try {
+                    alarmLogService.markOfflineAlarmsAsRecovered(device.getId());
+                } catch (Exception e) {
+                    log.debug("标记离线报警为已恢复失败 - 设备ID: {}", device.getId(), e);
+                }
+            }
         } else {
             stringRedisTemplate.delete(key);
         }

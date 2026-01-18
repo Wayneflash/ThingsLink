@@ -18,9 +18,6 @@
       <!-- 左侧：基本信息 -->
       <div class="header-left">
         <div class="device-title-bar-compact">
-          <div :class="['device-icon-large', deviceInfo.status === 1 ? 'icon-online' : 'icon-offline']">
-            <el-icon :size="36"><Box /></el-icon>
-          </div>
           <div class="device-title-text">
             <div class="title-row">
               <div class="device-name-wrapper">
@@ -1173,37 +1170,11 @@ onMounted(() => {
 
 /* 左侧标题区域 */
 .device-title-bar-compact {
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.device-icon-large {
-  width: 72px;
-  height: 72px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36px;
-  flex-shrink: 0;
-  transition: all 0.3s;
-}
-
-.device-icon-large.icon-online {
-  background: linear-gradient(135deg, #34C759 0%, #30D158 100%);
-  box-shadow: 0 4px 16px rgba(52, 199, 89, 0.3);
-}
-
-.device-icon-large.icon-offline {
-  background: linear-gradient(135deg, #86868b 0%, #a1a1a6 100%);
-  box-shadow: 0 4px 16px rgba(134, 134, 139, 0.2);
+  margin-bottom: 20px;
 }
 
 .device-title-text {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
 }
 
 .title-row {
@@ -1219,7 +1190,7 @@ onMounted(() => {
 }
 
 .device-name-large {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
   color: #1d1d1f;
   margin: 0 0 8px 0;
