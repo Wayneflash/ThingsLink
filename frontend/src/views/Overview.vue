@@ -135,7 +135,7 @@
       <div class="chart-card">
         <div class="chart-header">
           <div class="chart-title-wrapper">
-            <span class="chart-icon">📈</span>
+            <el-icon class="chart-icon" :size="20"><TrendCharts /></el-icon>
             <span class="chart-title">数据上报趋势（最近24小时）</span>
           </div>
           <div class="chart-actions">
@@ -152,7 +152,7 @@
       <div class="chart-card">
         <div class="chart-header">
           <div class="chart-title-wrapper">
-            <span class="chart-icon">🏭</span>
+            <el-icon class="chart-icon" :size="20"><Box /></el-icon>
             <span class="chart-title">产品分布</span>
           </div>
         </div>
@@ -166,7 +166,7 @@
       <div class="chart-card">
         <div class="chart-header">
           <div class="chart-title-wrapper">
-            <span class="chart-icon">📊</span>
+            <el-icon class="chart-icon" :size="20"><DataAnalysis /></el-icon>
             <span class="chart-title">设备状态分布</span>
           </div>
         </div>
@@ -177,7 +177,7 @@
       <div class="chart-card">
         <div class="chart-header">
           <div class="chart-title-wrapper">
-            <span class="chart-icon">📁</span>
+            <el-icon class="chart-icon" :size="20"><FolderOpened /></el-icon>
             <span class="chart-title">设备分组统计</span>
           </div>
         </div>
@@ -197,7 +197,7 @@
             </div>
           </div>
           <div v-if="groupStats.length === 0" class="empty-state">
-            <span style="font-size: 48px; opacity: 0.3;">📭</span>
+            <el-icon class="empty-icon" :size="48"><Document /></el-icon>
             <p>暂无分组数据</p>
           </div>
         </div>
@@ -211,7 +211,7 @@
       <div class="info-card">
         <div class="card-header">
           <div class="card-title-wrapper">
-            <span class="card-icon">🔔</span>
+            <el-icon class="card-icon" :size="20"><Bell /></el-icon>
             <span class="card-title">最近报警</span>
           </div>
           <el-button type="text" @click="goToAlarms">查看全部 →</el-button>
@@ -243,7 +243,7 @@
             </div>
           </div>
           <div v-if="recentAlarms.length === 0" class="empty-state">
-            <span style="font-size: 48px; opacity: 0.3;">🔔</span>
+            <el-icon class="empty-icon" :size="48"><Bell /></el-icon>
             <p>暂无报警数据</p>
           </div>
         </div>
@@ -253,7 +253,7 @@
       <div class="info-card">
         <div class="card-header">
           <div class="card-title-wrapper">
-            <span class="card-icon">⏰</span>
+            <el-icon class="card-icon" :size="20"><Clock /></el-icon>
             <span class="card-title">最近活跃设备</span>
           </div>
           <el-button type="text" @click="goToDevices">查看全部 →</el-button>
@@ -283,7 +283,7 @@
             </div>
           </div>
           <div v-if="stats.recentDevices.length === 0" class="empty-state">
-            <span style="font-size: 48px; opacity: 0.3;">📭</span>
+            <el-icon class="empty-icon" :size="48"><Document /></el-icon>
             <p>暂无设备数据</p>
           </div>
         </div>
@@ -296,6 +296,15 @@
 import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElLoading } from 'element-plus'
+import { 
+  TrendCharts, 
+  DataAnalysis, 
+  Box, 
+  FolderOpened, 
+  Bell, 
+  Clock, 
+  Document 
+} from '@element-plus/icons-vue'
 import axios from '@/utils/request'
 import * as echarts from 'echarts'
 
@@ -803,14 +812,20 @@ const loadAllData = async () => {
 
 // 生命周期
 onMounted(() => {
-  loadAllData()
-  
-  // 每30秒刷新一次
-  refreshTimer = setInterval(() => {
-    loadStatistics()
-    loadGroupStats()
-    loadRecentAlarms()
-  }, 30000)
+  console.log('Overview 组件已挂载，开始加载数据')
+  try {
+    loadAllData()
+    
+    // 每30秒刷新一次
+    refreshTimer = setInterval(() => {
+      loadStatistics()
+      loadGroupStats()
+      loadRecentAlarms()
+    }, 30000)
+  } catch (error) {
+    console.error('Overview 组件初始化失败:', error)
+    ElMessage.error('页面加载失败: ' + (error.message || '未知错误'))
+  }
 })
 
 onBeforeUnmount(() => {
@@ -1015,7 +1030,8 @@ onBeforeUnmount(() => {
 }
 
 .chart-icon {
-  font-size: 20px;
+  color: #667eea;
+  flex-shrink: 0;
 }
 
 .chart-title {
@@ -1118,7 +1134,8 @@ onBeforeUnmount(() => {
 }
 
 .card-icon {
-  font-size: 20px;
+  color: #667eea;
+  flex-shrink: 0;
 }
 
 .card-title {
@@ -1277,11 +1294,22 @@ onBeforeUnmount(() => {
   text-align: center;
   padding: 60px 20px;
   color: #999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-icon {
+  color: #c7c7cc;
+  opacity: 0.6;
+  margin-bottom: 12px;
 }
 
 .empty-state p {
   margin-top: 12px;
   font-size: 14px;
+  color: #86868b;
 }
 
 /* 响应式 */

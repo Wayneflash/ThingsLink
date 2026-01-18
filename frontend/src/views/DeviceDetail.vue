@@ -18,7 +18,9 @@
       <!-- 左侧：基本信息 -->
       <div class="header-left">
         <div class="device-title-bar-compact">
-          <div :class="['device-icon-large', deviceInfo.status === 1 ? 'icon-online' : 'icon-offline']">📱</div>
+          <div :class="['device-icon-large', deviceInfo.status === 1 ? 'icon-online' : 'icon-offline']">
+            <el-icon :size="36"><Box /></el-icon>
+          </div>
           <div class="device-title-text">
             <div class="title-row">
               <div class="device-name-wrapper">
@@ -52,7 +54,7 @@
       <!-- 右侧：MQTT连接信息 -->
       <div class="header-right">
         <div class="info-section-title">
-          <span class="section-icon">📡</span>
+          <el-icon class="section-icon" :size="20"><Connection /></el-icon>
           MQTT连接信息
         </div>
         <div class="mqtt-card-compact">
@@ -142,13 +144,16 @@
               <span class="data-value">{{ item.value }}</span>
               <span v-if="item.unit" class="data-unit">{{ item.unit }}</span>
             </div>
-            <div class="data-time">📅 {{ updateTime }}</div>
+            <div class="data-time">
+              <el-icon class="time-icon" :size="14"><Clock /></el-icon>
+              {{ updateTime }}
+            </div>
           </div>
         </div>
       </div>
       <div v-else class="empty-data">
-        <div class="empty-icon">📭</div>
-        <div>暂无实时数据</div>
+        <el-icon class="empty-icon" :size="64"><Document /></el-icon>
+        <div class="empty-text">暂无实时数据</div>
       </div>
     </div>
 
@@ -156,8 +161,14 @@
     <div class="tab-content" :class="{ active: activeTab === 'history' }">
       <div class="history-toolbar">
         <el-radio-group v-model="historyViewMode" size="small">
-          <el-radio-button label="chart">📈 趋势图</el-radio-button>
-          <el-radio-button label="table">📊 表格</el-radio-button>
+          <el-radio-button label="chart">
+            <el-icon :size="16" style="margin-right: 4px;"><TrendCharts /></el-icon>
+            趋势图
+          </el-radio-button>
+          <el-radio-button label="table">
+            <el-icon :size="16" style="margin-right: 4px;"><Document /></el-icon>
+            表格
+          </el-radio-button>
         </el-radio-group>
         <div style="flex: 1; display: flex; gap: 12px; justify-content: flex-end;">
           <el-date-picker
@@ -178,8 +189,8 @@
       <div v-show="historyViewMode === 'chart'" class="history-chart-container">
         <div ref="historyChartRef" class="history-chart"></div>
         <div v-if="historyData.length === 0" class="empty-data">
-          <div class="empty-icon">📊</div>
-          <div>暂无历史数据</div>
+          <el-icon class="empty-icon" :size="64"><TrendCharts /></el-icon>
+          <div class="empty-text">暂无历史数据</div>
         </div>
       </div>
       
@@ -213,8 +224,8 @@
             class="history-pagination"
           />
           <div v-if="historyData.length === 0" class="empty-data">
-            <div class="empty-icon">📭</div>
-            <div>暂无历史数据</div>
+            <el-icon class="empty-icon" :size="64"><Document /></el-icon>
+            <div class="empty-text">暂无历史数据</div>
           </div>
         </div>
       </div>
@@ -229,12 +240,12 @@
             class="command-btn"
             @click="sendCommand(cmd)"
           >
-            <div class="command-icon">⚡</div>
+            <el-icon class="command-icon" :size="40"><Lightning /></el-icon>
             <div class="command-name">{{ cmd.commandName }}</div>
           </button>
           <div v-if="productCommands.length === 0" class="empty-data">
-            <div class="empty-icon">🎮</div>
-            <div>暂无可用命令</div>
+            <el-icon class="empty-icon" :size="64"><Monitor /></el-icon>
+            <div class="empty-text">暂无可用命令</div>
           </div>
         </div>
       </div>
@@ -290,8 +301,8 @@
         />
         
         <div v-if="deviceLogList.length === 0 && !logLoading" class="empty-data">
-          <div class="empty-icon">📭</div>
-          <div>暂无日志数据</div>
+          <el-icon class="empty-icon" :size="64"><Document /></el-icon>
+          <div class="empty-text">暂无日志数据</div>
         </div>
       </div>
     </div>
@@ -301,13 +312,24 @@
       <AlarmAnalysis :device-code="deviceInfo.deviceCode" />
     </div> -->
   </div>
+
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, DocumentCopy } from '@element-plus/icons-vue'
+import { 
+  ArrowLeft, 
+  DocumentCopy,
+  Connection,
+  Box,
+  Clock,
+  TrendCharts,
+  Document,
+  Lightning,
+  Monitor
+} from '@element-plus/icons-vue'
 import { getDeviceDetail, getDeviceLatestData } from '@/api/device'
 import { getProductAttributes, getProductCommands } from '@/api/product'
 import { getHistoryData } from '@/api/data'
@@ -400,7 +422,9 @@ const loadMqttConfig = async () => {
 // 加载设备详情
 const loadDeviceDetail = async () => {
   try {
-    const deviceCode = route.query.deviceCode
+    const deviceCode = route.query.deviceCode || route.params.deviceCode
+    console.log('设备编码:', deviceCode, '路由参数:', route.query, route.params)
+    
     if (!deviceCode) {
       ElMessage.error('设备编码不存在')
       goBack()
@@ -411,18 +435,28 @@ const loadDeviceDetail = async () => {
     await loadMqttConfig()
     
     // 只加载设备基本信息
+    console.log('请求设备详情，参数:', { deviceCode })
     const data = await getDeviceDetail({ deviceCode })
-    if (data) {
+    console.log('设备详情响应数据:', data)
+    
+    if (data && typeof data === 'object') {
       Object.assign(deviceInfo, data)
       // 加载实时数据
       loadRealtimeData()
     } else {
-      ElMessage.error('获取设备详情失败')
+      ElMessage.error('获取设备详情失败：返回数据格式错误')
+      console.error('返回数据:', data)
       goBack()
     }
   } catch (error) {
     console.error('加载设备详情失败:', error)
-    ElMessage.error('加载设备详情失败')
+    console.error('错误详情:', {
+      message: error.message,
+      response: error.response,
+      data: error.response?.data
+    })
+    const errorMsg = error.response?.data?.message || error.message || '加载设备详情失败'
+    ElMessage.error(errorMsg)
     goBack()
   }
 }
@@ -1338,16 +1372,32 @@ onMounted(() => {
 .data-card {
   background: white;
   border-radius: 16px;
-  padding: 28px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  border: 1px solid transparent;
-  transition: all 0.2s;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  cursor: pointer;
+}
+
+.data-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+  border-color: rgba(102, 126, 234, 0.2);
+}
+
+.data-label {
+  font-size: 13px;
+  color: #86868b;
+  margin-bottom: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .data-value {
   font-size: 32px;
   font-weight: 600;
-  color: #007AFF;
+  color: #667eea;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
@@ -1357,6 +1407,16 @@ onMounted(() => {
   color: #86868b;
   margin-left: 6px;
   font-weight: 500;
+}
+
+.data-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #86868b;
+  margin-top: 12px;
+  font-weight: 400;
 }
 
 .info-section-title {
@@ -1370,7 +1430,13 @@ onMounted(() => {
 }
 
 .section-icon {
-  font-size: 20px;
+  color: #667eea;
+}
+
+.time-icon {
+  color: #86868b;
+  margin-right: 4px;
+  vertical-align: middle;
 }
 
 .device-info-section {
@@ -1818,14 +1884,14 @@ onMounted(() => {
 }
 
 .command-btn:hover {
-  background: var(--el-color-primary);
-  border-color: var(--el-color-primary);
-  transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 8px 24px rgba(64, 158, 255, 0.3);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
 }
 
 .command-btn:hover .command-icon {
-  transform: scale(1.2);
+  color: #ffffff;
 }
 
 .command-btn:hover .command-name {
@@ -1833,16 +1899,20 @@ onMounted(() => {
 }
 
 .command-icon {
-  font-size: 40px;
   margin-bottom: 12px;
-  transition: transform 0.3s;
+  transition: color 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  color: #667eea;
 }
 
 .command-name {
   font-size: 16px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-  transition: color 0.3s;
+  font-weight: 500;
+  color: #1d1d1f;
+  transition: color 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.command-btn:hover .command-name {
+  color: #ffffff;
 }
 
 /* 历史数据 */
@@ -1913,15 +1983,25 @@ onMounted(() => {
 }
 
 .empty-data {
-  padding: 40px;
+  padding: 64px 40px;
   text-align: center;
-  color: var(--el-text-color-placeholder);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
 }
 
 .empty-icon {
-  font-size: 72px;
-  margin-bottom: 20px;
-  opacity: 0.5;
+  color: #c7c7cc;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-text {
+  color: #86868b;
+  font-size: 15px;
+  font-weight: 400;
 }
 
 /* 设备日志 */

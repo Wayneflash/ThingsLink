@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 泵体 -->
+  <circle cx="50" cy="50" r="25" fill="none" stroke="#00d4ff" stroke-width="3" filter="url(#glow)"/>
+  <!-- 泵入口 -->
+  <rect x="5" y="40" width="20" height="20" rx="3" fill="none" stroke="#00d4ff" stroke-width="2" filter="url(#glow)"/>
+  <!-- 泵出口 -->
+  <rect x="75" y="40" width="20" height="20" rx="3" fill="none" stroke="#00d4ff" stroke-width="2" filter="url(#glow)"/>
+  <!-- 泵中心 -->
+  <circle cx="50" cy="50" r="12" fill="none" stroke="#00d4ff" stroke-width="2" filter="url(#glow)"/>
+  <!-- 叶片 -->
+  <path d="M 50 38 L 50 50 M 50 50 L 62 50 M 50 50 L 50 62 M 50 50 L 38 50" 
+        stroke="#00d4ff" stroke-width="2" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- 发光效果 -->
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

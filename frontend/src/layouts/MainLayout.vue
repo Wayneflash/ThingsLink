@@ -157,7 +157,8 @@ import {
   BellFilled,
   Warning,
   Tools,
-  Lock
+  Lock,
+  VideoCamera
 } from '@element-plus/icons-vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
 
@@ -187,7 +188,8 @@ const iconMap = {
   Warning,
   Setting,
   User,
-  Tools
+  Tools,
+  VideoCamera
 }
 
 // 获取图标组件

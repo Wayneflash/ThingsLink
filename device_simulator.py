@@ -24,7 +24,7 @@ if sys.platform == 'win32':
         pass
 
 # MQTT配置 - 从后端配置获取
-MQTT_BROKER = "117.72.222.8"  # 实际部署时请替换为实际服务器地址
+MQTT_BROKER = "127.0.0.1"  # 实际部署时请替换为实际服务器地址
 MQTT_PORT = 1883
 MQTT_USERNAME = "admin"
 MQTT_PASSWORD = "admin123."  # 与EMQX配置保持一致

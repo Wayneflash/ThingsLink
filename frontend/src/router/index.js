@@ -186,8 +186,9 @@ router.beforeEach((to, from, next) => {
   // 登录页逻辑
   if (to.path === '/login') {
     if (token) {
-      // 已登录用户访问登录页，重定向到首页
-      next('/overview')
+      // 已登录用户访问登录页，重定向到首页或目标页面
+      const redirect = to.query.redirect || '/overview'
+      next(redirect)
     } else {
       next()
     }

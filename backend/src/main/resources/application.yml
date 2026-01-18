@@ -74,6 +74,13 @@ spring:
     password: 500a7f062bd94dc1881742c0d1b7850e
     api-url: https://api.smsbao.com/sms
 
+# 智谱AI配置
+zhipu:
+  api-key: c88e5930411b494180bd1b621a6ed7aa.czSakh99HdWFWqH3
+  api-url: https://open.bigmodel.cn/api/paas/v4/chat/completions
+  # 模型选择：glm-4.7（最新旗舰模型）、glm-4（通用大模型）、glm-4-flash（快速响应）、glm-3-turbo（轻量级）
+  model: glm-4.7
+
 # MyBatis Plus 配置
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml

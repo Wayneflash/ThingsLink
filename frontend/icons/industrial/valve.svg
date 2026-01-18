@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 阀门主体 -->
+  <rect x="35" y="30" width="30" height="40" rx="3" fill="none" stroke="#00d4ff" stroke-width="3" filter="url(#glow)"/>
+  <!-- 阀门手柄 -->
+  <line x1="50" y1="20" x2="50" y2="30" stroke="#00d4ff" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+  <line x1="50" y1="20" x2="60" y2="15" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- 管道连接 -->
+  <line x1="0" y1="50" x2="35" y2="50" stroke="#00d4ff" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+  <line x1="65" y1="50" x2="100" y2="50" stroke="#00d4ff" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- 发光效果 -->
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

@@ -77,7 +77,7 @@
             <el-button type="primary" @click="showAddAttrDialog">+ 添加属性</el-button>
           </div>
           <div v-if="attributes.length === 0" class="empty-state">
-            <div class="empty-icon">📊</div>
+            <el-icon class="empty-icon" :size="64"><TrendCharts /></el-icon>
             <div class="empty-text">暂无属性，点击上方"添加属性"开始定义数据点</div>
           </div>
           <div v-else class="attr-list">
@@ -100,7 +100,7 @@
             <el-button type="primary" @click="showAddCmdDialog">+ 添加命令</el-button>
           </div>
           <div v-if="commands.length === 0" class="empty-state">
-            <div class="empty-icon">🎮</div>
+            <el-icon class="empty-icon" :size="64"><Monitor /></el-icon>
             <div class="empty-text">暂无命令，点击上方"添加命令"开始定义控制指令</div>
           </div>
           <div v-else class="cmd-list">
@@ -130,7 +130,10 @@
         </el-form-item>
         <el-form-item label="产品型号" prop="productModel">
           <el-input v-model="editForm.productModel" disabled />
-          <div class="input-hint">💡 产品型号创建后不可修改</div>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            产品型号创建后不可修改
+          </div>
         </el-form-item>
         <el-form-item label="协议类型" prop="protocol">
           <el-select v-model="editForm.protocol" placeholder="请选择协议类型" style="width: 100%;">
@@ -159,11 +162,17 @@
       <el-form :model="attrForm" label-width="120px" :rules="attrRules" ref="attrFormRef">
         <el-form-item label="属性标识符" prop="addr">
           <el-input v-model="attrForm.addr" placeholder="如：tem、hum、battery" />
-          <div class="input-hint">💡 英文标识符，用于数据上报的字段名，建议使用小写字母+下划线</div>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            英文标识符，用于数据上报的字段名，建议使用小写字母+下划线
+          </div>
         </el-form-item>
         <el-form-item label="属性名称" prop="attrName">
           <el-input v-model="attrForm.attrName" placeholder="如：温度、湿度、电池电量" />
-          <div class="input-hint">💡 中文显示名称，方便理解属性含义</div>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            中文显示名称，方便理解属性含义
+          </div>
         </el-form-item>
         <el-form-item label="数据类型" prop="dataType">
           <el-select v-model="attrForm.dataType" placeholder="请选择数据类型" style="width: 100%;">
@@ -173,11 +182,17 @@
             <!-- <el-option label="字符串 (string) - 如文本、描述" value="string" /> -->
             <!-- <el-option label="布尔 (bool) - 如开关状态" value="bool" /> -->
           </el-select>
-          <div class="input-hint">💡 选择合适的数据类型，影响数据存储和处理方式</div>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            选择合适的数据类型，影响数据存储和处理方式
+          </div>
         </el-form-item>
         <el-form-item label="单位">
           <el-input v-model="attrForm.unit" placeholder="如：℃、%、m/s（可选）" />
-          <div class="input-hint">💡 数值属性可填写单位，非数值属性可留空</div>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            数值属性可填写单位，非数值属性可留空
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -195,7 +210,10 @@
       <el-form :model="cmdForm" label-width="120px" :rules="cmdRules" ref="cmdFormRef">
         <el-form-item label="命令名称" prop="commandName">
           <el-input v-model="cmdForm.commandName" placeholder="如：打开窗户、关闭灯光、设置模式" />
-          <div class="input-hint">💡 命令的显示名称，让用户知道这是什么操作</div>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            命令的显示名称，让用户知道这是什么操作
+          </div>
         </el-form-item>
         <el-form-item label="控制属性" prop="addr">
           <el-select v-model="cmdForm.addr" placeholder="请选择要控制的属性" style="width: 100%;">
@@ -206,17 +224,28 @@
               :value="attr.addr"
             />
           </el-select>
-          <div class="input-hint">💡 选择要控制的属性，命令会修改该属性的值</div>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            选择要控制的属性，命令会修改该属性的值
+          </div>
         </el-form-item>
         <el-form-item label="下发值" prop="commandValue">
           <el-input v-model="cmdForm.commandValue" placeholder="如：1、0、ON、OFF" />
-          <div class="input-hint">💡 命令执行时会将该值下发给设备，设备根据该值进行操作</div>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            命令执行时会将该值下发给设备，设备根据该值进行操作
+          </div>
         </el-form-item>
         <el-alert 
-          title="💡 示例"
           type="info"
           :closable="false"
         >
+          <template #title>
+            <div class="alert-title">
+              <el-icon class="alert-icon" :size="16"><InfoFilled /></el-icon>
+              示例
+            </div>
+          </template>
           如果有一个属性叫 "window"，可以创建两个命令：<br/>
           • 命令名：打开窗户 | 控制属性：window | 下发值：1<br/>
           • 命令名：关闭窗户 | 控制属性：window | 下发值：0
@@ -234,6 +263,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { TrendCharts, Monitor, InfoFilled, Document } from '@element-plus/icons-vue'
 import { productApi } from '@/api'
 
 const route = useRoute()
@@ -601,13 +631,40 @@ onMounted(() => {
 }
 
 .empty-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-  opacity: 0.5;
+  color: #c7c7cc;
+  margin-bottom: 16px;
+  opacity: 0.6;
 }
 
 .empty-text {
   font-size: 14px;
+  color: #86868b;
+}
+
+.input-hint {
+  font-size: 12px;
+  color: #86868b;
+  margin-top: 8px;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.hint-icon {
+  color: #667eea;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.alert-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.alert-icon {
+  color: #409eff;
 }
 
 .attr-list,

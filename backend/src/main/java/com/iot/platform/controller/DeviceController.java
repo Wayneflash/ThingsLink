@@ -309,15 +309,23 @@ public class DeviceController {
      * 获取设备详情
      */
     @PostMapping("/detail")
-    public Result<Map<String, Object>> getDeviceDetail(@RequestBody Map<String, String> params) {
+    public Result<Map<String, Object>> getDeviceDetail(@RequestBody(required = false) Map<String, String> params) {
         try {
+            if (params == null) {
+                log.warn("获取设备详情请求参数为空");
+                return Result.error("请求参数不能为空");
+            }
+            
             String deviceCode = params.get("deviceCode");
             if (deviceCode == null || deviceCode.trim().isEmpty()) {
+                log.warn("设备编码为空，请求参数: {}", params);
                 return Result.error("设备编码不能为空");
             }
             
+            log.info("获取设备详情，设备编码: {}", deviceCode);
             Device device = deviceService.getByDeviceCode(deviceCode);
             if (device == null) {
+                log.warn("设备不存在，设备编码: {}", deviceCode);
                 return Result.error("设备不存在");
             }
             
@@ -325,7 +333,7 @@ public class DeviceController {
             return Result.success(result);
         } catch (Exception e) {
             log.error("获取设备详情失败", e);
-            return Result.error(e.getMessage());
+            return Result.error("获取设备详情失败: " + e.getMessage());
         }
     }
     

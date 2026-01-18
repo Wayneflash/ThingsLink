@@ -8,11 +8,15 @@
       <div class="toolbar">
         <el-input
           v-model="searchKeyword"
-          placeholder="🔍 搜索产品名称或型号..."
+          placeholder="搜索产品名称或型号..."
           clearable
           style="width: 300px;"
           @input="handleSearch"
-        />
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
         <el-button type="primary" @click="showCreateDialog">+ 创建产品</el-button>
       </div>
     </el-card>
@@ -57,7 +61,10 @@
             v-model="productForm.productName" 
             placeholder="如：智能水表、空气监测仪、温湿度传感器"
           />
-          <div class="input-hint">💡 给产品起一个清晰易懂的名称，方便后续管理</div>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            给产品起一个清晰易懂的名称，方便后续管理
+          </div>
         </el-form-item>
         <el-form-item label="产品型号" prop="productModel">
           <el-input 
@@ -66,8 +73,9 @@
             :disabled="isEditMode"
           />
           <div class="input-hint">
-            <template v-if="!isEditMode">💡 产品型号是唯一标识，建议使用英文+数字组合，创建后不可修改</template>
-            <template v-else>💡 产品型号创建后不可修改</template>
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            <template v-if="!isEditMode">产品型号是唯一标识，建议使用英文+数字组合，创建后不可修改</template>
+            <template v-else>产品型号创建后不可修改</template>
           </div>
         </el-form-item>
         <el-form-item label="协议类型" prop="protocol">
@@ -77,7 +85,10 @@
             <el-option label="CoAP（适合资源受限设备）" value="CoAP" />
             <el-option label="Modbus（工业设备常用）" value="Modbus" />
           </el-select>
-          <div class="input-hint">💡 选择设备使用的通信协议，影响设备接入方式</div>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            选择设备使用的通信协议，影响设备接入方式
+          </div>
         </el-form-item>
         <el-form-item label="产品描述" prop="description">
           <el-input 
@@ -86,18 +97,26 @@
             :rows="4"
             placeholder="描述产品的功能、用途、适用场景等..."
           />
-          <div class="input-hint">💡 详细描述有助于团队成员理解产品定位</div>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            详细描述有助于团队成员理解产品定位
+          </div>
         </el-form-item>
       </el-form>
 
       <!-- 底部提示 -->
       <el-alert 
         v-if="!isEditMode"
-        title="📋 下一步操作"
         type="info"
         :closable="false"
         style="margin-bottom: 20px;"
       >
+        <template #title>
+          <div class="alert-title">
+            <el-icon class="alert-icon" :size="16"><Document /></el-icon>
+            下一步操作
+          </div>
+        </template>
         创建产品后，点击"查看详情"跳转到详情页，添加"属性"和"命令"来完整定义设备的物模型：<br/>
         • <strong>属性</strong>：设备上报的数据字段（如温度、湿度、电量）<br/>
         • <strong>命令</strong>：平台下发给设备的控制指令（如开关、设置参数）
@@ -115,6 +134,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { Search, InfoFilled, Document, CircleCheck } from '@element-plus/icons-vue'
 import { productApi } from '@/api'
 
 const router = useRouter()
@@ -249,7 +269,7 @@ const submitProduct = async () => {
         description: productForm.value.description
       })
       
-      ElMessage.success('✅ 产品创建成功！')
+      ElMessage.success('产品创建成功！')
       productDialogVisible.value = false
       // 创建成功后跳转到详情页
       if (res && res.id) {
@@ -322,8 +342,27 @@ onMounted(() => {
 .input-hint {
   font-size: 12px;
   color: #86868b;
-  margin-top: 4px;
-  line-height: 1.4;
+  margin-top: 8px;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.hint-icon {
+  color: #667eea;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.alert-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.alert-icon {
+  color: #409eff;
 }
 
 :deep(.el-card__body) {
