@@ -86,6 +86,29 @@ const routes = [
         meta: { title: '设备分组' }
       },
       {
+        path: 'energy',
+        redirect: '/energy/statistics',
+        meta: { title: '能源统计' }
+      },
+      {
+        path: 'energy/statistics',
+        name: 'EnergyStatistics',
+        component: () => import('../views/EnergyStatistics.vue'),
+        meta: { title: '能耗统计' }
+      },
+      {
+        path: 'energy/trend',
+        name: 'EnergyTrend',
+        component: () => import('../views/EnergyTrend.vue'),
+        meta: { title: '能耗趋势' }
+      },
+      {
+        path: 'energy/report',
+        name: 'EnergyReport',
+        component: () => import('../views/EnergyReport.vue'),
+        meta: { title: '能耗报表' }
+      },
+      {
         path: 'video',
         name: 'VideoManagement',
         component: () => import('../views/VideoManagement.vue'),

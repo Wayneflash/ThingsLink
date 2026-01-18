@@ -35,7 +35,7 @@
       >
         <template v-for="menu in menuList" :key="menu.code">
           <!-- 有子菜单 -->
-          <el-sub-menu v-if="menu.children && menu.children.length > 0" :index="menu.path">
+          <el-sub-menu v-if="menu.children && menu.children.length > 0" :index="menu.code">
             <template #title>
               <el-icon v-if="menu.icon">
                 <component :is="getIconComponent(menu.icon)" />
@@ -47,6 +47,9 @@
               :key="child.code"
               :index="child.path"
             >
+              <el-icon v-if="child.icon">
+                <component :is="getIconComponent(child.icon)" />
+              </el-icon>
               <span>{{ child.name }}</span>
             </el-menu-item>
           </el-sub-menu>
@@ -159,7 +162,8 @@ import {
   Warning,
   Tools,
   Lock,
-  VideoCamera
+  VideoCamera,
+  Document
 } from '@element-plus/icons-vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
 
@@ -190,7 +194,8 @@ const iconMap = {
   Setting,
   User,
   Tools,
-  VideoCamera
+  VideoCamera,
+  Document
 }
 
 // 获取图标组件
@@ -429,6 +434,19 @@ onMounted(() => {
   padding-left: 56px !important;
   height: 40px;
   line-height: 40px;
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.sidebar-menu :deep(.el-sub-menu .el-menu-item:hover) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+}
+
+.sidebar-menu :deep(.el-sub-menu .el-menu-item.is-active) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  font-weight: 500;
 }
 
 .sidebar-footer {
@@ -611,9 +629,55 @@ onMounted(() => {
 /* Element Plus Menu 自定义样式 */
 :deep(.el-menu) {
   border-right: none;
+  background: transparent !important;
+}
+
+:deep(.el-sub-menu) {
+  background: transparent !important;
+}
+
+:deep(.el-sub-menu .el-menu) {
+  background: transparent !important;
 }
 
 :deep(.el-sub-menu__icon-arrow) {
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* 子菜单项样式 - 强制覆盖 */
+.sidebar-menu :deep(.el-sub-menu .el-menu) {
+  background: transparent !important;
+  border: none !important;
+}
+
+.sidebar-menu :deep(.el-sub-menu .el-menu-item) {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  border: none !important;
+}
+
+.sidebar-menu :deep(.el-sub-menu .el-menu-item:hover) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+}
+
+.sidebar-menu :deep(.el-sub-menu .el-menu-item.is-active) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  font-weight: 500;
+}
+
+:deep(.el-menu--popup) {
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%) !important;
+}
+
+:deep(.el-menu--popup .el-menu-item) {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+:deep(.el-menu--popup .el-menu-item:hover) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
 }
 </style>

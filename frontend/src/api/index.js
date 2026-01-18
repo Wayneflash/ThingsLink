@@ -16,6 +16,8 @@ export const productApi = {
   addProductAttribute: (data) => request.post('/products/attribute/create', data),
   // 获取产品属性列表
   getProductAttributes: (productId) => request.get(`/products/${productId}/attributes`),
+  // 更新产品属性
+  updateProductAttribute: (data) => request.post('/products/attribute/update', data),
   // 删除产品属性
   deleteProductAttribute: (id) => request.post('/products/attribute/delete', { id }),
   // 添加产品命令

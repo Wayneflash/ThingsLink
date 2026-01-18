@@ -75,7 +75,7 @@
             <div class="empty-text">暂无属性，点击"添加属性"开始定义数据点</div>
           </div>
           <el-table v-else :data="attributes" stripe size="small" class="attr-table">
-            <el-table-column prop="addr" label="标识符" width="120" />
+            <el-table-column prop="addr" label="标识符" width="200" />
             <el-table-column prop="attrName" label="属性名称" min-width="120" />
             <el-table-column prop="dataType" label="数据类型" width="100">
               <template #default="{ row }">
@@ -87,8 +87,9 @@
                 {{ row.unit || '-' }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="100" fixed="right">
+            <el-table-column label="操作" width="150" fixed="right">
               <template #default="{ row }">
+                <el-button size="small" type="primary" link @click="showEditAttrDialog(row)">编辑</el-button>
                 <el-button size="small" type="danger" link @click="deleteAttribute(row)">删除</el-button>
               </template>
             </el-table-column>
@@ -156,18 +157,23 @@
       </template>
     </el-dialog>
 
-    <!-- 添加属性对话框 -->
+    <!-- 添加/编辑属性对话框 -->
     <el-dialog 
       v-model="attrDialogVisible" 
-      title="添加产品属性" 
+      :title="isEditAttrMode ? '编辑产品属性' : '添加产品属性'" 
       width="600px"
     >
       <el-form :model="attrForm" label-width="120px" :rules="attrRules" ref="attrFormRef">
         <el-form-item label="属性标识符" prop="addr">
-          <el-input v-model="attrForm.addr" placeholder="如：tem、hum、battery" />
+          <el-input 
+            v-model="attrForm.addr" 
+            placeholder="如：tem、hum、battery" 
+            :disabled="isEditAttrMode"
+          />
           <div class="input-hint">
             <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
-            英文标识符，用于数据上报的字段名，建议使用小写字母+下划线
+            <span v-if="isEditAttrMode">属性标识符创建后不可修改</span>
+            <span v-else>英文标识符，用于数据上报的字段名，建议使用小写字母+下划线</span>
           </div>
         </el-form-item>
         <el-form-item label="属性名称" prop="attrName">
@@ -200,7 +206,9 @@
       </el-form>
       <template #footer>
         <el-button @click="attrDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="addAttribute">确定添加</el-button>
+        <el-button type="primary" @click="isEditAttrMode ? updateAttribute() : addAttribute()">
+          {{ isEditAttrMode ? '保存修改' : '确定添加' }}
+        </el-button>
       </template>
     </el-dialog>
 
@@ -280,6 +288,7 @@ const activeTab = ref('attributes')
 const editDialogVisible = ref(false)
 const attrDialogVisible = ref(false)
 const cmdDialogVisible = ref(false)
+const isEditAttrMode = ref(false) // 是否为编辑属性模式
 
 const editFormRef = ref(null)
 const attrFormRef = ref(null)
@@ -431,11 +440,26 @@ const updateProduct = async () => {
 
 // 显示添加属性对话框
 const showAddAttrDialog = () => {
+  isEditAttrMode.value = false
   attrForm.value = {
     addr: '',
     attrName: '',
     dataType: '',
     unit: ''
+  }
+  attrDialogVisible.value = true
+}
+
+// 显示编辑属性对话框
+const showEditAttrDialog = (attr) => {
+  isEditAttrMode.value = true
+  attrForm.value = {
+    id: attr.id,
+    addr: attr.addr,
+    attrName: attr.attrName || '',
+    dataType: attr.dataType || '',
+    unit: attr.unit || '',
+    description: attr.description || ''
   }
   attrDialogVisible.value = true
 }
@@ -469,6 +493,44 @@ const addAttribute = async () => {
       console.error('添加属性失败:', error)
       ElMessage.error('添加属性失败')
     }
+  }
+}
+
+// 更新属性
+const updateAttribute = async () => {
+  // 编辑模式下不进行表单验证，直接提交数据
+  try {
+    // 确保ID存在
+    if (!attrForm.value.id) {
+      ElMessage.error('属性ID不能为空')
+      console.error('属性ID为空，attrForm:', attrForm.value)
+      return
+    }
+    
+    // 验证名称
+    if (!attrForm.value.attrName || attrForm.value.attrName.trim() === '') {
+      ElMessage.error('请输入属性名称')
+      return
+    }
+    
+    const updateData = {
+      id: attrForm.value.id,
+      attrName: attrForm.value.attrName.trim(),
+      unit: (attrForm.value.unit || '').trim(),
+      description: (attrForm.value.description || '').trim()
+    }
+    
+    console.log('发送更新属性请求，参数:', updateData)
+    
+    await productApi.updateProductAttribute(updateData)
+    
+    ElMessage.success('属性更新成功')
+    attrDialogVisible.value = false
+    loadAttributes()
+  } catch (error) {
+    console.error('更新属性失败:', error)
+    const errorMsg = error?.message || error?.response?.data?.message || '更新属性失败'
+    ElMessage.error(errorMsg)
   }
 }
 

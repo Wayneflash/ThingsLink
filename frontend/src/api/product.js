@@ -117,6 +117,23 @@ export const getProductAttributes = (productId) => {
 }
 
 /**
+ * 更新产品属性（只允许更新属性名称和单位）
+ * @param {Object} data - 属性信息
+ * @param {number} data.id - 属性ID（必填）
+ * @param {string} data.attrName - 属性名称
+ * @param {string} data.unit - 单位
+ * @param {string} data.description - 描述（可选）
+ * @returns {Promise} 返回更新后的属性信息
+ */
+export const updateProductAttribute = (data) => {
+  return request({
+    url: '/products/attribute/update',
+    method: 'post',
+    data
+  })
+}
+
+/**
  * 删除产品属性
  * @param {number} id - 属性ID
  * @returns {Promise} 返回删除结果
@@ -179,6 +196,7 @@ export default {
   deleteProduct,
   addProductAttribute,
   getProductAttributes,
+  updateProductAttribute,
   deleteProductAttribute,
   addProductCommand,
   getProductCommands,

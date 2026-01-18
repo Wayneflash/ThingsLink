@@ -24,7 +24,7 @@ if sys.platform == 'win32':
         pass
 
 # MQTT配置 - 从后端配置获取
-MQTT_BROKER = "127.0.0.1"  # 实际部署时请替换为实际服务器地址
+MQTT_BROKER = "117.72.222.8"  # 实际部署时请替换为实际服务器地址
 MQTT_PORT = 1883
 MQTT_USERNAME = "admin"
 MQTT_PASSWORD = "admin123."  # 与EMQX配置保持一致
@@ -48,6 +48,45 @@ DEVICES = [
         'name': "模拟设备-88882222",
         'type': "air_quality",  # 空气质量监测设备
         'status': {}  # 空气质量设备暂无控制属性
+    },
+    # 电表设备
+    {
+        'code': "DIANBIAO1",
+        'name': "智能电表-1",
+        'type': "electric_meter",  # 电表
+        'status': {'total_energy': 1500.0}  # 初始累计电量(kWh)
+    },
+    {
+        'code': "DIANBIAO2",
+        'name': "智能电表-2",
+        'type': "electric_meter",  # 电表
+        'status': {'total_energy': 2300.0}  # 初始累计电量(kWh)
+    },
+    # 水表设备
+    {
+        'code': "SHUIBIAO1",
+        'name': "智能水表-1",
+        'type': "water_meter",  # 水表
+        'status': {'total_flow': 850.0, 'valve_status': 1}  # 初始累计流量(m³)，阀门状态
+    },
+    {
+        'code': "SHUIBIAO2",
+        'name': "智能水表-2",
+        'type': "water_meter",  # 水表
+        'status': {'total_flow': 1200.0, 'valve_status': 1}  # 初始累计流量(m³)，阀门状态
+    },
+    # 气表设备
+    {
+        'code': "QIBIAO1",
+        'name': "智能气表-1",
+        'type': "gas_meter",  # 气表
+        'status': {'total_gas': 450.0}  # 初始累计用气量(m³)
+    },
+    {
+        'code': "QIBIAO2",
+        'name': "智能气表-2",
+        'type': "gas_meter",  # 气表
+        'status': {'total_gas': 680.0}  # 初始累计用气量(m³)
     }
 ]
 
@@ -231,6 +270,170 @@ class DeviceSimulator:
             co2_status = "⚠️ 偏高" if co2 > 1000.0 else "✅ 正常"
             o2_status = "⚠️ 偏低" if o2 < 20.0 else "✅ 正常"
             status_msg = f"CO2: {co2:.2f}ppm {co2_status} | O2: {o2:.2f}% {o2_status}"
+            
+        elif device_type == "electric_meter":
+            # 智能电表：电压、电流、有功功率、无功功率、功率因数、总有功电能(累计值)
+            
+            # 初始化累计值
+            if 'total_energy' not in self.device_status:
+                self.device_status['total_energy'] = 1000.0  # 默认初始值
+            
+            # 电压：220V左右，正常范围 200-240V
+            voltage = random.uniform(210.0, 230.0)
+            
+            # 电流：5-50A，根据用电情况变化
+            current = random.uniform(5.0, 50.0)
+            
+            # 有功功率 = 电压 × 电流 × 功率因数 / 1000 (kW)
+            power_factor = random.uniform(0.85, 0.98)  # 功率因数 0.85-0.98
+            active_power = (voltage * current * power_factor) / 1000.0  # kW
+            
+            # 无功功率：有功功率的10-20%
+            reactive_power = active_power * random.uniform(0.10, 0.20)
+            
+            # 累计电量：每次增加 0.1-0.5 kWh（模拟3分钟用电量）
+            energy_increment = random.uniform(0.1, 0.5)
+            self.device_status['total_energy'] += energy_increment
+            
+            content = [
+                {
+                    "addr": "voltage",
+                    "addrv": f"{voltage:.2f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "current",
+                    "addrv": f"{current:.2f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "active_power",
+                    "addrv": f"{active_power:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "reactive_power",
+                    "addrv": f"{reactive_power:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "power_factor",
+                    "addrv": f"{power_factor:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "total_energy",
+                    "addrv": f"{self.device_status['total_energy']:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                }
+            ]
+            
+            status_msg = f"电压: {voltage:.1f}V | 电流: {current:.1f}A | 功率: {active_power:.2f}kW | 累计: {self.device_status['total_energy']:.2f}kWh"
+            
+        elif device_type == "water_meter":
+            # 智能水表：总流量(累计值)、瞬时流量、水压、阀门状态
+            
+            # 初始化累计值
+            if 'total_flow' not in self.device_status:
+                self.device_status['total_flow'] = 500.0  # 默认初始值
+            
+            # 初始化阀门状态
+            if 'valve_status' not in self.device_status:
+                self.device_status['valve_status'] = 1  # 默认打开
+            
+            # 瞬时流量：0.5-5.0 m³/h，根据用水情况变化
+            instantaneous_flow = random.uniform(0.5, 5.0) if self.device_status['valve_status'] == 1 else 0.0
+            
+            # 水压：0.2-0.6 MPa，正常范围
+            water_pressure = random.uniform(0.2, 0.6)
+            
+            # 累计流量：每次增加 0.01-0.05 m³（模拟3分钟用水量）
+            flow_increment = (instantaneous_flow / 60.0) * 3.0  # 3分钟用水量
+            self.device_status['total_flow'] += flow_increment
+            
+            content = [
+                {
+                    "addr": "total_flow",
+                    "addrv": f"{self.device_status['total_flow']:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "instantaneous_flow",
+                    "addrv": f"{instantaneous_flow:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "water_pressure",
+                    "addrv": f"{water_pressure:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "valve_status",
+                    "addrv": f"{self.device_status['valve_status']}",
+                    "ctime": now,
+                    "pid": self.device_code
+                }
+            ]
+            
+            status_msg = f"瞬时流量: {instantaneous_flow:.2f}m³/h | 水压: {water_pressure:.2f}MPa | 累计: {self.device_status['total_flow']:.2f}m³"
+            
+        elif device_type == "gas_meter":
+            # 智能气表：总用气量(累计值)、瞬时流量、气压、气体温度
+            
+            # 初始化累计值
+            if 'total_gas' not in self.device_status:
+                self.device_status['total_gas'] = 300.0  # 默认初始值
+            
+            # 瞬时流量：0.2-3.0 m³/h，根据用气情况变化
+            instantaneous_flow = random.uniform(0.2, 3.0)
+            
+            # 气压：200-300 kPa，正常范围
+            gas_pressure = random.uniform(200.0, 300.0)
+            
+            # 气体温度：15-25℃，常温范围
+            gas_temperature = random.uniform(15.0, 25.0)
+            
+            # 累计用气量：每次增加 0.005-0.02 m³（模拟3分钟用气量）
+            gas_increment = (instantaneous_flow / 60.0) * 3.0  # 3分钟用气量
+            self.device_status['total_gas'] += gas_increment
+            
+            content = [
+                {
+                    "addr": "total_gas",
+                    "addrv": f"{self.device_status['total_gas']:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "instantaneous_flow",
+                    "addrv": f"{instantaneous_flow:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "gas_pressure",
+                    "addrv": f"{gas_pressure:.2f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "gas_temperature",
+                    "addrv": f"{gas_temperature:.2f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                }
+            ]
+            
+            status_msg = f"瞬时流量: {instantaneous_flow:.2f}m³/h | 气压: {gas_pressure:.0f}kPa | 温度: {gas_temperature:.1f}℃ | 累计: {self.device_status['total_gas']:.2f}m³"
         
         # 示例数据 - 可以根据实际的物模型调整
         data = {

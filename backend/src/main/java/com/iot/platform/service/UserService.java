@@ -130,7 +130,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             }
         }
         
-        // 根据权限构建菜单树
+        // 根据权限构建菜单树（按照新的菜单结构）
         int sort = 1;
         
         // 1. 数据概览
@@ -138,42 +138,57 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             menus.add(createMenu("overview", "数据概览", "/overview", "DataAnalysis", null, sort++));
         }
         
-        // 2. 设备分组
-        if (isSuperAdmin || permissions.contains("groups")) {
-            menus.add(createMenu("groups", "设备分组", "/groups", "FolderOpened", null, sort++));
+        // 2. 设备管理（带子菜单：设备列表、视频管理、设备分组）
+        if (isSuperAdmin || permissions.contains("devices") || permissions.contains("video") || permissions.contains("groups")) {
+            List<Map<String, Object>> deviceChildren = new ArrayList<>();
+            if (isSuperAdmin || permissions.contains("devices")) {
+                deviceChildren.add(createMenu("devices", "设备列表", "/devices", "Monitor", null, 1));
+            }
+            if (isSuperAdmin || permissions.contains("video")) {
+                deviceChildren.add(createMenu("video", "视频管理", "/video", "VideoCamera", null, 2));
+            }
+            if (isSuperAdmin || permissions.contains("groups")) {
+                deviceChildren.add(createMenu("groups", "设备分组", "/groups", "FolderOpened", null, 3));
+            }
+            if (!deviceChildren.isEmpty()) {
+                menus.add(createMenu("device-management", "设备管理", "/devices", "Monitor", deviceChildren, sort++));
+            }
         }
         
-        // 3. 设备管理
-        if (isSuperAdmin || permissions.contains("devices")) {
-            menus.add(createMenu("devices", "设备管理", "/devices", "Monitor", null, sort++));
+        // 3. 能源管理（带子菜单：能源统计、能源报表、能源趋势）
+        if (isSuperAdmin || permissions.contains("energy")) {
+            List<Map<String, Object>> energyChildren = new ArrayList<>();
+            energyChildren.add(createMenu("energy-statistics", "能源统计", "/energy/statistics", "TrendCharts", null, 1));
+            energyChildren.add(createMenu("energy-report", "能源报表", "/energy/report", "Document", null, 2));
+            energyChildren.add(createMenu("energy-trend", "能源趋势", "/energy/trend", "DataAnalysis", null, 3));
+            menus.add(createMenu("energy", "能源管理", "/energy", "TrendCharts", energyChildren, sort++));
         }
         
-        // 4. 产品管理
+        // 4. 报警管理（带子菜单：报警配置、报警统计）
+        if (isSuperAdmin || permissions.contains("alarms") || permissions.contains("alarm-threshold")) {
+            List<Map<String, Object>> alarmChildren = new ArrayList<>();
+            if (isSuperAdmin || permissions.contains("alarm-threshold")) {
+                alarmChildren.add(createMenu("alarm-threshold", "报警配置", "/alarm-threshold", "Warning", null, 1));
+            }
+            if (isSuperAdmin || permissions.contains("alarms")) {
+                alarmChildren.add(createMenu("alarms", "报警统计", "/alarms", "BellFilled", null, 2));
+            }
+            if (!alarmChildren.isEmpty()) {
+                menus.add(createMenu("alarm-management", "报警管理", "/alarm-threshold", "BellFilled", alarmChildren, sort++));
+            }
+        }
+        
+        // 5. 产品管理
         if (isSuperAdmin || permissions.contains("products")) {
             menus.add(createMenu("products", "产品管理", "/products", "Box", null, sort++));
         }
         
-        // 5. 视频管理
-        if (isSuperAdmin || permissions.contains("video")) {
-            menus.add(createMenu("video", "视频管理", "/video", "VideoCamera", null, sort++));
-        }
-        
-        // 6. 报警统计
-        if (isSuperAdmin || permissions.contains("alarms")) {
-            menus.add(createMenu("alarms", "报警统计", "/alarms", "BellFilled", null, sort++));
-        }
-        
-        // 7. 报警配置
-        if (isSuperAdmin || permissions.contains("alarm-threshold")) {
-            menus.add(createMenu("alarm-threshold", "报警配置", "/alarm-threshold", "Warning", null, sort++));
-        }
-        
-        // 8. 用户管理（仅超级管理员或有权限的角色）
+        // 6. 用户管理（仅超级管理员或有权限的角色）
         if (isSuperAdmin || permissions.contains("users")) {
             menus.add(createMenu("users", "用户管理", "/users", "User", null, sort++));
         }
         
-        // 9. 角色管理（仅超级管理员或有权限的角色）
+        // 7. 角色管理（仅超级管理员或有权限的角色）
         if (isSuperAdmin || permissions.contains("roles")) {
             menus.add(createMenu("roles", "角色管理", "/roles", "Setting", null, sort++));
         }

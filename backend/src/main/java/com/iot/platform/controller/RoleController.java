@@ -193,72 +193,105 @@ public class RoleController {
         overview.put("children", null);
         permissions.add(overview);
         
-        // 2. 设备分组
+        // 2. 设备管理（子权限：devices, video, groups）
+        Map<String, Object> deviceManagement = new java.util.LinkedHashMap<>();
+        deviceManagement.put("code", "device-management");
+        deviceManagement.put("name", "设备管理");
+        deviceManagement.put("icon", "📱");
+        deviceManagement.put("sort", 2);
+        deviceManagement.put("granted", grantedSet.contains("devices") || grantedSet.contains("video") || grantedSet.contains("groups"));
+        java.util.List<Map<String, Object>> deviceChildren = new java.util.ArrayList<>();
+        Map<String, Object> devices = new java.util.LinkedHashMap<>();
+        devices.put("code", "devices");
+        devices.put("name", "设备列表");
+        devices.put("granted", grantedSet.contains("devices"));
+        deviceChildren.add(devices);
+        Map<String, Object> video = new java.util.LinkedHashMap<>();
+        video.put("code", "video");
+        video.put("name", "视频管理");
+        video.put("granted", grantedSet.contains("video"));
+        deviceChildren.add(video);
         Map<String, Object> groups = new java.util.LinkedHashMap<>();
         groups.put("code", "groups");
         groups.put("name", "设备分组");
-        groups.put("icon", "📋");
-        groups.put("sort", 2);
         groups.put("granted", grantedSet.contains("groups"));
-        groups.put("children", null);
-        permissions.add(groups);
+        deviceChildren.add(groups);
+        deviceManagement.put("children", deviceChildren);
+        permissions.add(deviceManagement);
         
-        // 3. 设备管理
-        Map<String, Object> devices = new java.util.LinkedHashMap<>();
-        devices.put("code", "devices");
-        devices.put("name", "设备管理");
-        devices.put("icon", "📱");
-        devices.put("sort", 3);
-        devices.put("granted", grantedSet.contains("devices"));
-        devices.put("children", null);
-        permissions.add(devices);
+        // 3. 能源管理（子权限：energy，子菜单：energy-statistics, energy-report, energy-trend）
+        Map<String, Object> energyManagement = new java.util.LinkedHashMap<>();
+        energyManagement.put("code", "energy");
+        energyManagement.put("name", "能源管理");
+        energyManagement.put("icon", "⚡");
+        energyManagement.put("sort", 3);
+        energyManagement.put("granted", grantedSet.contains("energy"));
+        java.util.List<Map<String, Object>> energyChildren = new java.util.ArrayList<>();
+        Map<String, Object> energyStatistics = new java.util.LinkedHashMap<>();
+        energyStatistics.put("code", "energy-statistics");
+        energyStatistics.put("name", "能源统计");
+        energyStatistics.put("granted", grantedSet.contains("energy"));
+        energyChildren.add(energyStatistics);
+        Map<String, Object> energyReport = new java.util.LinkedHashMap<>();
+        energyReport.put("code", "energy-report");
+        energyReport.put("name", "能源报表");
+        energyReport.put("granted", grantedSet.contains("energy"));
+        energyChildren.add(energyReport);
+        Map<String, Object> energyTrend = new java.util.LinkedHashMap<>();
+        energyTrend.put("code", "energy-trend");
+        energyTrend.put("name", "能源趋势");
+        energyTrend.put("granted", grantedSet.contains("energy"));
+        energyChildren.add(energyTrend);
+        energyManagement.put("children", energyChildren);
+        permissions.add(energyManagement);
         
-        // 4. 产品管理
+        // 4. 报警管理（子权限：alarm-threshold, alarms）
+        Map<String, Object> alarmManagement = new java.util.LinkedHashMap<>();
+        alarmManagement.put("code", "alarm-management");
+        alarmManagement.put("name", "报警管理");
+        alarmManagement.put("icon", "⚠️");
+        alarmManagement.put("sort", 4);
+        alarmManagement.put("granted", grantedSet.contains("alarm-threshold") || grantedSet.contains("alarms"));
+        java.util.List<Map<String, Object>> alarmChildren = new java.util.ArrayList<>();
+        Map<String, Object> alarmThreshold = new java.util.LinkedHashMap<>();
+        alarmThreshold.put("code", "alarm-threshold");
+        alarmThreshold.put("name", "报警配置");
+        alarmThreshold.put("granted", grantedSet.contains("alarm-threshold"));
+        alarmChildren.add(alarmThreshold);
+        Map<String, Object> alarms = new java.util.LinkedHashMap<>();
+        alarms.put("code", "alarms");
+        alarms.put("name", "报警统计");
+        alarms.put("granted", grantedSet.contains("alarms"));
+        alarmChildren.add(alarms);
+        alarmManagement.put("children", alarmChildren);
+        permissions.add(alarmManagement);
+        
+        // 5. 产品管理
         Map<String, Object> products = new java.util.LinkedHashMap<>();
         products.put("code", "products");
         products.put("name", "产品管理");
         products.put("icon", "📦");
-        products.put("sort", 4);
+        products.put("sort", 5);
         products.put("granted", grantedSet.contains("products"));
         products.put("children", null);
         permissions.add(products);
         
-        // 5. 报警统计
-        Map<String, Object> alarms = new java.util.LinkedHashMap<>();
-        alarms.put("code", "alarms");
-        alarms.put("name", "报警统计");
-        alarms.put("icon", "⚠️");
-        alarms.put("sort", 5);
-        alarms.put("granted", grantedSet.contains("alarms"));
-        alarms.put("children", null);
-        permissions.add(alarms);
-        
-        // 6. 报警配置
-        Map<String, Object> alarmThreshold = new java.util.LinkedHashMap<>();
-        alarmThreshold.put("code", "alarm-threshold");
-        alarmThreshold.put("name", "报警配置");
-        alarmThreshold.put("icon", "⚙️");
-        alarmThreshold.put("sort", 6);
-        alarmThreshold.put("granted", grantedSet.contains("alarm-threshold"));
-        alarmThreshold.put("children", null);
-        permissions.add(alarmThreshold);
-        
-        // 7. 用户管理（超级管理员或有权限的角色可访问，但只有超级管理员可以创建/编辑/删除用户）
+        // 6. 用户管理（超级管理员或有权限的角色可访问，但只有超级管理员可以创建/编辑/删除用户）
         Map<String, Object> users = new java.util.LinkedHashMap<>();
         users.put("code", "users");
         users.put("name", "用户管理");
         users.put("icon", "👥");
-        users.put("sort", 7);
+        users.put("sort", 6);
         users.put("granted", grantedSet.contains("users"));
         users.put("children", null);
         permissions.add(users);
         
-        // 8. 角色管理（超级管理员或有权限的角色可访问，但只有超级管理员可以创建/编辑/删除角色）
+        // 7. 角色管理（超级管理员或有权限的角色可访问，但只有超级管理员可以创建/编辑/删除角色）
         Map<String, Object> roles = new java.util.LinkedHashMap<>();
         roles.put("code", "roles");
         roles.put("name", "角色管理");
         roles.put("icon", "🎭");
-        roles.put("sort", 8);
+        roles.put("sort", 7);
         roles.put("granted", grantedSet.contains("roles"));
         roles.put("children", null);
         permissions.add(roles);

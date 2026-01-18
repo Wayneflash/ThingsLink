@@ -238,6 +238,21 @@ public class ProductController {
     }
     
     /**
+     * 初始化预置产品（智能电表、智能水表、智能气表）
+     * 幂等操作：如果产品已存在，则更新名称（修复编码问题）
+     */
+    @PostMapping("/init-preset")
+    public Result<String> initPresetProducts() {
+        try {
+            productService.initPresetProducts();
+            return Result.success("预置产品初始化成功");
+        } catch (Exception e) {
+            log.error("初始化预置产品失败", e);
+            return Result.error("初始化失败: " + e.getMessage());
+        }
+    }
+    
+    /**
      * 更新产品
      */
     @PostMapping("/update")  // 添加更新产品接口
@@ -284,6 +299,20 @@ public class ProductController {
             return Result.success("删除成功");
         } catch (Exception e) {
             log.error("删除产品失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    /**
+     * 更新产品属性（只允许更新属性名称和单位，不允许更新标识符）
+     */
+    @PostMapping("/attribute/update")
+    public Result<Attribute> updateAttribute(@RequestBody Attribute attribute) {
+        try {
+            Attribute result = productService.updateAttribute(attribute);
+            return Result.success(result, "更新成功");
+        } catch (Exception e) {
+            log.error("更新产品属性失败", e);
             return Result.error(e.getMessage());
         }
     }
