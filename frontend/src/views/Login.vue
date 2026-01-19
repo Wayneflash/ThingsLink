@@ -141,7 +141,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, nextTick } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
@@ -274,41 +274,26 @@ const handleLogin = async () => {
     if (result) {
       const { token, user, menus } = result
 
-      // 保存 token
+      // 保存 token（同步操作，立即完成）
       localStorage.setItem('token', token)
-
-      // 保存用户信息
       localStorage.setItem('userInfo', JSON.stringify(user))
-
-      // 保存菜单数据
       localStorage.setItem('menus', JSON.stringify(menus || []))
-
-      ElMessage.success('登录成功')
-
-      // 等待一小段时间确保 localStorage 已完全写入，并让消息提示显示
-      await new Promise(resolve => setTimeout(resolve, 300))
       
       // 跳转到目标页面或首页（使用 replace 避免在历史记录中留下登录页）
       const redirect = route.query.redirect || '/overview'
       
-      // 验证 token 是否已保存
-      const savedToken = localStorage.getItem('token')
-      if (!savedToken) {
-        console.error('Token 未保存成功')
-        ElMessage.error('登录状态保存失败，请重新登录')
-        return
-      }
-      
-      console.log('准备跳转到:', redirect, 'Token:', savedToken ? '已保存' : '未保存')
-      
+      // 立即跳转，不等待任何延迟（同步操作已完成后直接跳转）
       try {
-        // 使用 replace 跳转，避免在历史记录中留下登录页
-        await router.replace(redirect)
-        console.log('路由跳转成功')
+        // 使用 replace 跳转，立即执行，不等待Promise
+        router.replace(redirect)
+        
+        // 显示成功消息（异步，不阻塞跳转）
+        setTimeout(() => {
+          ElMessage.success('登录成功')
+        }, 100)
       } catch (error) {
         console.error('路由跳转失败:', error)
         // 如果路由跳转失败，使用 window.location 作为降级方案
-        ElMessage.warning('正在跳转...')
         window.location.href = redirect
       }
     } else {
