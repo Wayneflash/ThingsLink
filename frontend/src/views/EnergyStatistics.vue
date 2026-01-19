@@ -44,7 +44,7 @@
 
       <!-- 右侧内容区域 -->
       <div class="content-panel">
-      <!-- 查询条件卡片 -->
+      <!-- 查询条件卡片 - 始终显示 -->
       <el-card class="filter-card mb-6 shadow-sm" shadow="hover">
         <el-form :model="queryForm" inline class="filter-form">
           <el-form-item label="能源类型">
@@ -71,23 +71,6 @@
               value-format="YYYY-MM-DD HH:mm:ss"
               class="filter-datepicker"
             />
-          </el-form-item>
-
-          <el-form-item label="设备">
-            <el-select 
-              v-model="queryForm.deviceId" 
-              placeholder="全部设备" 
-              filterable
-              clearable
-              class="filter-select"
-            >
-              <el-option 
-                v-for="device in deviceList" 
-                :key="device.id" 
-                :label="device.deviceName" 
-                :value="device.id" 
-              />
-            </el-select>
           </el-form-item>
 
           <el-form-item class="filter-buttons">
@@ -199,52 +182,50 @@
             </div>
           </template>
 
-        <el-table 
-          :data="statistics.top10Devices" 
-          stripe
-          class="top10-table"
-          :default-sort="{ prop: 'totalConsumption', order: 'descending' }"
-        >
-          <el-table-column type="index" label="排名" width="80" align="center">
-            <template #default="{ $index }">
-              <el-tag 
-                :type="$index < 3 ? 'danger' : 'info'"
-                effect="plain"
-                size="small"
-              >
-                {{ $index + 1 }}
-              </el-tag>
-            </template>
-          </el-table-column>
+          <div class="top10-table-wrapper">
+            <el-table 
+              :data="statistics.top10Devices" 
+              stripe
+              class="top10-table"
+              :default-sort="{ prop: 'totalConsumption', order: 'descending' }"
+              size="small"
+            >
+              <el-table-column type="index" label="排名" width="70" align="center">
+                <template #default="{ $index }">
+                  <el-tag 
+                    :class="getRankTagClass($index)"
+                    effect="plain"
+                    size="small"
+                    class="rank-tag"
+                  >
+                    {{ $index + 1 }}
+                  </el-tag>
+                </template>
+              </el-table-column>
 
-          <el-table-column prop="deviceName" label="设备名称" min-width="180">
-            <template #default="{ row }">
-              <div class="flex items-center">
-                <el-icon class="mr-2 text-gray-400"><Monitor /></el-icon>
-                <span>{{ row.deviceName }}</span>
-              </div>
-            </template>
-          </el-table-column>
+              <el-table-column prop="deviceName" label="设备名称" min-width="140" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <div class="flex items-center gap-1.5">
+                    <el-icon class="text-gray-400" :size="16"><Monitor /></el-icon>
+                    <span class="text-sm">{{ row.deviceName }}</span>
+                  </div>
+                </template>
+              </el-table-column>
 
-          <el-table-column prop="deviceCode" label="设备编码" min-width="150" />
+              <el-table-column prop="deviceCode" label="设备编码" min-width="120" show-overflow-tooltip />
 
-          <el-table-column prop="totalConsumption" label="总能耗" width="180" sortable align="right">
-            <template #default="{ row }">
-              <span class="font-semibold text-gray-900">
-                {{ formatNumber(row.totalConsumption) }}
-              </span>
-              <span class="ml-1 text-sm text-gray-500">{{ row.unit }}</span>
-            </template>
-          </el-table-column>
-
-          <el-table-column prop="recordCount" label="记录数" width="120" align="center">
-            <template #default="{ row }">
-              <el-tag size="small" type="info" effect="plain">
-                {{ row.recordCount }}
-              </el-tag>
-            </template>
-          </el-table-column>
-        </el-table>
+              <el-table-column prop="totalConsumption" label="总能耗" width="140" sortable align="right">
+                <template #default="{ row }">
+                  <div class="flex items-center justify-end gap-1">
+                    <span class="font-semibold text-gray-900 text-sm">
+                      {{ formatNumber(row.totalConsumption) }}
+                    </span>
+                    <span class="text-xs text-gray-500">{{ row.unit }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </el-card>
 
         <!-- Top10设备柱状图 -->
@@ -301,7 +282,6 @@ import { ElMessage } from 'element-plus'
 import { Search, Refresh, Monitor, List, InfoFilled, Lightning, TrendCharts, DataAnalysis } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getEnergyStatistics } from '@/api/energy'
-import { getDeviceList } from '@/api/device'
 import GroupTree from '@/components/GroupTree.vue'
 import { getGroupTree } from '@/api/group'
 import { flattenTree } from '@/utils/tree'
@@ -322,15 +302,11 @@ let lineChartInstance = null
 // 查询表单
 const queryForm = reactive({
   energyType: 'electric', // 默认电力
-  deviceId: null,
   groupId: null
 })
 
 // 日期范围
 const dateRange = ref([])
-
-// 设备列表
-const deviceList = ref([])
 
 // 分组列表
 const groups = ref([])
@@ -369,21 +345,6 @@ const statistics = ref({
   top10Devices: []
 })
 
-// 加载设备列表
-const loadDevices = async () => {
-  try {
-    const res = await getDeviceList({
-      page: 1,
-      pageSize: 1000 // 获取所有设备
-    })
-    if (res && res.list) {
-      deviceList.value = res.list
-    }
-  } catch (error) {
-    console.error('加载设备列表失败:', error)
-  }
-}
-
 // 查询数据
 const handleQuery = async () => {
   // 参数验证
@@ -404,7 +365,6 @@ const handleQuery = async () => {
       energyType: queryForm.energyType,
       startTime: dateRange.value[0],
       endTime: dateRange.value[1],
-      deviceId: queryForm.deviceId || null,
       groupId: queryForm.groupId || null
     }
 
@@ -446,7 +406,6 @@ const handleQuery = async () => {
 // 重置查询
 const resetQuery = () => {
   queryForm.energyType = 'electric'
-  queryForm.deviceId = null
   queryForm.groupId = null
   dateRange.value = []
   statistics.value = {
@@ -465,6 +424,19 @@ const formatNumber = (num) => {
     return '0.00'
   }
   return Number(num).toFixed(2)
+}
+
+// 获取排名标签样式类
+const getRankTagClass = (index) => {
+  if (index === 0) {
+    return 'rank-tag rank-tag-gold'
+  } else if (index === 1) {
+    return 'rank-tag rank-tag-silver'
+  } else if (index === 2) {
+    return 'rank-tag rank-tag-bronze'
+  } else {
+    return 'rank-tag rank-tag-normal'
+  }
 }
 
 // 渲染Top10设备柱状图
@@ -835,8 +807,8 @@ onMounted(async () => {
     formatDateTime(endTime)
   ]
 
-  // 加载设备列表和分组列表
-  await Promise.all([loadDevices(), loadGroups()])
+  // 加载分组列表
+  await loadGroups()
   
   // 默认查询电表数据
   await handleQuery()
@@ -876,6 +848,7 @@ onBeforeUnmount(() => {
   gap: 12px;
   padding: 0 12px;
   height: calc(100vh - 110px);
+  overflow: hidden;
 }
 
 .tree-panel {
@@ -892,6 +865,28 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  flex: 1;
+  padding-right: 4px;
+}
+
+.content-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content-panel::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.content-panel::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.content-panel::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .all-groups-btn {
@@ -951,6 +946,7 @@ onBeforeUnmount(() => {
 
 .filter-card {
   border-radius: 12px;
+  flex-shrink: 0;
 }
 
 .filter-form {
@@ -1010,7 +1006,8 @@ onBeforeUnmount(() => {
 }
 
 .statistics-cards {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .stat-card {
@@ -1092,8 +1089,9 @@ onBeforeUnmount(() => {
 .charts-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 @media (max-width: 1200px) {
@@ -1104,6 +1102,16 @@ onBeforeUnmount(() => {
 
 .top10-card {
   border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.top10-card :deep(.el-card__body) {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .chart-card {
@@ -1112,8 +1120,31 @@ onBeforeUnmount(() => {
 
 .chart-container {
   width: 100%;
-  height: 400px;
-  min-height: 400px;
+  height: 360px;
+  min-height: 360px;
+}
+
+.chart-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-card :deep(.el-card__body) {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.top10-table-wrapper {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.top10-table {
+  width: 100%;
 }
 
 .top10-table :deep(.el-table__header) {
@@ -1124,9 +1155,48 @@ onBeforeUnmount(() => {
   background-color: #f9fafb;
   color: #374151;
   font-weight: 600;
+  padding: 10px 8px;
+  font-size: 13px;
+}
+
+.top10-table :deep(.el-table__body td) {
+  padding: 10px 8px;
+  font-size: 13px;
+}
+
+.top10-table :deep(.el-table__row) {
+  height: 40px;
 }
 
 .top10-table :deep(.el-table__row:hover) {
   background-color: #f3f4f6;
+}
+
+.rank-tag {
+  min-width: 32px;
+  justify-content: center;
+  border: none !important;
+  font-weight: 600;
+}
+
+.rank-tag-gold {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+}
+
+.rank-tag-silver {
+  background: linear-gradient(135deg, #8b9cf6 0%, #a68ad4 100%) !important;
+  color: white !important;
+}
+
+.rank-tag-bronze {
+  background: linear-gradient(135deg, #a5b4fc 0%, #c19ee0 100%) !important;
+  color: white !important;
+}
+
+.rank-tag-normal {
+  background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%) !important;
+  color: #667eea !important;
+  border: 1px solid #c7d2fe !important;
 }
 </style>

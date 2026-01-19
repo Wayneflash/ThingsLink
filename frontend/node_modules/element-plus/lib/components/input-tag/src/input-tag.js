@@ -2,7 +2,7 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-var tag = require('../../tag/src/tag.js');
+var tag = require('../../tag/src/tag2.js');
 var iconsVue = require('@element-plus/icons-vue');
 var runtime = require('../../../utils/vue/props/runtime.js');
 var aria = require('../../../constants/aria.js');

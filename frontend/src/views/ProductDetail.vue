@@ -140,12 +140,18 @@
           </div>
         </el-form-item>
         <el-form-item label="协议类型" prop="protocol">
-          <el-select v-model="editForm.protocol" placeholder="请选择协议类型" style="width: 100%;">
+          <el-select 
+            v-model="editForm.protocol" 
+            placeholder="请选择协议类型" 
+            style="width: 100%;"
+            disabled
+          >
             <el-option label="MQTT" value="MQTT" />
-            <el-option label="HTTP" value="HTTP" />
-            <el-option label="CoAP" value="CoAP" />
-            <el-option label="Modbus" value="Modbus" />
           </el-select>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            当前仅支持MQTT协议，其他协议类型正在开发中
+          </div>
         </el-form-item>
         <el-form-item label="产品描述">
           <el-input v-model="editForm.description" type="textarea" :rows="4" placeholder="请输入产品描述" />

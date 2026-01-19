@@ -79,15 +79,17 @@
           </div>
         </el-form-item>
         <el-form-item label="协议类型" prop="protocol">
-          <el-select v-model="productForm.protocol" placeholder="请选择协议类型" style="width: 100%;">
+          <el-select 
+            v-model="productForm.protocol" 
+            placeholder="请选择协议类型" 
+            style="width: 100%;"
+            disabled
+          >
             <el-option label="MQTT（推荐，轻量级物联网协议）" value="MQTT" />
-            <el-option label="HTTP（适合请求-响应场景）" value="HTTP" />
-            <el-option label="CoAP（适合资源受限设备）" value="CoAP" />
-            <el-option label="Modbus（工业设备常用）" value="Modbus" />
           </el-select>
           <div class="input-hint">
             <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
-            选择设备使用的通信协议，影响设备接入方式
+            当前仅支持MQTT协议，其他协议类型正在开发中
           </div>
         </el-form-item>
         <el-form-item label="产品描述" prop="description">

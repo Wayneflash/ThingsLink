@@ -73,23 +73,6 @@
             />
           </el-form-item>
 
-          <el-form-item label="设备">
-            <el-select 
-              v-model="queryForm.deviceId" 
-              placeholder="全部设备" 
-              filterable
-              clearable
-              class="filter-select"
-            >
-              <el-option 
-                v-for="device in deviceList" 
-                :key="device.id" 
-                :label="device.deviceName" 
-                :value="device.id" 
-              />
-            </el-select>
-          </el-form-item>
-
           <el-form-item label="时间粒度">
             <el-select 
               v-model="queryForm.dateFormat" 
@@ -155,7 +138,6 @@ import { ref, reactive, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh, List, InfoFilled } from '@element-plus/icons-vue'
 import { getEnergyTrend } from '@/api/energy'
-import { getDeviceList } from '@/api/device'
 import GroupTree from '@/components/GroupTree.vue'
 import { getGroupTree } from '@/api/group'
 import { flattenTree } from '@/utils/tree'
@@ -204,9 +186,6 @@ const loadGroups = async () => {
 // 日期范围
 const dateRange = ref([])
 
-// 设备列表
-const deviceList = ref([])
-
 // 趋势数据
 const trendData = ref([])
 
@@ -234,21 +213,6 @@ const getUnit = (type) => {
   return map[type] || ''
 }
 
-// 加载设备列表
-const loadDevices = async () => {
-  try {
-    const res = await getDeviceList({
-      page: 1,
-      pageSize: 1000
-    })
-    if (res && res.list) {
-      deviceList.value = res.list
-    }
-  } catch (error) {
-    console.error('加载设备列表失败:', error)
-  }
-}
-
 // 查询数据
 const handleQuery = async () => {
   if (!queryForm.energyType) {
@@ -269,7 +233,6 @@ const handleQuery = async () => {
       energyType: queryForm.energyType,
       startTime: dateRange.value[0],
       endTime: dateRange.value[1],
-      deviceId: queryForm.deviceId || null,
       groupId: queryForm.groupId || null,
       dateFormat: queryForm.dateFormat || 'day'
     }
@@ -429,7 +392,6 @@ const renderChart = () => {
 // 重置查询
 const resetQuery = () => {
   queryForm.energyType = 'electric'
-  queryForm.deviceId = null
   queryForm.groupId = null
   queryForm.dateFormat = 'day'
   dateRange.value = []
@@ -482,7 +444,7 @@ onMounted(async () => {
     formatDateTime(endTime)
   ]
 
-  await Promise.all([loadDevices(), loadGroups()])
+  await loadGroups()
   await handleQuery()
   
   window.addEventListener('resize', handleResize)
