@@ -1,5 +1,8 @@
 <template>
   <view class="login-page">
+    <view class="settings-button" @click="goToSettings">
+      <Icon name="Setting" :size="24" color="#86868b" />
+    </view>
     <view class="login-content">
       <view class="logo-section">
         <view class="logo-icon">
@@ -60,6 +63,11 @@ export default {
     }
   },
   methods: {
+    goToSettings() {
+      uni.navigateTo({
+        url: '/pages/login/settings'
+      })
+    },
     async handleLogin() {
       if (!this.loginForm.username || !this.loginForm.password) {
         uni.showToast({
@@ -123,6 +131,29 @@ export default {
   min-height: 100vh;
   background: #f5f5f7;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  position: relative;
+}
+
+.settings-button {
+  position: fixed;
+  top: 48rpx;
+  right: 48rpx;
+  width: 80rpx;
+  height: 80rpx;
+  background: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.settings-button:active {
+  transform: scale(0.95);
+  background: #f5f5f7;
 }
 
 .login-content {

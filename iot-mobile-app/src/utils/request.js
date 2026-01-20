@@ -1,10 +1,31 @@
 // UniApp 请求封装 - 基于现有 request.js 适配
 
-// API 基础地址 - 根据环境配置
-// 开发环境使用代理路径，生产环境需要完整地址
-const baseURL = process.env.NODE_ENV === 'development' 
-  ? '/api'  // 开发环境使用代理（在manifest.json中配置）
-  : 'https://your-api-domain.com'  // 生产环境，请替换为实际地址
+// 获取API基础地址
+function getBaseURL() {
+  // 优先从本地存储读取服务器配置（无论开发环境还是生产环境）
+  try {
+    const savedConfig = uni.getStorageSync('api_server_config')
+    if (savedConfig) {
+      const config = typeof savedConfig === 'string' ? JSON.parse(savedConfig) : savedConfig
+      const host = config.host || '117.72.222.8'
+      const port = config.port || '8080'
+      return `http://${host}:${port}`
+    }
+  } catch (e) {
+    console.error('读取服务器配置失败:', e)
+  }
+  
+  // 如果没有配置，开发环境使用代理路径，生产环境使用默认地址
+  if (process.env.NODE_ENV === 'development') {
+    return '/api'  // 开发环境使用代理（在manifest.json中配置）
+  }
+  
+  // 默认地址
+  return 'http://117.72.222.8:8080'
+}
+
+// API 基础地址
+const baseURL = getBaseURL()
 
 // Token失效处理函数
 const handleTokenExpired = (message) => {
@@ -34,10 +55,13 @@ const request = (options) => {
     // 获取 token
     const token = uni.getStorageSync('token')
     
+    // 动态获取 baseURL（每次请求都重新读取，支持运行时修改）
+    const currentBaseURL = getBaseURL()
+    
     // 构建完整 URL
     const url = options.url.startsWith('http') 
       ? options.url 
-      : baseURL + options.url
+      : currentBaseURL + options.url
     
     // 统一处理 data/params（GET 请求用 params，POST 请求用 data）
     const method = (options.method || 'POST').toUpperCase()

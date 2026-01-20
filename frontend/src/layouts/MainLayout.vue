@@ -92,6 +92,9 @@
         </div>
 
         <div class="header-right">
+          <!-- 下载APP -->
+          <AppDownload />
+          
           <!-- 通知图标 -->
           <NotificationPanel ref="notificationPanelRef" />
 
@@ -166,6 +169,7 @@ import {
   Document
 } from '@element-plus/icons-vue'
 import NotificationPanel from '@/components/NotificationPanel.vue'
+import AppDownload from '@/components/AppDownload.vue'
 
 const router = useRouter()
 const route = useRoute()

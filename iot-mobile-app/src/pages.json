@@ -8,6 +8,12 @@
 			}
 		},
 		{
+			"path": "pages/login/settings",
+			"style": {
+				"navigationBarTitleText": "系统设置"
+			}
+		},
+		{
 			"path": "pages/overview/overview",
 			"style": {
 				"navigationBarTitleText": "概览"

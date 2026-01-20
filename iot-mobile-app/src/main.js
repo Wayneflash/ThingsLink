@@ -4,6 +4,22 @@ import './uni.promisify.adaptor'
 
 Vue.config.productionTip = false
 
+// 初始化默认服务器配置（如果不存在）
+if (typeof uni !== 'undefined') {
+  try {
+    const savedConfig = uni.getStorageSync('api_server_config')
+    if (!savedConfig) {
+      // 设置默认服务器配置
+      uni.setStorageSync('api_server_config', JSON.stringify({
+        host: '117.72.222.8',
+        port: '8080'
+      }))
+    }
+  } catch (e) {
+    console.error('初始化服务器配置失败:', e)
+  }
+}
+
 // 全局错误处理 - 防止显示 [object Object] 错误
 Vue.config.errorHandler = (err, vm, info) => {
   console.error('Vue Error:', err, info)
