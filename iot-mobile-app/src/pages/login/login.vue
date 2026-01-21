@@ -18,10 +18,13 @@
             <Icon name="User" :size="20" color="#667eea" />
           </view>
           <input 
-            v-model="loginForm.username" 
+            :value="loginForm.username"
+            @input="(e) => { loginForm.username = e.detail.value }"
             placeholder="请输入用户名" 
             class="form-input"
             placeholder-style="color: #86868b"
+            autocomplete="off"
+            :auto-focus="false"
           />
         </view>
         <view class="input-group">
@@ -29,11 +32,14 @@
             <Icon name="Lock" :size="20" color="#667eea" />
           </view>
           <input 
-            v-model="loginForm.password" 
+            :value="loginForm.password"
+            @input="(e) => { loginForm.password = e.detail.value }"
             type="password"
             placeholder="请输入密码" 
             class="form-input"
             placeholder-style="color: #86868b"
+            autocomplete="new-password"
+            :auto-focus="false"
           />
         </view>
         
@@ -56,13 +62,75 @@ export default {
   data() {
     return {
       loginForm: {
-        username: 'admin',
-        password: 'admin123456'
+        username: '',
+        password: ''
       },
       loading: false
     }
   },
+  onLoad() {
+    // 立即强制清空
+    this.loginForm.username = ''
+    this.loginForm.password = ''
+    this.$nextTick(() => {
+      this.clearForm()
+    })
+  },
+  onShow() {
+    // 每次显示页面时都强制清空
+    this.loginForm.username = ''
+    this.loginForm.password = ''
+    this.$nextTick(() => {
+      this.clearForm()
+    })
+  },
+  onReady() {
+    // 页面渲染完成后多次强制清空，确保覆盖自动填充
+    this.clearForm()
+    setTimeout(() => {
+      this.clearForm()
+    }, 50)
+    setTimeout(() => {
+      this.clearForm()
+    }, 150)
+    setTimeout(() => {
+      this.clearForm()
+    }, 300)
+    setTimeout(() => {
+      this.clearForm()
+    }, 500)
+  },
+  mounted() {
+    // Vue 生命周期也清空
+    this.clearForm()
+  },
   methods: {
+    clearForm() {
+      // 强制设置为空字符串
+      this.loginForm.username = ''
+      this.loginForm.password = ''
+      // 强制更新视图
+      this.$nextTick(() => {
+        this.$forceUpdate()
+        // #ifdef H5
+        // 直接操作 DOM 清空（H5 环境）
+        try {
+          const inputs = document.querySelectorAll('.form-input')
+          inputs.forEach(input => {
+            if (input) {
+              input.value = ''
+              input.setAttribute('value', '')
+              // 触发 input 事件确保 Vue 响应
+              const event = new Event('input', { bubbles: true })
+              input.dispatchEvent(event)
+            }
+          })
+        } catch (e) {
+          console.log('DOM操作失败:', e)
+        }
+        // #endif
+      })
+    },
     goToSettings() {
       uni.navigateTo({
         url: '/pages/login/settings'

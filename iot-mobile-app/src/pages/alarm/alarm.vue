@@ -1184,42 +1184,52 @@ export default {
   text-align: center;
 }
 
-/* 模态框样式 */
+/* 模态框样式 - 优化移动端显示 */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(8px);
-  padding: 32rpx;
+  padding: 0;
   box-sizing: border-box;
 }
 
 .modal-container {
   width: 100%;
-  max-width: 640rpx;
-  max-height: 85vh;
+  max-height: 90vh;
   background: #ffffff;
-  border-radius: 32rpx;
+  border-radius: 32rpx 32rpx 0 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.24);
+  box-shadow: 0 -8rpx 32rpx rgba(0, 0, 0, 0.16);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 32rpx;
+  padding: 32rpx 32rpx 24rpx;
   border-bottom: 1rpx solid #e5e7eb;
   flex-shrink: 0;
+  background: #ffffff;
 }
 
 .modal-title {
@@ -1227,32 +1237,35 @@ export default {
   font-weight: 600;
   color: #1d1d1f;
   line-height: 1.4;
+  letter-spacing: -0.5px;
 }
 
 .modal-close-btn {
-  width: 48rpx;
-  height: 48rpx;
+  width: 56rpx;
+  height: 56rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   border-radius: 50%;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .modal-close-btn:active {
   background: #f5f5f7;
+  transform: scale(0.95);
 }
 
 .modal-scroll-body {
   flex: 1;
   padding: 32rpx;
   min-height: 0;
-  max-height: calc(85vh - 200rpx);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-form-item {
-  margin-bottom: 48rpx;
+  margin-bottom: 40rpx;
 }
 
 .modal-form-item:last-child {
@@ -1261,10 +1274,11 @@ export default {
 
 .modal-form-label {
   display: block;
-  font-size: 30rpx;
+  font-size: 32rpx;
   color: #1d1d1f;
   margin-bottom: 20rpx;
   font-weight: 600;
+  line-height: 1.5;
 }
 
 .textarea-wrapper {
@@ -1273,12 +1287,12 @@ export default {
 
 .modal-textarea {
   width: 100%;
-  min-height: 240rpx;
+  min-height: 280rpx;
   padding: 24rpx;
   background: #f5f5f7;
-  border: 1rpx solid #e5e7eb;
+  border: 2rpx solid #e5e7eb;
   border-radius: 16rpx;
-  font-size: 30rpx;
+  font-size: 32rpx;
   color: #1d1d1f;
   box-sizing: border-box;
   line-height: 1.6;
@@ -1290,18 +1304,20 @@ export default {
   border-color: #667eea;
   background: #ffffff;
   outline: none;
+  box-shadow: 0 0 0 4rpx rgba(102, 126, 234, 0.1);
 }
 
 .char-counter {
   position: absolute;
-  bottom: 12rpx;
-  right: 16rpx;
+  bottom: 16rpx;
+  right: 20rpx;
   font-size: 24rpx;
   color: #86868b;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 4rpx 8rpx;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 6rpx 12rpx;
   border-radius: 8rpx;
   pointer-events: none;
+  font-weight: 500;
 }
 
 .upload-images-grid {
@@ -1330,9 +1346,9 @@ export default {
   position: absolute;
   top: 8rpx;
   right: 8rpx;
-  width: 48rpx;
-  height: 48rpx;
-  background: rgba(0, 0, 0, 0.6);
+  width: 52rpx;
+  height: 52rpx;
+  background: rgba(0, 0, 0, 0.65);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1340,11 +1356,12 @@ export default {
   cursor: pointer;
   transition: all 0.2s ease;
   backdrop-filter: blur(4px);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
 }
 
 .image-delete-btn:active {
-  background: rgba(0, 0, 0, 0.8);
-  transform: scale(0.95);
+  background: rgba(0, 0, 0, 0.85);
+  transform: scale(0.9);
 }
 
 .upload-image-btn {
@@ -1364,12 +1381,12 @@ export default {
 
 .upload-image-btn:active {
   border-color: #667eea;
-  background: #f5f5f7;
+  background: #f0f4ff;
   transform: scale(0.98);
 }
 
 .upload-btn-text {
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: #86868b;
   font-weight: 500;
 }
@@ -1379,20 +1396,23 @@ export default {
   font-size: 24rpx;
   color: #86868b;
   line-height: 1.5;
+  margin-top: 8rpx;
 }
 
 .modal-footer {
   display: flex;
-  gap: 24rpx;
+  gap: 20rpx;
   padding: 24rpx 32rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
   border-top: 1rpx solid #e5e7eb;
   flex-shrink: 0;
   background: #ffffff;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.04);
 }
 
 .footer-btn {
   flex: 1;
-  height: 88rpx;
+  height: 96rpx;
   border-radius: 20rpx;
   font-size: 32rpx;
   font-weight: 600;
@@ -1402,17 +1422,19 @@ export default {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  cursor: pointer;
 }
 
 .cancel-footer-btn {
   background: #ffffff;
   color: #1d1d1f;
-  border: 1rpx solid #e5e7eb;
+  border: 2rpx solid #e5e7eb;
 }
 
 .cancel-footer-btn:active {
   background: #f5f5f7;
-  transform: translateY(1rpx);
+  border-color: #d1d5db;
+  transform: scale(0.98);
 }
 
 .confirm-footer-btn {
@@ -1423,7 +1445,7 @@ export default {
 
 .confirm-footer-btn:active:not([disabled]) {
   opacity: 0.9;
-  transform: translateY(1rpx);
+  transform: scale(0.98);
   box-shadow: 0 2rpx 8rpx rgba(102, 126, 234, 0.25);
 }
 
@@ -1431,38 +1453,45 @@ export default {
   opacity: 0.5;
   transform: none;
   box-shadow: none;
+  cursor: not-allowed;
 }
 
-/* 详情样式 */
+/* 详情样式 - 优化移动端显示 */
 .detail-item {
-  margin-bottom: 32rpx;
+  margin-bottom: 36rpx;
+  padding-bottom: 24rpx;
+  border-bottom: 1rpx solid #f5f5f7;
 }
 
 .detail-item:last-child {
   margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .detail-label {
   display: block;
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: #86868b;
   margin-bottom: 12rpx;
   font-weight: 500;
+  line-height: 1.5;
 }
 
 .detail-value {
   display: block;
-  font-size: 30rpx;
+  font-size: 32rpx;
   color: #1d1d1f;
   line-height: 1.6;
   word-break: break-word;
+  font-weight: 400;
 }
 
 .detail-images {
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
-  margin-top: 12rpx;
+  margin-top: 16rpx;
 }
 
 .detail-image {
@@ -1470,6 +1499,13 @@ export default {
   height: 200rpx;
   border-radius: 16rpx;
   cursor: pointer;
+  object-fit: cover;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease;
+}
+
+.detail-image:active {
+  transform: scale(0.98);
 }
 
 .empty-state {

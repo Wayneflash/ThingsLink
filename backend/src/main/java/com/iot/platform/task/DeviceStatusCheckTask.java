@@ -178,18 +178,19 @@ public class DeviceStatusCheckTask {
             // 离线报警使用特殊标识 "__offline__" 作为 metric
             final String OFFLINE_METRIC = "__offline__";
             
-            // 如果开启了堆叠模式，检查是否已有未处理的离线报警
+            // 如果开启了堆叠模式，检查是否已有未恢复的离线报警
+            // 注意：堆叠模式只检查 recovered=0（未恢复），不检查 status（处理状态）
+            // 因为用户可能已经处理了报警，但设备仍然离线，此时不应该重复触发报警
             if (stackMode) {
                 LambdaQueryWrapper<AlarmLog> checkWrapper = new LambdaQueryWrapper<>();
                 checkWrapper.eq(AlarmLog::getDeviceId, device.getId())
                            .eq(AlarmLog::getMetric, OFFLINE_METRIC)
-                           .eq(AlarmLog::getStatus, 0) // 未处理
-                           .eq(AlarmLog::getRecovered, 0); // 未恢复
+                           .eq(AlarmLog::getRecovered, 0); // 只检查是否未恢复，不检查处理状态
                 
                 long existingCount = alarmLogService.count(checkWrapper);
                 if (existingCount > 0) {
-                    log.debug("堆叠模式 - 跳过重复离线报警: 设备={}, 已有未处理的离线报警", device.getDeviceCode());
-                    return; // 已有未处理的离线报警，不重复触发
+                    log.debug("堆叠模式 - 跳过重复离线报警: 设备={}, 已有未恢复的离线报警", device.getDeviceCode());
+                    return; // 已有未恢复的离线报警，不重复触发
                 }
             }
             

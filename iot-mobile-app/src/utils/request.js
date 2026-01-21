@@ -2,7 +2,13 @@
 
 // 获取API基础地址
 function getBaseURL() {
-  // 优先从本地存储读取服务器配置（无论开发环境还是生产环境）
+  // 开发环境优先使用本地代理（方便本地开发调试）
+  if (process.env.NODE_ENV === 'development') {
+    // 开发环境优先使用代理路径（代理到 localhost:8080）
+    return '/api'
+  }
+  
+  // 生产环境：优先从本地存储读取服务器配置
   try {
     const savedConfig = uni.getStorageSync('api_server_config')
     if (savedConfig) {
@@ -15,12 +21,7 @@ function getBaseURL() {
     console.error('读取服务器配置失败:', e)
   }
   
-  // 如果没有配置，开发环境使用代理路径，生产环境使用默认地址
-  if (process.env.NODE_ENV === 'development') {
-    return '/api'  // 开发环境使用代理（在manifest.json中配置）
-  }
-  
-  // 默认地址
+  // 默认地址（生产环境）
   return 'http://117.72.222.8:8080'
 }
 
