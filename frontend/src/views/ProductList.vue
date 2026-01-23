@@ -27,7 +27,12 @@
         <el-table-column prop="id" label="产品ID" width="80" />
         <el-table-column prop="productName" label="产品名称" />
         <el-table-column prop="productModel" label="产品型号" />
-        <el-table-column prop="protocol" label="协议类型" />
+        <el-table-column prop="protocol" label="协议类型" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.protocol === 'MQTT2.0'" type="success" size="small">MQTT2.0</el-tag>
+            <el-tag v-else type="info" size="small">{{ row.protocol || 'MQTT1.0' }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="属性数量" width="100" align="center">
           <template #default="{ row }">
             {{ row.attrCount || 0 }} 个
@@ -83,13 +88,14 @@
             v-model="productForm.protocol" 
             placeholder="请选择协议类型" 
             style="width: 100%;"
-            disabled
           >
-            <el-option label="MQTT（推荐，轻量级物联网协议）" value="MQTT" />
+            <el-option label="MQTT1.0（原有格式，兼容旧设备）" value="MQTT1.0" />
+            <el-option label="MQTT2.0（新格式，推荐使用）" value="MQTT2.0" />
           </el-select>
           <div class="input-hint">
             <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
-            当前仅支持MQTT协议，其他协议类型正在开发中
+            MQTT1.0：使用原有格式（did/content/addr/addrv/ctime/pid）<br/>
+            MQTT2.0：使用新格式（id/version/ack/params/clientID/properties/name/value/timestamp）
           </div>
         </el-form-item>
         <el-form-item label="产品描述" prop="description">
@@ -151,7 +157,7 @@ const productForm = ref({
   id: null,
   productName: '',
   productModel: '',
-  protocol: 'MQTT',
+  protocol: 'MQTT1.0', // 默认使用 MQTT1.0
   description: ''
 })
 
@@ -223,7 +229,7 @@ const showCreateDialog = () => {
     id: null,
     productName: '',
     productModel: '',
-    protocol: 'MQTT',
+    protocol: 'MQTT1.0', // 默认使用 MQTT1.0
     description: ''
   }
   productDialogVisible.value = true

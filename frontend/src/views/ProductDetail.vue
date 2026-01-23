@@ -140,17 +140,18 @@
           </div>
         </el-form-item>
         <el-form-item label="协议类型" prop="protocol">
-          <el-select 
-            v-model="editForm.protocol" 
-            placeholder="请选择协议类型" 
+          <el-select
+            v-model="editForm.protocol"
+            placeholder="请选择协议类型"
             style="width: 100%;"
             disabled
           >
-            <el-option label="MQTT" value="MQTT" />
+            <el-option label="MQTT1.0（原有格式，兼容旧设备）" value="MQTT1.0" />
+            <el-option label="MQTT2.0（新格式，推荐使用）" value="MQTT2.0" />
           </el-select>
           <div class="input-hint">
             <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
-            当前仅支持MQTT协议，其他协议类型正在开发中
+            协议类型创建后不可修改，如需更改请删除产品后重新创建
           </div>
         </el-form-item>
         <el-form-item label="产品描述">

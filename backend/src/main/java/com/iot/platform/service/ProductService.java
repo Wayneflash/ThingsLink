@@ -42,9 +42,18 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
             throw new RuntimeException("产品型号已存在: " + product.getProductModel());
         }
         
+        // 兼容处理：如果 protocol 是 "MQTT"，转换为 "MQTT1.0"
+        if (product.getProtocol() != null && "MQTT".equalsIgnoreCase(product.getProtocol())) {
+            product.setProtocol("MQTT1.0");
+        }
+        // 如果 protocol 为空，默认设置为 MQTT1.0
+        if (product.getProtocol() == null || product.getProtocol().trim().isEmpty()) {
+            product.setProtocol("MQTT1.0");
+        }
+        
         // 保存产品
         this.save(product);
-        log.info("创建产品成功: {}", product.getProductName());
+        log.info("创建产品成功: {}，协议类型: {}", product.getProductName(), product.getProtocol());
         return product;
     }
     

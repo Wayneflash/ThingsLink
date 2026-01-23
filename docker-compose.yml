@@ -41,56 +41,17 @@ services:
       - EMQX_NAME=emqx
       - EMQX_HOST=127.0.0.1
     ports:
-      - "1883:1883"      # MQTT端口
-      - "8083:8083"      # MQTT WebSocket
-      - "8084:8084"      # MQTT SSL
-      - "8883:8883"      # EMQX Dashboard
-      - "18083:18083"    # Dashboard
+      - "11883:1883"      # MQTT端口
+      - "18083:8083"      # MQTT WebSocket
+      - "18084:8084"      # MQTT SSL
+      - "18883:8883"      # MQTT SSL
+      - "28083:18083"    # Dashboard
     volumes:
       - emqx-data:/opt/emqx/data
       - emqx-log:/opt/emqx/log
     networks:
       - iot-network
   
-  # Backend (Spring Boot)
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: iot-backend
-    restart: always
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/iot_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=root123456
-      - SPRING_REDIS_HOST=redis
-      - SPRING_REDIS_PORT=6379
-      - SPRING_REDIS_PASSWORD=redis123456
-      - MQTT_BROKER_URL=tcp://emqx:1883
-      - TZ=Asia/Shanghai
-    depends_on:
-      - mysql
-      - redis
-      - emqx
-    networks:
-      - iot-network
-  
-  # Frontend (Nginx)
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: iot-frontend
-    restart: always
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-    networks:
-      - iot-network
-
 volumes:
   mysql-data:
   emqx-data:

@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.iot.platform.common.Result;
 import com.iot.platform.entity.Command;
 import com.iot.platform.entity.Device;
+import com.iot.platform.entity.Product;
 import com.iot.platform.mapper.CommandMapper;
 import com.iot.platform.mqtt.MqttPublisher;
 import com.iot.platform.service.DeviceLogService;
 import com.iot.platform.service.DeviceService;
+import com.iot.platform.service.ProductService;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +24,7 @@ import java.util.Map;
 /**
  * 命令下发 Controller
  * 异步下发模式：接口仅负责将命令发送到MQTT，不等待设备响应
+ * 支持 MQTT1.0 和 MQTT2.0 两种协议格式（根据产品 protocol 字段自动选择）
  */
 @Slf4j
 @RestController
@@ -37,6 +40,9 @@ public class CommandController {
     
     @Resource
     private DeviceService deviceService;
+    
+    @Resource
+    private ProductService productService;
     
     @Resource
     private DeviceLogService deviceLogService;
@@ -91,12 +97,31 @@ public class CommandController {
                 return Result.error("设备不存在");
             }
             
+            // 获取产品信息，确定协议类型（MQTT1.0 或 MQTT2.0）
+            String protocol = "MQTT1.0"; // 默认使用 MQTT1.0（兼容旧数据）
+            if (device.getProductId() != null) {
+                Product product = productService.getById(device.getProductId());
+                if (product != null && product.getProtocol() != null) {
+                    String productProtocol = product.getProtocol();
+                    // 兼容旧数据：如果 protocol 是 "MQTT"，当作 "MQTT1.0" 处理
+                    if ("MQTT".equalsIgnoreCase(productProtocol)) {
+                        protocol = "MQTT1.0";
+                    } else if ("MQTT1.0".equalsIgnoreCase(productProtocol) || "MQTT2.0".equalsIgnoreCase(productProtocol)) {
+                        protocol = productProtocol;
+                    } else {
+                        // 未知协议类型，默认使用 MQTT1.0
+                        protocol = "MQTT1.0";
+                    }
+                }
+            }
+            log.info("设备 {} 使用 {} 协议格式下发命令", request.getDeviceCode(), protocol);
+            
             // 生成命令唯一ID
             String commandId = "CMD" + System.currentTimeMillis();
             
-            // 批量下发命令到MQTT（不等待设备响应）
+            // 批量下发命令到MQTT（不等待设备响应，根据产品配置选择协议格式）
             for (CommandItem cmd : request.getCommands()) {
-                mqttPublisher.sendCommand(request.getDeviceCode(), cmd.getAddr(), cmd.getAddrv());
+                mqttPublisher.sendCommand(request.getDeviceCode(), cmd.getAddr(), cmd.getAddrv(), protocol);
             }
             
             // 记录命令下发日志
