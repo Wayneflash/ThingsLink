@@ -21,6 +21,11 @@ public class UnifiedReportData {
      * 属性列表
      */
     private List<PropertyData> properties;
+    
+    /**
+     * 原始MQTT消息payload（完整JSON格式）
+     */
+    private String rawPayload;
 
     /**
      * 属性数据

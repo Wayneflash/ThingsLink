@@ -34,4 +34,9 @@ public class DeviceData implements Serializable {
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime receiveTime;
+    
+    /**
+     * 原始MQTT消息payload（完整JSON格式）
+     */
+    private String rawPayload;
 }

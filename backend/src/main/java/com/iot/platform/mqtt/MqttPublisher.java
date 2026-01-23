@@ -128,6 +128,10 @@ public class MqttPublisher {
         
         commandDTO.setParams(Collections.singletonList(param));
         
-        return JSON.toJSONString(commandDTO);
+        String payload = JSON.toJSONString(commandDTO);
+        log.debug("构建 MQTT2.0 下发格式 - 设备: {}, 属性: {}, 值: {}, 消息ID: {}, Payload: {}", 
+            deviceCode, addr, addrv, msgId, payload);
+        
+        return payload;
     }
 }

@@ -30,7 +30,8 @@
         <el-table-column prop="protocol" label="协议类型" width="120">
           <template #default="{ row }">
             <el-tag v-if="row.protocol === 'MQTT2.0'" type="success" size="small">MQTT2.0</el-tag>
-            <el-tag v-else type="info" size="small">{{ row.protocol || 'MQTT1.0' }}</el-tag>
+            <el-tag v-else-if="row.protocol === 'MQTT' || !row.protocol" type="info" size="small">MQTT1.0</el-tag>
+            <el-tag v-else type="info" size="small">{{ row.protocol }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="属性数量" width="100" align="center">
@@ -89,14 +90,9 @@
             placeholder="请选择协议类型" 
             style="width: 100%;"
           >
-            <el-option label="MQTT1.0（原有格式，兼容旧设备）" value="MQTT1.0" />
-            <el-option label="MQTT2.0（新格式，推荐使用）" value="MQTT2.0" />
+            <el-option label="MQTT1.0" value="MQTT1.0" />
+            <el-option label="MQTT2.0" value="MQTT2.0" />
           </el-select>
-          <div class="input-hint">
-            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
-            MQTT1.0：使用原有格式（did/content/addr/addrv/ctime/pid）<br/>
-            MQTT2.0：使用新格式（id/version/ack/params/clientID/properties/name/value/timestamp）
-          </div>
         </el-form-item>
         <el-form-item label="产品描述" prop="description">
           <el-input 
@@ -238,11 +234,16 @@ const showCreateDialog = () => {
 // 显示编辑对话框
 const showEditDialog = (row) => {
   isEditMode.value = true
+  // 兼容处理：将 "MQTT" 或空值转换为 "MQTT1.0"
+  let protocol = row.protocol
+  if (!protocol || protocol.trim() === '' || protocol === 'MQTT') {
+    protocol = 'MQTT1.0'
+  }
   productForm.value = {
     id: row.id,
     productName: row.productName,
     productModel: row.productModel,
-    protocol: row.protocol,
+    protocol: protocol,
     description: row.description || ''
   }
   productDialogVisible.value = true

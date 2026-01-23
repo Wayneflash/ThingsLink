@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.iot.platform.dto.DeviceReportDTO;
+import com.iot.platform.dto.UnifiedReportData;
 import com.iot.platform.entity.Device;
 import com.iot.platform.entity.DeviceData;
 import com.iot.platform.mapper.DeviceDataMapper;
@@ -137,5 +138,74 @@ public class DeviceDataService extends ServiceImpl<DeviceDataMapper, DeviceData>
              .le(endTime != null, DeviceData::getCtime, endTime)
              .orderByDesc(DeviceData::getCtime);
         return this.list(query);
+    }
+    
+    /**
+     * 处理统一格式的设备上报数据（支持MQTT1.0和MQTT2.0）
+     * 这是新的统一处理方法，将两种格式的数据统一处理
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void handleUnifiedReport(UnifiedReportData unifiedData) {
+        log.info("收到统一格式设备上报数据: {}", JSON.toJSONString(unifiedData));
+        
+        String deviceCode = unifiedData.getDeviceCode();
+        if (deviceCode == null || deviceCode.isEmpty()) {
+            log.error("设备编码为空，忽略数据");
+            return;
+        }
+        
+        // 检查设备是否存在
+        Device device = deviceService.getByDeviceCode(deviceCode);
+        if (device == null) {
+            log.warn("设备不存在，忽略数据: {}", deviceCode);
+            return;
+        }
+        
+        // 刷新设备心跳
+        deviceService.refreshHeartbeat(deviceCode);
+        
+        // 批量保存数据
+        List<DeviceData> dataList = new ArrayList<>();
+        String rawPayload = unifiedData.getRawPayload(); // 获取原始payload
+        if (unifiedData.getProperties() != null) {
+            for (UnifiedReportData.PropertyData property : unifiedData.getProperties()) {
+                DeviceData data = new DeviceData();
+                data.setDeviceId(device.getId());
+                data.setDeviceCode(deviceCode);
+                data.setAddr(property.getName());
+                data.setAddrv(property.getValue());
+                data.setCtime(property.getCtime() != null ? property.getCtime() : LocalDateTime.now());
+                data.setReceiveTime(LocalDateTime.now());
+                data.setRawPayload(rawPayload); // 保存原始payload到每条记录
+                dataList.add(data);
+                
+                // 缓存最新数据到 Redis
+                String key = DEVICE_LATEST_DATA_KEY + deviceCode + ":" + property.getName();
+                stringRedisTemplate.opsForValue().set(key, property.getValue(), 1, TimeUnit.HOURS);
+            }
+        }
+        
+        // 批量插入数据库
+        if (!dataList.isEmpty()) {
+            this.saveBatch(dataList);
+            log.info("设备 {} 数据保存成功，共 {} 条", deviceCode, dataList.size());
+        }
+        
+        // 触发告警检查（如果设备配置了告警）
+        try {
+            // 构造数据Map（key=属性标识符，value=属性值）
+            Map<String, String> dataMap = new HashMap<>();
+            if (unifiedData.getProperties() != null) {
+                for (UnifiedReportData.PropertyData property : unifiedData.getProperties()) {
+                    dataMap.put(property.getName(), property.getValue());
+                }
+            }
+            
+            // 检查并记录告警
+            alarmLogService.checkAndRecordAlarm(device, dataMap);
+        } catch (Exception e) {
+            log.error("告警检查失败 - 设备: {}", deviceCode, e);
+            // 告警检查失败不影响数据保存，只记录日志
+        }
     }
 }

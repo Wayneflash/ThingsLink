@@ -111,7 +111,12 @@ public class ProductController {
                 productMap.put("id", product.getId());
                 productMap.put("productName", product.getProductName());
                 productMap.put("productModel", product.getProductModel());
-                productMap.put("protocol", product.getProtocol());
+                // 兼容处理：将 "MQTT" 转换为 "MQTT1.0"
+                String protocol = product.getProtocol();
+                if (protocol == null || protocol.trim().isEmpty() || "MQTT".equalsIgnoreCase(protocol)) {
+                    protocol = "MQTT1.0";
+                }
+                productMap.put("protocol", protocol);
                 productMap.put("description", product.getDescription());
                 productMap.put("status", product.getStatus());
                 productMap.put("createTime", product.getCreateTime());
@@ -166,7 +171,12 @@ public class ProductController {
             result.put("id", product.getId());
             result.put("productName", product.getProductName());
             result.put("productModel", product.getProductModel());
-            result.put("protocol", product.getProtocol());
+            // 兼容处理：将 "MQTT" 转换为 "MQTT1.0"
+            String protocol = product.getProtocol();
+            if (protocol == null || protocol.trim().isEmpty() || "MQTT".equalsIgnoreCase(protocol)) {
+                protocol = "MQTT1.0";
+            }
+            result.put("protocol", protocol);
             result.put("description", product.getDescription());
             result.put("status", product.getStatus());
             result.put("attrs", attributes != null ? attributes : new java.util.ArrayList<>());

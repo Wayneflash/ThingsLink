@@ -30,23 +30,27 @@ MQTT_USERNAME = "admin"
 MQTT_PASSWORD = "admin123."  # 与EMQX配置保持一致
 
 # 设备列表
+# protocol: "MQTT1.0" 或 "MQTT2.0"，默认为 "MQTT1.0"
 DEVICES = [
     {
         'code': "888866666",
-        'name': "模拟设备-888866666",
+        'name': "模拟设备-88887777",
         'type': "environment",  # 环境监测设备
+        'protocol': "MQTT2.0",  # 使用MQTT1.0协议
         'status': {'window': 0}  # 窗户状态: 0-关闭, 1-打开
     },
     {
         'code': "88889999",
         'name': "模拟设备-88889999",
         'type': "environment",  # 环境监测设备
+        'protocol': "MQTT2.0",  # 使用MQTT2.0协议（测试用）
         'status': {'window': 0}  # 窗户状态: 0-关闭, 1-打开
     },
     {
         'code': "88882222",
         'name': "模拟设备-88882222",
         'type': "air_quality",  # 空气质量监测设备
+        'protocol': "MQTT1.0",  # 使用MQTT1.0协议
         'status': {}  # 空气质量设备暂无控制属性
     },
     # 电表设备
@@ -54,12 +58,14 @@ DEVICES = [
         'code': "DIANBIAO1",
         'name': "智能电表-1",
         'type': "electric_meter",  # 电表
+        'protocol': "MQTT1.0",  # 使用MQTT1.0协议
         'status': {'total_energy': 1500.0}  # 初始累计电量(kWh)
     },
     {
         'code': "DIANBIAO2",
         'name': "智能电表-2",
         'type': "electric_meter",  # 电表
+        'protocol': "MQTT1.0",  # 使用MQTT1.0协议
         'status': {'total_energy': 2300.0}  # 初始累计电量(kWh)
     },
     # 水表设备
@@ -67,12 +73,14 @@ DEVICES = [
         'code': "SHUIBIAO1",
         'name': "智能水表-1",
         'type': "water_meter",  # 水表
+        'protocol': "MQTT1.0",  # 使用MQTT1.0协议
         'status': {'total_flow': 850.0, 'valve_status': 1}  # 初始累计流量(m³)，阀门状态
     },
     {
         'code': "SHUIBIAO2",
         'name': "智能水表-2",
         'type': "water_meter",  # 水表
+        'protocol': "MQTT1.0",  # 使用MQTT1.0协议
         'status': {'total_flow': 1200.0, 'valve_status': 1}  # 初始累计流量(m³)，阀门状态
     },
     # 气表设备
@@ -80,12 +88,14 @@ DEVICES = [
         'code': "QIBIAO1",
         'name': "智能气表-1",
         'type': "gas_meter",  # 气表
+        'protocol': "MQTT1.0",  # 使用MQTT1.0协议
         'status': {'total_gas': 450.0}  # 初始累计用气量(m³)
     },
     {
         'code': "QIBIAO2",
         'name': "智能气表-2",
         'type': "gas_meter",  # 气表
+        'protocol': "MQTT1.0",  # 使用MQTT1.0协议
         'status': {'total_gas': 680.0}  # 初始累计用气量(m³)
     }
 ]
@@ -121,12 +131,16 @@ class DeviceSimulator:
         self.device_code = device_info['code']
         self.device_name = device_info['name']
         self.device_type = device_info.get('type', 'environment')  # 设备类型：environment（环境监测）或 air_quality（空气质量）
+        self.protocol = device_info.get('protocol', 'MQTT1.0')  # 协议类型：MQTT1.0 或 MQTT2.0
         self.device_status = device_info['status']
         self.client = None
         
         # MQTT主题
         self.topic_report = f"ssc/{self.device_code}/report"
         self.topic_command = f"ssc/{self.device_code}/command"
+        
+        # 消息ID计数器（用于MQTT2.0）
+        self.message_id_counter = 0
         
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -150,10 +164,30 @@ class DeviceSimulator:
                     command_data = json.loads(payload)
                     print_success(f"[{self.device_code}] 成功解析命令")
                     
-                    # 这里可以添加命令处理逻辑
-                    # 示例：处理设备控制命令
-                    if 'content' in command_data:
+                    # 判断命令格式（MQTT1.0 或 MQTT2.0）
+                    commands_to_process = []
+                    
+                    if 'params' in command_data:
+                        # MQTT2.0 格式
+                        if command_data.get('params') and len(command_data['params']) > 0:
+                            param = command_data['params'][0]
+                            if 'properties' in param:
+                                for prop in param['properties']:
+                                    commands_to_process.append({
+                                        'addr': prop.get('name', ''),
+                                        'addrv': str(prop.get('value', ''))
+                                    })
+                    elif 'content' in command_data:
+                        # MQTT1.0 格式
                         for cmd in command_data['content']:
+                            commands_to_process.append({
+                                'addr': cmd.get('addr', ''),
+                                'addrv': cmd.get('addrv', '')
+                            })
+                    
+                    # 处理命令
+                    if commands_to_process:
+                        for cmd in commands_to_process:
                             addr = cmd.get('addr', '')
                             addrv = cmd.get('addrv', '')
                             print_info(f"[{self.device_code}] 执行命令 - 地址: {addr}, 值: {addrv}")
@@ -165,10 +199,16 @@ class DeviceSimulator:
                                 print_success(f"[{self.device_code}] window状态已更新为: {self.device_status['window']}")
                                 # 立即上报新状态
                                 self.publish_data()
+                            elif addr == 'valve_status':
+                                # 更新阀门状态（水表）
+                                self.device_status['valve_status'] = int(addrv)
+                                print_success(f"[{self.device_code}] 阀门状态已更新为: {self.device_status['valve_status']}")
+                                # 立即上报新状态
+                                self.publish_data()
                             else:
                                 print_warning(f"[{self.device_code}] 未知命令地址: {addr}")
                     else:
-                        print_warning(f"[{self.device_code}] 命令数据格式不正确，缺少content字段")
+                        print_warning(f"[{self.device_code}] 命令数据格式不正确，无法解析命令")
                         
                 except json.JSONDecodeError:
                     print_error(f"[{self.device_code}] 命令解析失败")
@@ -435,15 +475,62 @@ class DeviceSimulator:
             
             status_msg = f"瞬时流量: {instantaneous_flow:.2f}m³/h | 气压: {gas_pressure:.0f}kPa | 温度: {gas_temperature:.1f}℃ | 累计: {self.device_status['total_gas']:.2f}m³"
         
-        # 示例数据 - 可以根据实际的物模型调整
-        data = {
-            "did": self.device_code,
-            "content": content
-        }
-        
-        print(f"   [{self.device_code}] {status_msg}")
+        # 根据协议类型生成不同格式的数据
+        if self.protocol == "MQTT2.0":
+            data = self.generate_v2_data(content, status_msg)
+        else:
+            # MQTT1.0 格式（默认）
+            data = {
+                "did": self.device_code,
+                "content": content
+            }
+            print(f"   [{self.device_code}] {status_msg}")
         
         return data
+    
+    def generate_v2_data(self, content_list, status_msg):
+        """生成MQTT2.0格式的数据"""
+        import time
+        
+        # 生成消息ID
+        self.message_id_counter += 1
+        msg_id = str(self.message_id_counter % 4294967296)  # 限制在32位整数范围内
+        
+        # 构建properties列表
+        properties = []
+        current_timestamp = int(time.time())  # Unix时间戳（秒）
+        
+        for item in content_list:
+            property_item = {
+                "name": item["addr"],
+                "value": float(item["addrv"]) if self._is_numeric(item["addrv"]) else item["addrv"],
+                "timestamp": current_timestamp
+            }
+            properties.append(property_item)
+        
+        # MQTT2.0格式
+        data = {
+            "id": msg_id,
+            "version": "V1.0",
+            "ack": 1,
+            "params": [
+                {
+                    "clientID": self.device_code,
+                    "properties": properties
+                }
+            ]
+        }
+        
+        print(f"   [{self.device_code}] [MQTT2.0] {status_msg}")
+        return data
+    
+    def _is_numeric(self, value):
+        """判断字符串是否为数字"""
+        try:
+            float(value)
+            return True
+        except ValueError:
+            return False
 
     def publish_data(self):
         """上报数据到平台"""

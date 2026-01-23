@@ -200,6 +200,13 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
         result.put("productAttrs", productAttrs);
         result.put("latestData", latestDataMap);
         
+        // 添加产品协议类型（兼容处理：将 "MQTT" 转换为 "MQTT1.0"）
+        String protocol = product != null ? product.getProtocol() : null;
+        if (protocol == null || protocol.trim().isEmpty() || "MQTT".equalsIgnoreCase(protocol)) {
+            protocol = "MQTT1.0";
+        }
+        result.put("protocol", protocol);
+        
         return result;
     }
     

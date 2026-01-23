@@ -166,6 +166,10 @@
             <el-icon :size="16" style="margin-right: 4px;"><Document /></el-icon>
             表格
           </el-radio-button>
+          <el-radio-button label="metadata">
+            <el-icon :size="16" style="margin-right: 4px;"><Box /></el-icon>
+            元数据
+          </el-radio-button>
         </el-radio-group>
         <div style="flex: 1; display: flex; gap: 12px; justify-content: flex-end;">
           <el-date-picker
@@ -223,6 +227,62 @@
           <div v-if="historyData.length === 0" class="empty-data">
             <el-icon class="empty-icon" :size="64"><Document /></el-icon>
             <div class="empty-text">暂无历史数据</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 元数据视图 -->
+      <div v-show="historyViewMode === 'metadata'" class="metadata-table-wrapper">
+        <div class="metadata-table-container">
+          <el-table 
+            :data="paginatedMetadata" 
+            stripe 
+            style="width: 100%" 
+            :height="tableHeight"
+            border
+          >
+            <el-table-column prop="reportTime" label="上报时间" width="220" fixed="left">
+              <template #default="{ row }">
+                <div class="time-cell">
+                  <span>{{ row.reportTime }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="formattedJson" label="原始JSON数据" show-overflow-tooltip>
+              <template #default="{ row }">
+                <el-tooltip
+                  placement="bottom-end"
+                  :show-after="200"
+                  :hide-after="0"
+                  popper-class="metadata-tooltip"
+                  :raw-content="true"
+                  :offset="10"
+                >
+                  <template #content>
+                    <pre class="json-tooltip-content">{{ row.formattedJson }}</pre>
+                  </template>
+                  <div class="json-cell">
+                    <span class="json-preview-compact">{{ row.rawJson }}</span>
+                  </div>
+                </el-tooltip>
+              </template>
+            </el-table-column>
+          </el-table>
+          
+          <el-pagination
+            v-if="metadataList.length > 0"
+            v-model:current-page="historyPagination.currentPage"
+            v-model:page-size="historyPagination.pageSize"
+            :page-sizes="[20, 50, 100, 200]"
+            :total="metadataList.length"
+            layout="total, sizes, prev, pager, next, jumper"
+            class="metadata-pagination"
+          />
+          
+          <div v-if="metadataList.length === 0" class="empty-data">
+            <el-icon class="empty-icon" :size="64"><Box /></el-icon>
+            <div class="empty-text">暂无元数据</div>
+            <div class="empty-hint">请先查询历史数据</div>
           </div>
         </div>
       </div>
@@ -366,6 +426,7 @@ const updateTime = ref('-')
 const historyViewMode = ref('chart') // 默认显示趋势图
 const historyDateRange = ref([])
 const historyData = ref([])
+const rawHistoryDataList = ref([]) // 保存原始数据列表（用于元数据视图）
 const historyChartRef = ref(null)
 let historyChartInstance = null
 const historyPagination = reactive({
@@ -571,6 +632,92 @@ const paginatedHistoryData = computed(() => {
   return historyData.value.slice(start, end)
 })
 
+// 元数据列表（显示所有完整的JSON数据包，不去重）
+const metadataList = computed(() => {
+  if (!rawHistoryDataList.value || rawHistoryDataList.value.length === 0) {
+    return []
+  }
+  
+  // 按rawPayload分组，同一rawPayload的记录合并为一条（因为来自同一条MQTT消息）
+  // 但保留所有不同的rawPayload（不同的MQTT消息）
+  const payloadMap = new Map()
+  
+  rawHistoryDataList.value.forEach(item => {
+    if (item.rawPayload) {
+      const time = item.reportTime || item.ctime || ''
+      // 如果这个rawPayload已存在，使用更早的时间
+      if (!payloadMap.has(item.rawPayload)) {
+        payloadMap.set(item.rawPayload, {
+          reportTime: time,
+          rawPayload: item.rawPayload
+        })
+      } else {
+        // 如果已存在，比较时间，保留更早的时间
+        const existing = payloadMap.get(item.rawPayload)
+        if (new Date(time) < new Date(existing.reportTime)) {
+          existing.reportTime = time
+        }
+      }
+    }
+  })
+  
+  // 转换为数组并格式化JSON
+  return Array.from(payloadMap.values())
+    .map(row => {
+      try {
+        // 格式化JSON
+        const formattedJson = JSON.stringify(JSON.parse(row.rawPayload), null, 2)
+        return {
+          reportTime: row.reportTime,
+          rawJson: row.rawPayload,
+          formattedJson: formattedJson
+        }
+      } catch (error) {
+        // 如果JSON解析失败，直接显示原始字符串
+        console.error('JSON解析失败:', error, row.rawPayload)
+        return {
+          reportTime: row.reportTime,
+          rawJson: row.rawPayload,
+          formattedJson: row.rawPayload
+        }
+      }
+    })
+    .sort((a, b) => {
+      // 按时间倒序排列
+      return new Date(b.reportTime) - new Date(a.reportTime)
+    })
+})
+
+// 计算分页后的元数据
+const paginatedMetadata = computed(() => {
+  const start = (historyPagination.currentPage - 1) * historyPagination.pageSize
+  const end = start + historyPagination.pageSize
+  return metadataList.value.slice(start, end)
+})
+
+// 复制元数据
+const copyMetadata = async (jsonStr) => {
+  try {
+    await navigator.clipboard.writeText(jsonStr)
+    ElMessage.success('已复制到剪贴板')
+  } catch (error) {
+    console.error('复制失败:', error)
+    ElMessage.error('复制失败')
+  }
+}
+
+// 复制所有元数据
+const copyAllMetadata = async () => {
+  try {
+    const allJson = metadataList.value.map(item => item.rawJson).join('\n\n')
+    await navigator.clipboard.writeText(allJson)
+    ElMessage.success(`已复制 ${metadataList.value.length} 条元数据到剪贴板`)
+  } catch (error) {
+    console.error('复制失败:', error)
+    ElMessage.error('复制失败')
+  }
+}
+
 // 表格高度计算（1920x1080下优化）
 const tableHeight = computed(() => {
   // 顶部导航栏: ~60px
@@ -598,9 +745,15 @@ const queryHistory = async () => {
     })
 
     if (data) {
+      // 保存原始数据列表（用于元数据视图）
+      rawHistoryDataList.value = data.map(item => ({
+        ...item,
+        reportTime: item.ctime ? (item.ctime.includes('T') ? item.ctime.replace('T', ' ') : item.ctime) : ''
+      }))
+      
       // 将后端返回的DeviceData数组转换为表格需要的格式
-      // 后端返回的是 [{addr: 'tem', addrv: '22.5', ctime: '2025-12-25 22:30:00'}, ...]
-      // 需要按时间分组，将同一时间的多个属性合并到一行
+      // 后端返回的是 [{addr: 'tem', addrv: '22.5', ctime: '2025-12-25 22:30:00', rawPayload: '...'}, ...]
+      // 需要按时间分组，将同一时间的多个属性合并到一行，并保存原始payload
       const dataMap = new Map()
       
       data.forEach(item => {
@@ -610,9 +763,16 @@ const queryHistory = async () => {
           time = item.ctime.includes('T') ? item.ctime.replace('T', ' ') : item.ctime;
         }
         if (!dataMap.has(time)) {
-          dataMap.set(time, { reportTime: time })
+          dataMap.set(time, { 
+            reportTime: time,
+            rawPayload: item.rawPayload || null // 保存原始payload
+          })
         }
         dataMap.get(time)[item.addr] = item.addrv
+        // 如果当前记录的rawPayload不为空，更新（同一时间的记录应该有相同的rawPayload）
+        if (item.rawPayload && !dataMap.get(time).rawPayload) {
+          dataMap.get(time).rawPayload = item.rawPayload
+        }
       })
       
       historyData.value = Array.from(dataMap.values()).sort((a, b) => {
@@ -2002,5 +2162,113 @@ onMounted(() => {
   flex-shrink: 0;
   border-top: 1px solid #e5e5e7;
   background: white;
+}
+
+/* 元数据视图 - 表格形式（与历史表格样式一致） */
+.metadata-table-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.metadata-table-container {
+  background: white;
+  border: 1px solid #e5e5e7;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* 时间单元格 */
+.time-cell {
+  font-size: 13px;
+  color: #1d1d1f;
+  font-weight: 500;
+}
+
+/* JSON单元格 */
+.json-cell {
+  width: 100%;
+  overflow: hidden;
+}
+
+.json-preview-compact {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #1d1d1f;
+  background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.json-preview-compact:hover {
+  color: #667eea;
+}
+
+.copy-btn-table {
+  color: #667eea;
+  transition: all 0.2s ease;
+}
+
+.copy-btn-table:hover {
+  color: #5568d3;
+  background-color: rgba(102, 126, 234, 0.1);
+}
+
+/* Tooltip样式 */
+:deep(.metadata-tooltip) {
+  max-width: 90vw !important;
+  max-height: 80vh !important;
+  overflow-y: auto !important;
+  background: #1d1d1f !important;
+  border: 1px solid #333 !important;
+  border-radius: 10px !important;
+  padding: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+:deep(.metadata-tooltip .el-tooltip__arrow::before) {
+  background: #1d1d1f !important;
+  border: 1px solid #333 !important;
+}
+
+.json-tooltip-content {
+  margin: 0;
+  padding: 0;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #d4d4d4;
+  background: transparent;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  word-break: break-all;
+}
+
+.metadata-pagination {
+  padding: 8px 16px;
+  flex-shrink: 0;
+  border-top: 1px solid #e5e5e7;
+  background: white;
+}
+
+.empty-hint {
+  color: #86868b;
+  font-size: 13px;
+  margin-top: 8px;
 }
 </style>
