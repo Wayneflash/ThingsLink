@@ -80,6 +80,12 @@ public class MqttConfig {
     
     /**
      * 创建 MQTT 客户端（延迟连接，避免阻塞应用启动）
+     * 
+     * 重连策略：
+     * 1. 启动后延迟2秒开始连接
+     * 2. 快速重试阶段：前10次，每次间隔3秒
+     * 3. 慢速重试阶段：之后每60秒重试一次，持续重试直到连接成功
+     * 4. 连接成功后如果断开，Paho客户端会自动重连
      */
     @Bean
     public MqttClient mqttClient() throws MqttException {
@@ -92,14 +98,14 @@ public class MqttConfig {
         options.setPassword(password.toCharArray());
         options.setConnectionTimeout(connectionTimeout);
         options.setKeepAliveInterval(keepAliveInterval);
-        options.setAutomaticReconnect(true);
+        options.setAutomaticReconnect(true);  // 连接成功后断开时自动重连
         options.setCleanSession(false);
         
         // 设置回调
         client.setCallback(new MqttCallback() {
             @Override
             public void connectionLost(Throwable cause) {
-                log.warn("MQTT 连接断开，将自动重连: {}", cause.getMessage());
+                log.warn("MQTT 连接断开，Paho客户端将自动重连: {}", cause.getMessage());
             }
             
             @Override
@@ -116,10 +122,27 @@ public class MqttConfig {
         // 异步连接到 MQTT Broker（避免阻塞应用启动）
         new Thread(() -> {
             int retryCount = 0;
-            int maxRetries = 5;
-            while (retryCount < maxRetries) {
+            final int FAST_RETRY_MAX = 10;        // 快速重试次数
+            final int FAST_RETRY_INTERVAL = 3000; // 快速重试间隔（毫秒）
+            final int SLOW_RETRY_INTERVAL = 60000; // 慢速重试间隔（毫秒）
+            
+            // 延迟2秒后开始连接
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            
+            // 持续重试直到连接成功
+            while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    Thread.sleep(2000); // 延迟2秒后再连接
+                    // 如果已经连接，跳出循环
+                    if (client.isConnected()) {
+                        log.info("MQTT 客户端已连接");
+                        break;
+                    }
+                    
                     client.connect(options);
                     log.info("MQTT 客户端连接成功: {}", brokerUrl);
                     
@@ -127,19 +150,29 @@ public class MqttConfig {
                     String topic = "ssc/+/report";
                     client.subscribe(topic, 1);
                     log.info("订阅主题成功: {}", topic);
-                    break;
+                    break; // 连接成功，跳出循环
                     
                 } catch (Exception e) {
                     retryCount++;
-                    log.warn("MQTT 客户端连接失败 (尝试 {}/{}): {}", retryCount, maxRetries, e.getMessage());
-                    if (retryCount >= maxRetries) {
-                        log.error("MQTT 客户端连接失败，已达到最大重试次数");
+                    
+                    // 判断使用快速还是慢速重试间隔
+                    int interval;
+                    if (retryCount <= FAST_RETRY_MAX) {
+                        interval = FAST_RETRY_INTERVAL;
+                        log.warn("MQTT 连接失败 (快速重试 {}/{}): {}，{}秒后重试", 
+                                retryCount, FAST_RETRY_MAX, e.getMessage(), interval / 1000);
                     } else {
-                        try {
-                            Thread.sleep(3000); // 每次重试间隔3秒
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                        }
+                        interval = SLOW_RETRY_INTERVAL;
+                        log.warn("MQTT 连接失败 (慢速重试中，第{}次): {}，{}秒后重试", 
+                                retryCount, e.getMessage(), interval / 1000);
+                    }
+                    
+                    try {
+                        Thread.sleep(interval);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        log.info("MQTT 连接线程被中断，停止重试");
+                        break;
                     }
                 }
             }

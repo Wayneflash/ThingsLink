@@ -17,7 +17,6 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -114,7 +113,10 @@ public class DeviceStatusCheckTask {
     
     /**
      * 检查并触发离线报警
-     * 当设备离线时，检查是否配置了离线报警，如果配置且离线时长超过阈值，则触发报警
+     * 当设备从在线变为离线时，直接触发离线报警（如果配置了离线报警）
+     * 
+     * 注意：这个方法只在设备状态从在线(1)变为离线(0)时被调用一次
+     * 堆叠模式会确保在设备恢复上线前不会重复报警
      */
     private void checkAndTriggerOfflineAlarm(Device device) {
         try {
@@ -135,21 +137,9 @@ public class DeviceStatusCheckTask {
             // 获取离线报警配置
             AlarmConfigDTO.OfflineAlarmConfig offlineAlarm = alarmConfig.getOfflineAlarm();
             
-            // 计算离线时长（分钟）
-            LocalDateTime lastOnlineTime = device.getLastOnlineTime();
-            if (lastOnlineTime == null) {
-                return; // 没有最后上线时间，无法计算离线时长
-            }
-            
-            long offlineMinutes = java.time.Duration.between(lastOnlineTime, LocalDateTime.now()).toMinutes();
-            
-            // 检查是否超过阈值
-            if (offlineMinutes > offlineAlarm.getThreshold()) {
-                // 检查是否已经触发过报警（避免重复报警）
-                // 这里简化处理，每次离线都检查，实际生产中可能需要记录上次报警时间
-                // 触发离线报警
-                triggerOfflineAlarm(device, offlineAlarm, offlineMinutes);
-            }
+            // 直接触发离线报警（阈值用于配置离线多久触发报警，但实际上设备刚离线就触发）
+            // 因为心跳有效期已经相当于"离线检测阈值"，设备心跳过期即视为离线
+            triggerOfflineAlarm(device, offlineAlarm);
         } catch (Exception e) {
             log.error("检查离线报警失败 - 设备: {}", device.getDeviceCode(), e);
         }
@@ -157,8 +147,14 @@ public class DeviceStatusCheckTask {
     
     /**
      * 触发离线报警
+     * 
+     * 报警逻辑：
+     * 1. 设备离线时触发一次报警
+     * 2. 堆叠模式下，设备上线前不会重复报警
+     * 3. 设备上线后，离线报警标记为已恢复
+     * 4. 设备再次离线时，可以重新触发报警
      */
-    private void triggerOfflineAlarm(Device device, AlarmConfigDTO.OfflineAlarmConfig offlineAlarm, long offlineMinutes) {
+    private void triggerOfflineAlarm(Device device, AlarmConfigDTO.OfflineAlarmConfig offlineAlarm) {
         try {
             // 获取报警配置，检查是否开启堆叠模式
             AlarmConfigDTO alarmConfig = null;
@@ -194,9 +190,9 @@ public class DeviceStatusCheckTask {
                 }
             }
             
-            // 构造报警消息
-            String alarmMessage = String.format("设备离线超过%d分钟（阈值：%d分钟）",
-                    offlineMinutes, offlineAlarm.getThreshold());
+            // 构造报警消息（简洁明了，只显示设备离线）
+            String alarmMessage = String.format("设备已离线（心跳超时%d分钟）", 
+                    offlineAlarm.getThreshold() != null ? offlineAlarm.getThreshold() : 5);
             
             // 创建报警日志
             AlarmLog alarmLog = new AlarmLog();
@@ -223,8 +219,7 @@ public class DeviceStatusCheckTask {
             // 保存报警日志
             alarmLogService.save(alarmLog);
             
-            log.info("触发离线报警 - 设备: {}, 离线时长: {}分钟, 阈值: {}分钟, 级别: {}",
-                    device.getDeviceCode(), offlineMinutes, offlineAlarm.getThreshold(), offlineAlarm.getLevel());
+            log.info("触发离线报警 - 设备: {}, 级别: {}", device.getDeviceCode(), offlineAlarm.getLevel());
             
             // 创建通知消息（给处理人发送邮件和短信通知）
             if (alarmConfig != null && alarmConfig.getNotifyUser() != null) {

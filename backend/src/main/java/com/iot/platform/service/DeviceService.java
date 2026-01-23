@@ -259,13 +259,16 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
         }
         
         device.setStatus(online ? 1 : 0);
-        device.setLastOnlineTime(LocalDateTime.now());
+        // 只有在设备上线时才更新 lastOnlineTime（用于计算离线时长）
+        if (online) {
+            device.setLastOnlineTime(LocalDateTime.now());
+        }
         this.updateById(device);
         
-        // 更新 Redis 缓存，固定3分钟超时
+        // 更新 Redis 缓存，固定5分钟超时（必须大于设备上报间隔，避免心跳提前过期）
         String key = DEVICE_ONLINE_KEY + deviceCode;
         if (online) {
-            stringRedisTemplate.opsForValue().set(key, "1", 180, TimeUnit.SECONDS);
+            stringRedisTemplate.opsForValue().set(key, "1", 300, TimeUnit.SECONDS);
             
             // 设备上线时，将未恢复的离线报警标记为已恢复
             // 这样设备再次离线时可以重新触发报警
@@ -290,9 +293,9 @@ public class DeviceService extends ServiceImpl<DeviceMapper, Device> {
     public void refreshHeartbeat(String deviceCode) {
         Device device = getByDeviceCode(deviceCode);
         if (device != null) {
-            // 设备心跳，3分钟超时
+            // 设备心跳，5分钟超时（必须大于上报间隔，避免心跳在下次上报前过期导致反复离线/在线）
             String key = DEVICE_ONLINE_KEY + deviceCode;
-            stringRedisTemplate.opsForValue().set(key, "1", 180, TimeUnit.SECONDS);
+            stringRedisTemplate.opsForValue().set(key, "1", 300, TimeUnit.SECONDS);
             
             // 如果设备状态是离线，更新为在线
             if (device.getStatus() == 0) {
