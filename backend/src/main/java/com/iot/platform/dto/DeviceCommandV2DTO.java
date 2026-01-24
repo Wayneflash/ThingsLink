@@ -1,5 +1,6 @@
 package com.iot.platform.dto;
 
+import com.alibaba.fastjson.annotation.JSONField;
 import lombok.Data;
 
 import java.util.List;
@@ -14,11 +15,13 @@ public class DeviceCommandV2DTO {
     /**
      * 消息ID号，字符串类型的数字，值范围：0-4294967295，每条消息ID应唯一
      */
+    @JSONField(ordinal = 1)
     private String id;
     
     /**
      * 版本号，固定为 "1.0"（注意：下发时没有V前缀）
      */
+    @JSONField(ordinal = 2)
     private String version;
     
     /**
@@ -26,11 +29,13 @@ public class DeviceCommandV2DTO {
      * 0: 云端不返回响应数据（下发时使用）
      * 1: 云端返回响应数据
      */
+    @JSONField(ordinal = 3)
     private Integer ack;
     
     /**
      * 请求入参数组（jsonObjectArray），包含设备信息
      */
+    @JSONField(ordinal = 4)
     private List<DeviceParam> params;
     
     /**

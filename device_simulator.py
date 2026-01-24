@@ -24,7 +24,7 @@ if sys.platform == 'win32':
         pass
 
 # MQTT配置 - 从后端配置获取
-MQTT_BROKER = "127.0.0.1"  # 实际部署时请替换为实际服务器地址
+MQTT_BROKER = "117.72.222.8"  # 实际部署时请替换为实际服务器地址
 MQTT_PORT = 1883
 MQTT_USERNAME = "admin"
 MQTT_PASSWORD = "admin123."  # 与EMQX配置保持一致
@@ -145,9 +145,12 @@ class DeviceSimulator:
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
             print_success(f"[{self.device_code}] MQTT连接成功")
-            # 订阅命令主题
-            client.subscribe(self.topic_command)
-            print_info(f"[{self.device_code}] 已订阅命令主题: {self.topic_command}")
+            # 订阅命令主题（QoS=1，确保能接收到QoS=1的消息）
+            result, mid = client.subscribe(self.topic_command, qos=1)
+            if result == 0:
+                print_success(f"[{self.device_code}] 已订阅命令主题: {self.topic_command} (QoS=1, mid={mid})")
+            else:
+                print_error(f"[{self.device_code}] 订阅命令主题失败，错误码: {result}")
         else:
             print_error(f"[{self.device_code}] MQTT连接失败，错误码: {rc}")
 
@@ -155,7 +158,7 @@ class DeviceSimulator:
         """处理接收到的消息"""
         try:
             payload = msg.payload.decode('utf-8')
-            print_info(f"[{self.device_code}] 收到消息 - 主题: {msg.topic}")
+            print_info(f"[{self.device_code}] 收到消息 - 主题: {msg.topic}, QoS: {msg.qos}")
             print(f"   内容: {payload}")
             
             # 解析命令
@@ -553,9 +556,10 @@ class DeviceSimulator:
         print_title(f"设备模拟器启动 - {self.device_name}")
         print_info(f"设备编码: {self.device_code}")
         print_info(f"设备名称: {self.device_name}")
+        print_info(f"协议类型: {self.protocol}")
         print_info(f"MQTT服务器: {MQTT_BROKER}:{MQTT_PORT}")
         print_info(f"上报主题: {self.topic_report}")
-        print_info(f"命令主题: {self.topic_command}")
+        print_info(f"命令主题: {self.topic_command} (将订阅QoS=1)")
         
         # 创建MQTT客户端（兼容paho-mqtt 2.0+）
         # 使用UUID确保客户端ID唯一，避免多次运行时的冲突

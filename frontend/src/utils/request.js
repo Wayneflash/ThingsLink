@@ -18,12 +18,9 @@ const handleTokenExpired = (message) => {
   localStorage.removeItem('userInfo')
   localStorage.removeItem('menus')
   
-  // 显示错误消息
-  if (message) {
-    ElMessage.error(message)
-  } else {
-    ElMessage.error('登录已过期，请重新登录')
-  }
+  // 显示友好的错误消息
+  const errorMessage = message || '登录已失效，请重新登录'
+  ElMessage.error(errorMessage)
   
   // 如果当前不在登录页，则跳转到登录页
   if (router.currentRoute.value.path !== '/login') {

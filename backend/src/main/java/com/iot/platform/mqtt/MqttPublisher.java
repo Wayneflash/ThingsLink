@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.iot.platform.dto.DeviceCommandDTO;
 import com.iot.platform.dto.DeviceCommandV2DTO;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
@@ -56,35 +57,60 @@ public class MqttPublisher {
      * @throws RuntimeException 如果MQTT消息发送失败
      */
     public void sendCommand(String deviceCode, String addr, String addrv, String protocol) {
+        String topic = "ssc/" + deviceCode + "/command";
+        
         try {
+            // 检查MQTT客户端连接状态
+            boolean isConnected = mqttClient.isConnected();
+            log.info("========== MQTT发布前检查 ==========");
+            log.info("MQTT客户端连接状态: {}", isConnected);
+            log.info("MQTT客户端ID: {}", mqttClient.getClientId());
+            log.info("目标主题: {}", topic);
+            
+            if (!isConnected) {
+                log.error("❌ MQTT客户端未连接，无法发送命令 - DeviceCode: {}, Addr: {}, Addrv: {}, Protocol: {}", 
+                         deviceCode, addr, addrv, protocol);
+                throw new RuntimeException("MQTT客户端未连接，请检查MQTT服务器状态");
+            }
+            
             String payload;
             
             if ("MQTT2.0".equalsIgnoreCase(protocol)) {
                 // MQTT2.0 格式
                 payload = buildV2Payload(deviceCode, addr, addrv);
-                log.debug("使用 MQTT2.0 格式发送命令");
+                log.info("使用 MQTT2.0 格式发送命令");
             } else {
                 // MQTT1.0 格式（默认）
                 payload = buildV1Payload(deviceCode, addr, addrv);
-                log.debug("使用 MQTT1.0 格式发送命令");
+                log.info("使用 MQTT1.0 格式发送命令");
             }
             
-            // 发布到 MQTT（异步，QoS=1确保至少送达一次）
-            String topic = "ssc/" + deviceCode + "/command";
+            log.info("准备发布的Payload: {}", payload);
             
+            // 发布到 MQTT（异步，QoS=1确保至少送达一次）
             MqttMessage message = new MqttMessage(payload.getBytes(StandardCharsets.UTF_8));
             message.setQos(1);  // QoS=1：至少一次送达
             message.setRetained(false);  // 不保留消息
             
+            log.info("开始发布MQTT消息到主题: {}", topic);
+            
             // MQTT发布（异步操作，立即返回）
+            // publish方法返回void，发布操作是异步的，通过deliveryComplete回调确认发送完成
             mqttClient.publish(topic, message);
             
+            log.info("✅ MQTT消息已提交发布（异步发送中）");
+            
             log.info("✅ 命令已发送到MQTT ({}) - Topic: {}, Payload: {}", protocol, topic, payload);
+            log.info("========== MQTT发布完成 ==========");
             
         } catch (MqttException e) {
-            log.error("❌ MQTT命令发送失败 - DeviceCode: {}, Addr: {}, Addrv: {}, Protocol: {}", 
-                     deviceCode, addr, addrv, protocol, e);
-            throw new RuntimeException("MQTT命令发送失败: " + e.getMessage(), e);
+            log.error("❌ MQTT命令发送失败 - DeviceCode: {}, Addr: {}, Addrv: {}, Protocol: {}, Topic: {}", 
+                     deviceCode, addr, addrv, protocol, topic);
+            log.error("MQTT异常详情 - ReasonCode: {}, Message: {}", e.getReasonCode(), e.getMessage(), e);
+            throw new RuntimeException("MQTT命令发送失败: " + e.getMessage() + " (ReasonCode: " + e.getReasonCode() + ")", e);
+        } catch (Exception e) {
+            log.error("❌ 发送命令时发生未知异常 - DeviceCode: {}, Topic: {}", deviceCode, topic, e);
+            throw new RuntimeException("发送命令失败: " + e.getMessage(), e);
         }
     }
     

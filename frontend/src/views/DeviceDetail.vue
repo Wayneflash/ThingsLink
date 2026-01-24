@@ -248,23 +248,11 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="formattedJson" label="原始JSON数据" show-overflow-tooltip>
+            <el-table-column prop="formattedJson" label="原始JSON数据">
               <template #default="{ row }">
-                <el-tooltip
-                  placement="bottom-end"
-                  :show-after="200"
-                  :hide-after="0"
-                  popper-class="metadata-tooltip"
-                  :raw-content="true"
-                  :offset="10"
-                >
-                  <template #content>
-                    <pre class="json-tooltip-content">{{ row.formattedJson }}</pre>
-                  </template>
-                  <div class="json-cell">
-                    <span class="json-preview-compact">{{ row.rawJson }}</span>
-                  </div>
-                </el-tooltip>
+                <div class="json-cell">
+                  <pre class="json-display">{{ row.rawJson }}</pre>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -1154,7 +1142,15 @@ const loadDeviceLogs = async () => {
     logPagination.total = res?.total || 0
   } catch (error) {
     console.error('加载设备日志失败:', error)
-    ElMessage.error('加载设备日志失败')
+    // 如果是401错误（token失效），request.js会统一处理，这里不再显示错误提示
+    // 避免显示"加载设备日志失败"，而是显示"登录失效"并跳转登录页
+    if (error?.response?.status === 401 || error?.message?.includes('登录已过期') || error?.message?.includes('未授权')) {
+      // request.js 已经处理了401错误，这里不需要再处理
+      return
+    }
+    // 其他错误才显示具体错误信息
+    const errorMsg = error?.response?.data?.message || error?.message || '获取设备日志失败'
+    ElMessage.error(errorMsg)
   } finally {
     logLoading.value = false
   }
@@ -2198,23 +2194,17 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.json-preview-compact {
+.json-display {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: #1d1d1f;
   background: transparent;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: block;
-  width: 100%;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.json-preview-compact:hover {
-  color: #667eea;
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
 .copy-btn-table {
@@ -2227,37 +2217,6 @@ onMounted(() => {
   background-color: rgba(102, 126, 234, 0.1);
 }
 
-/* Tooltip样式 */
-:deep(.metadata-tooltip) {
-  max-width: 90vw !important;
-  max-height: 80vh !important;
-  overflow-y: auto !important;
-  background: #1d1d1f !important;
-  border: 1px solid #333 !important;
-  border-radius: 10px !important;
-  padding: 12px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
-}
-
-:deep(.metadata-tooltip .el-tooltip__arrow::before) {
-  background: #1d1d1f !important;
-  border: 1px solid #333 !important;
-}
-
-.json-tooltip-content {
-  margin: 0;
-  padding: 0;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
-  font-size: 12px;
-  line-height: 1.6;
-  color: #d4d4d4;
-  background: transparent;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  max-width: 100%;
-  word-break: break-all;
-}
 
 .metadata-pagination {
   padding: 8px 16px;

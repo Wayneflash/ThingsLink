@@ -76,37 +76,61 @@ public class MqttMessageHandler {
             }
             String deviceCode = topicParts[topicParts.length - 2]; // 倒数第二部分是设备编码
             
-            // 获取设备协议类型
+            // 获取设备协议类型（从数据库实时查询，支持协议动态切换）
             String protocol = getDeviceProtocol(deviceCode);
-            log.info("设备 {} 使用协议: {}", deviceCode, protocol);
+            log.info("设备 {} 配置的协议: {}", deviceCode, protocol);
             
-            // 根据协议类型解析数据
-            UnifiedReportData unifiedData;
+            // 根据协议类型解析数据（带容错机制）
+            UnifiedReportData unifiedData = null;
+            boolean parseSuccess = false;
+            
             if ("MQTT2.0".equalsIgnoreCase(protocol)) {
-                // MQTT2.0 格式
+                // 优先使用配置的MQTT2.0格式解析
                 DeviceReportV2DTO v2DTO = parseV2Report(payload);
-                if (v2DTO == null) {
-                    log.error("MQTT2.0 格式解析失败: {}", payload);
-                    return;
+                if (v2DTO != null) {
+                    unifiedData = convertV2ToUnified(v2DTO);
+                    parseSuccess = true;
+                    log.info("设备 {} 使用MQTT2.0格式解析成功", deviceCode);
+                } else {
+                    // MQTT2.0解析失败，尝试MQTT1.0格式（容错机制）
+                    log.warn("设备 {} 配置为MQTT2.0，但MQTT2.0格式解析失败，尝试MQTT1.0格式: {}", deviceCode, payload);
+                    DeviceReportDTO v1DTO = parseV1Report(payload);
+                    if (v1DTO != null) {
+                        unifiedData = convertV1ToUnified(v1DTO);
+                        parseSuccess = true;
+                        log.warn("设备 {} 使用MQTT1.0格式解析成功（容错模式）", deviceCode);
+                    }
                 }
-                unifiedData = convertV2ToUnified(v2DTO);
             } else {
-                // MQTT1.0 格式（默认）
+                // 优先使用配置的MQTT1.0格式解析
                 DeviceReportDTO v1DTO = parseV1Report(payload);
-                if (v1DTO == null) {
-                    log.error("MQTT1.0 格式解析失败: {}", payload);
-                    return;
+                if (v1DTO != null) {
+                    unifiedData = convertV1ToUnified(v1DTO);
+                    parseSuccess = true;
+                    log.info("设备 {} 使用MQTT1.0格式解析成功", deviceCode);
+                } else {
+                    // MQTT1.0解析失败，尝试MQTT2.0格式（容错机制）
+                    log.warn("设备 {} 配置为MQTT1.0，但MQTT1.0格式解析失败，尝试MQTT2.0格式: {}", deviceCode, payload);
+                    DeviceReportV2DTO v2DTO = parseV2Report(payload);
+                    if (v2DTO != null) {
+                        unifiedData = convertV2ToUnified(v2DTO);
+                        parseSuccess = true;
+                        log.warn("设备 {} 使用MQTT2.0格式解析成功（容错模式）", deviceCode);
+                    }
                 }
-                unifiedData = convertV1ToUnified(v1DTO);
+            }
+            
+            // 如果两种格式都解析失败，记录错误并返回
+            if (!parseSuccess || unifiedData == null) {
+                log.error("设备 {} 数据解析失败，两种协议格式都无法解析: {}", deviceCode, payload);
+                return;
             }
             
             // 保存原始payload
-            if (unifiedData != null) {
-                unifiedData.setRawPayload(payload);
-            }
+            unifiedData.setRawPayload(payload);
             
             // 统一处理
-            if (unifiedData != null && unifiedData.getDeviceCode() != null) {
+            if (unifiedData.getDeviceCode() != null) {
                 deviceDataService.handleUnifiedReport(unifiedData);
             } else {
                 log.error("统一数据转换失败，设备编码为空");

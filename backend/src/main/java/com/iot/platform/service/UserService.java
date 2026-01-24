@@ -81,7 +81,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         Map<String, Object> result = new java.util.LinkedHashMap<>();
         result.put("token", token);
         result.put("refreshToken", refreshToken);
-        result.put("expiresIn", 7200);
+        result.put("expiresIn", 86400); // 24小时（与Redis过期时间保持一致）
         
         // 构造用户信息
         Map<String, Object> userInfo = new java.util.LinkedHashMap<>();

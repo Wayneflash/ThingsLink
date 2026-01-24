@@ -90,9 +90,15 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
             AlarmConfigDTO alarmConfig = com.alibaba.fastjson.JSON.parseObject(
                 device.getAlarmConfig(), AlarmConfigDTO.class);
             
-            // 检查邮件通知是否启用
+            // 检查报警配置是否解析成功
+            if (alarmConfig == null) {
+                log.warn("报警配置解析失败，跳过邮件通知 - 设备: {}", deviceName);
+                return;
+            }
+            
+            // 检查邮件通知是否启用（必须明确为true才发送）
             if (alarmConfig.getMailEnabled() == null || !alarmConfig.getMailEnabled()) {
-                log.debug("邮件通知未启用，跳过发送 - 设备: {}", deviceName);
+                log.debug("邮件通知未启用，跳过发送 - 设备: {}, mailEnabled: {}", deviceName, alarmConfig.getMailEnabled());
                 return;
             }
             
@@ -354,9 +360,15 @@ public class NotificationService extends ServiceImpl<NotificationMapper, Notific
             AlarmConfigDTO alarmConfig = com.alibaba.fastjson.JSON.parseObject(
                 device.getAlarmConfig(), AlarmConfigDTO.class);
             
-            // 检查短信通知是否启用
+            // 检查报警配置是否解析成功
+            if (alarmConfig == null) {
+                log.warn("报警配置解析失败，跳过短信通知 - 设备: {}", deviceName);
+                return;
+            }
+            
+            // 检查短信通知是否启用（必须明确为true才发送）
             if (alarmConfig.getSmsEnabled() == null || !alarmConfig.getSmsEnabled()) {
-                log.debug("短信通知未启用，跳过发送 - 设备: {}", deviceName);
+                log.debug("短信通知未启用，跳过发送 - 设备: {}, smsEnabled: {}", deviceName, alarmConfig.getSmsEnabled());
                 return;
             }
             

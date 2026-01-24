@@ -43,10 +43,15 @@ class ApiClient {
       const response = await fetch(`${this.baseURL}${url}`, config);
       const data = await response.json();
 
-      // 处理 token 过期
+      // 处理 token 过期（统一处理，显示友好提示）
       if (data.code === 401) {
         this.setToken(null);
-        window.location.href = '/login';
+        // 显示友好的错误提示
+        alert('登录已失效，请重新登录');
+        // 延迟跳转，确保用户看到提示
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1000);
         throw new Error('登录已过期，请重新登录');
       }
 

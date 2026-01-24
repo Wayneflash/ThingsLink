@@ -1,1 +1,0 @@
-import{a2 as e}from"./index-b22c89f8.js";const r=t=>e({url:"/users/list",method:"post",data:t}),u=t=>e({url:"/users/create",method:"post",data:t}),a=t=>e({url:"/users/update",method:"post",data:t}),o=t=>e({url:"/users/delete",method:"post",data:{id:t}}),d=t=>e({url:"/users/status",method:"post",data:t});export{a,u as c,o as d,r as g,d as u};
