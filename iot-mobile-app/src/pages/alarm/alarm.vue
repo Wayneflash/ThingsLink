@@ -1265,7 +1265,7 @@ export default {
 }
 
 .modal-form-item {
-  margin-bottom: 40rpx;
+  margin-bottom: 32rpx;
 }
 
 .modal-form-item:last-child {
@@ -1274,30 +1274,37 @@ export default {
 
 .modal-form-label {
   display: block;
-  font-size: 32rpx;
+  font-size: 28rpx;
   color: #1d1d1f;
-  margin-bottom: 20rpx;
+  margin-bottom: 16rpx;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .textarea-wrapper {
   position: relative;
+  width: 92%;
+  margin: 0 auto;
 }
 
 .modal-textarea {
   width: 100%;
-  min-height: 280rpx;
-  padding: 24rpx;
+  min-height: 240rpx;
+  max-height: 400rpx;
+  padding: 20rpx;
   background: #f5f5f7;
   border: 2rpx solid #e5e7eb;
   border-radius: 16rpx;
-  font-size: 32rpx;
+  font-size: 28rpx;
   color: #1d1d1f;
   box-sizing: border-box;
-  line-height: 1.6;
+  line-height: 1.5;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   transition: all 0.3s ease;
+  word-wrap: break-word;
+  word-break: break-all;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-textarea:focus {
@@ -1309,13 +1316,13 @@ export default {
 
 .char-counter {
   position: absolute;
-  bottom: 16rpx;
-  right: 20rpx;
-  font-size: 24rpx;
+  bottom: 12rpx;
+  right: 16rpx;
+  font-size: 22rpx;
   color: #86868b;
   background: rgba(255, 255, 255, 0.95);
-  padding: 6rpx 12rpx;
-  border-radius: 8rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 6rpx;
   pointer-events: none;
   font-weight: 500;
 }
@@ -1471,20 +1478,22 @@ export default {
 
 .detail-label {
   display: block;
-  font-size: 28rpx;
+  font-size: 26rpx;
   color: #86868b;
-  margin-bottom: 12rpx;
+  margin-bottom: 10rpx;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .detail-value {
   display: block;
-  font-size: 32rpx;
+  font-size: 28rpx;
   color: #1d1d1f;
-  line-height: 1.6;
+  line-height: 1.5;
   word-break: break-word;
+  word-wrap: break-word;
   font-weight: 400;
+  white-space: pre-wrap;
 }
 
 .detail-images {
