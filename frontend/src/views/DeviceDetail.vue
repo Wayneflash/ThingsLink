@@ -565,8 +565,13 @@ const loadProductCommands = async () => {
 // 加载实时数据
 const loadRealtimeData = async () => {
   try {
-    // 先确保产品属性已加载
-    if (productAttributes.value.length === 0) {
+    // 延迟加载产品属性：只在实时数据tab且需要显示数据时才加载
+    // 如果产品属性未加载，先尝试从设备详情中获取（后端可能已返回）
+    if (productAttributes.value.length === 0 && deviceInfo.productAttrs) {
+      productAttributes.value = deviceInfo.productAttrs || []
+    }
+    // 如果还是没有，且当前在实时数据tab，才加载
+    if (productAttributes.value.length === 0 && activeTab.value === 'realtime') {
       await loadProductAttributes()
     }
     
@@ -726,6 +731,11 @@ const queryHistory = async () => {
       return
     }
 
+    // 只在查询历史数据时才加载产品属性（如果还没有加载）
+    if (productAttributes.value.length === 0) {
+      await loadProductAttributes()
+    }
+
     const data = await getHistoryData({
       deviceCode: deviceInfo.deviceCode,
       startTime: historyDateRange.value[0],
@@ -733,15 +743,10 @@ const queryHistory = async () => {
     })
 
     if (data) {
-      // 保存原始数据列表（用于元数据视图）
-      rawHistoryDataList.value = data.map(item => ({
-        ...item,
-        reportTime: item.ctime ? (item.ctime.includes('T') ? item.ctime.replace('T', ' ') : item.ctime) : ''
-      }))
-      
       // 将后端返回的DeviceData数组转换为表格需要的格式
       // 后端返回的是 [{addr: 'tem', addrv: '22.5', ctime: '2025-12-25 22:30:00', rawPayload: '...'}, ...]
-      // 需要按时间分组，将同一时间的多个属性合并到一行，并保存原始payload
+      // 需要按时间分组，将同一时间的多个属性合并到一行
+      // 注意：为了性能，不在查询时保存rawPayload，只在元数据视图需要时才处理
       const dataMap = new Map()
       
       data.forEach(item => {
@@ -752,16 +757,23 @@ const queryHistory = async () => {
         }
         if (!dataMap.has(time)) {
           dataMap.set(time, { 
-            reportTime: time,
-            rawPayload: item.rawPayload || null // 保存原始payload
+            reportTime: time
+            // 不在这里保存rawPayload，减少处理时间（除非是元数据视图）
           })
         }
         dataMap.get(time)[item.addr] = item.addrv
-        // 如果当前记录的rawPayload不为空，更新（同一时间的记录应该有相同的rawPayload）
-        if (item.rawPayload && !dataMap.get(time).rawPayload) {
-          dataMap.get(time).rawPayload = item.rawPayload
-        }
       })
+      
+      // 如果当前是元数据视图，才保存原始数据（包含rawPayload）
+      if (historyViewMode.value === 'metadata') {
+        rawHistoryDataList.value = data.map(item => ({
+          ...item,
+          reportTime: item.ctime ? (item.ctime.includes('T') ? item.ctime.replace('T', ' ') : item.ctime) : ''
+        }))
+      } else {
+        // 非元数据视图，清空rawHistoryDataList以节省内存
+        rawHistoryDataList.value = []
+      }
       
       historyData.value = Array.from(dataMap.values()).sort((a, b) => {
         return new Date(b.reportTime) - new Date(a.reportTime)
@@ -769,6 +781,14 @@ const queryHistory = async () => {
       
       historyPagination.total = historyData.value.length
       historyPagination.currentPage = 1
+      
+      // 如果当前是元数据视图，需要保存完整的rawPayload数据
+      if (historyViewMode.value === 'metadata') {
+        rawHistoryDataList.value = data.map(item => ({
+          ...item,
+          reportTime: item.ctime ? (item.ctime.includes('T') ? item.ctime.replace('T', ' ') : item.ctime) : ''
+        }))
+      }
       
       ElMessage.success(`查询成功，共 ${historyData.value.length} 条记录`)
       
@@ -1011,8 +1031,20 @@ const renderHistoryChart = () => {
 }
 
 // 监听视图模式切换
-watch(historyViewMode, async (newMode) => {
-  if (newMode === 'chart') {
+watch(historyViewMode, async (newMode, oldMode) => {
+  if (newMode === 'metadata') {
+    // 切换到元数据视图：如果已有历史数据但rawHistoryDataList为空，自动重新查询以获取完整数据
+    if (historyData.value.length > 0 && rawHistoryDataList.value.length === 0) {
+      // 自动查询，不显示提示
+      await queryHistory()
+    } else if (historyData.value.length === 0) {
+      // 如果完全没有数据，也自动查询
+      if (historyDateRange.value.length === 0) {
+        setDefaultHistoryRange()
+      }
+      await queryHistory()
+    }
+  } else if (newMode === 'chart') {
     // 切换到图表视图
     if (historyData.value.length === 0) {
       // 如果没有数据，先查询
@@ -1105,11 +1137,12 @@ const switchTab = async (tabName) => {
     loadRealtimeData()
   } else if (tabName === 'history') {
     // 历史数据：先加载产品属性，再设置默认时间范围并自动查询
-    await loadProductAttributes()
+    // 先设置默认时间范围（今天00:00到现在）
     if (historyDateRange.value.length === 0) {
       setDefaultHistoryRange()
     }
-    // 如果还没有数据，自动查询一次
+    // 产品属性在查询历史数据时再加载（如果还没有的话）
+    // 如果还没有数据，自动查询一次（默认查询当天数据）
     if (historyData.value.length === 0) {
       await queryHistory()
     }

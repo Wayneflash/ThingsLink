@@ -214,6 +214,42 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
             {"total_energy", "总有功电能", "float", "kWh", "表底示数（累计值）"}
         }, now);
         
+        // 1.2 创建三相智能电表
+        Product elec3PhaseProduct = getByModel("ELEC_3PHASE");
+        if (elec3PhaseProduct == null) {
+            elec3PhaseProduct = new Product();
+            elec3PhaseProduct.setProductName("三相智能电表");
+            elec3PhaseProduct.setProductModel("ELEC_3PHASE");
+            elec3PhaseProduct.setProtocol("MQTT");
+            elec3PhaseProduct.setDescription("用于监测三相电力能耗");
+            elec3PhaseProduct.setStatus(1);
+            elec3PhaseProduct.setCreateTime(now);
+            elec3PhaseProduct.setUpdateTime(now);
+            this.save(elec3PhaseProduct);
+            log.info("创建预置产品成功: 三相智能电表");
+        } else {
+            // 如果产品已存在，更新产品名称和描述
+            elec3PhaseProduct.setProductName("三相智能电表");
+            elec3PhaseProduct.setDescription("用于监测三相电力能耗");
+            elec3PhaseProduct.setUpdateTime(now);
+            this.updateById(elec3PhaseProduct);
+            log.info("更新预置产品名称: 三相智能电表");
+        }
+        
+        // 添加三相电表属性
+        addPresetAttributes(elec3PhaseProduct.getId(), new String[][]{
+            {"voltage_a", "A相电压", "float", "V", "A相实时电压"},
+            {"voltage_b", "B相电压", "float", "V", "B相实时电压"},
+            {"voltage_c", "C相电压", "float", "V", "C相实时电压"},
+            {"current_a", "A相电流", "float", "A", "A相实时电流"},
+            {"current_b", "B相电流", "float", "A", "B相实时电流"},
+            {"current_c", "C相电流", "float", "A", "C相实时电流"},
+            {"active_power", "总有功功率", "float", "kW", "三相总有功功率"},
+            {"reactive_power", "总无功功率", "float", "kvar", "三相总无功功率"},
+            {"power_factor", "功率因数", "float", "", "功率因数（0-1）"},
+            {"total_energy", "总有功电能", "float", "kWh", "表底示数（累计值）"}
+        }, now);
+        
         // 2. 创建智能水表
         Product waterProduct = getByModel("WATER");
         if (waterProduct == null) {

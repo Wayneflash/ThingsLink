@@ -8,6 +8,7 @@ import com.iot.platform.entity.Product;
 import com.iot.platform.mapper.DeviceDataMapper;
 import com.iot.platform.mapper.DeviceMapper;
 import com.iot.platform.mapper.ProductMapper;
+import java.math.BigDecimal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Arrays;
 
 /**
  * 能源统计服务
@@ -37,7 +39,8 @@ public class EnergyStatisticsService {
     private ProductMapper productMapper;
     
     // 产品型号常量（不依赖产品名称）
-    private static final String PRODUCT_MODEL_ELECTRIC = "ELEC";  // 电表产品型号
+    private static final String PRODUCT_MODEL_ELECTRIC = "ELEC";  // 单相电表产品型号
+    private static final String PRODUCT_MODEL_ELECTRIC_3PHASE = "ELEC_3PHASE";  // 三相电表产品型号
     private static final String PRODUCT_MODEL_WATER = "WATER";    // 水表产品型号
     private static final String PRODUCT_MODEL_GAS = "GAS";        // 气表产品型号
     
@@ -257,7 +260,7 @@ public class EnergyStatisticsService {
     }
     
     /**
-     * 能耗报表
+     * 能耗报表（优化版：使用数据库聚合查询，避免加载大量数据到内存）
      */
     public EnergyReportVO getEnergyReport(EnergyReportRequest request, List<Long> allowedGroupIds) {
         EnergyReportVO result = new EnergyReportVO();
@@ -285,49 +288,47 @@ public class EnergyStatisticsService {
         
         List<Long> deviceIds = devices.stream().map(Device::getId).collect(Collectors.toList());
         
-        // 查询数据
-        List<DeviceData> dataList = queryDeviceData(deviceIds, energyAttr, request.getStartTime(), request.getEndTime());
+        // 获取日期格式化格式（用于SQL查询）
+        String dateFormat = getReportDateFormat(reportType);
         
-        // 按日期和设备分组生成报表
-        DateTimeFormatter formatter = getReportFormatter(reportType);
-        Map<String, Map<Long, List<DeviceData>>> reportData = new HashMap<>();
+        // 使用数据库聚合查询，直接获取分组统计结果（避免加载大量数据到内存）
+        List<EnergyDailyStatDTO> statList = deviceDataMapper.selectEnergyDailyStats(
+                deviceIds, 
+                energyAttr, 
+                request.getStartTime(), 
+                request.getEndTime(),
+                dateFormat
+        );
         
-        for (DeviceData data : dataList) {
-            String date = data.getCtime().format(formatter);
-            reportData.computeIfAbsent(date, k -> new HashMap<>())
-                .computeIfAbsent(data.getDeviceId(), k -> new ArrayList<>())
-                .add(data);
-        }
+        // 构建设备ID到设备信息的映射（用于快速查找）
+        Map<Long, Device> deviceMap = devices.stream()
+                .collect(Collectors.toMap(Device::getId, d -> d));
         
-        // 生成报表记录
+        // 转换为报表记录
         List<EnergyReportVO.ReportRecordVO> records = new ArrayList<>();
-        for (Map.Entry<String, Map<Long, List<DeviceData>>> dateEntry : reportData.entrySet()) {
-            String date = dateEntry.getKey();
-            Map<Long, List<DeviceData>> deviceDataMap = dateEntry.getValue();
-            
-            for (Map.Entry<Long, List<DeviceData>> deviceEntry : deviceDataMap.entrySet()) {
-                Long deviceId = deviceEntry.getKey();
-                List<DeviceData> deviceDataList = deviceEntry.getValue();
-                
-                Device device = devices.stream()
-                    .filter(d -> d.getId().equals(deviceId))
-                    .findFirst()
-                    .orElse(null);
-                
-                if (device != null) {
-                    deviceDataList.sort(Comparator.comparing(DeviceData::getCtime));
-                    double consumption = calculateConsumption(deviceDataList);
-                    
-                    EnergyReportVO.ReportRecordVO record = new EnergyReportVO.ReportRecordVO();
-                    record.setDeviceId(device.getId());
-                    record.setDeviceName(device.getDeviceName());
-                    record.setDeviceCode(device.getDeviceCode());
-                    record.setDate(date);
-                    record.setConsumption(consumption);
-                    record.setUnit(unit);
-                    records.add(record);
-                }
+        for (EnergyDailyStatDTO stat : statList) {
+            Device device = deviceMap.get(stat.getDeviceId());
+            if (device == null) {
+                continue;
             }
+            
+            // 处理能耗值（如果为负数或null，返回0）
+            BigDecimal consumption = stat.getConsumption();
+            if (consumption == null || consumption.compareTo(BigDecimal.ZERO) < 0) {
+                if (consumption != null && consumption.compareTo(BigDecimal.ZERO) < 0) {
+                    log.warn("计算出负能耗值: {}, 设备ID: {}, 日期: {}", consumption, stat.getDeviceId(), stat.getStatDate());
+                }
+                consumption = BigDecimal.ZERO;
+            }
+            
+            EnergyReportVO.ReportRecordVO record = new EnergyReportVO.ReportRecordVO();
+            record.setDeviceId(device.getId());
+            record.setDeviceName(device.getDeviceName());
+            record.setDeviceCode(device.getDeviceCode());
+            record.setDate(stat.getStatDate());
+            record.setConsumption(consumption.doubleValue());
+            record.setUnit(unit);
+            records.add(record);
         }
         
         // 分页
@@ -450,11 +451,11 @@ public class EnergyStatisticsService {
         
         // 根据能源类型过滤产品型号（基于产品型号，不依赖产品名称）
         if (energyType != null) {
-            String productModel = getProductModelByEnergyType(energyType);
-            if (productModel != null) {
-                // 先查询产品ID列表
+            // 电表类型支持单相和三相两种产品型号
+            if ("electric".equals(energyType)) {
+                // 查询单相电表和三相电表
                 LambdaQueryWrapper<Product> productQuery = new LambdaQueryWrapper<>();
-                productQuery.eq(Product::getProductModel, productModel);
+                productQuery.in(Product::getProductModel, Arrays.asList(PRODUCT_MODEL_ELECTRIC, PRODUCT_MODEL_ELECTRIC_3PHASE));
                 List<Product> products = productMapper.selectList(productQuery);
                 
                 if (!products.isEmpty()) {
@@ -465,6 +466,25 @@ public class EnergyStatisticsService {
                 } else {
                     // 如果没有找到对应产品型号，返回空列表
                     return new ArrayList<>();
+                }
+            } else {
+                // 水表、气表等其他类型，使用原有逻辑
+                String productModel = getProductModelByEnergyType(energyType);
+                if (productModel != null) {
+                    // 先查询产品ID列表
+                    LambdaQueryWrapper<Product> productQuery = new LambdaQueryWrapper<>();
+                    productQuery.eq(Product::getProductModel, productModel);
+                    List<Product> products = productMapper.selectList(productQuery);
+                    
+                    if (!products.isEmpty()) {
+                        List<Long> productIds = products.stream()
+                            .map(Product::getId)
+                            .collect(Collectors.toList());
+                        query.in(Device::getProductId, productIds);
+                    } else {
+                        // 如果没有找到对应产品型号，返回空列表
+                        return new ArrayList<>();
+                    }
                 }
             }
         }
@@ -546,7 +566,7 @@ public class EnergyStatisticsService {
     }
     
     /**
-     * 获取报表时间格式化器
+     * 获取报表时间格式化器（用于Java代码）
      */
     private DateTimeFormatter getReportFormatter(String reportType) {
         if ("monthly".equals(reportType)) {
@@ -555,6 +575,19 @@ public class EnergyStatisticsService {
             return DateTimeFormatter.ofPattern("yyyy");
         } else {
             return DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        }
+    }
+    
+    /**
+     * 获取报表日期格式化格式（用于MySQL DATE_FORMAT函数）
+     */
+    private String getReportDateFormat(String reportType) {
+        if ("monthly".equals(reportType)) {
+            return "%Y-%m";  // 2026-01
+        } else if ("yearly".equals(reportType)) {
+            return "%Y";     // 2026
+        } else {
+            return "%Y-%m-%d"; // 2026-01-01
         }
     }
 }

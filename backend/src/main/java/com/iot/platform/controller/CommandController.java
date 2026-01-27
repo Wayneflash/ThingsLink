@@ -184,6 +184,46 @@ public class CommandController {
     }
     
     /**
+     * 清除设备命令主题的保留消息
+     * 用于清除MQTT Broker上之前保留的命令消息
+     * 
+     * @param request 包含设备编码的请求
+     * @return 清除结果
+     */
+    @PostMapping("/clear-retained")
+    public Result<Map<String, Object>> clearRetainedMessage(@RequestBody Map<String, String> request) {
+        try {
+            String deviceCode = request.get("deviceCode");
+            if (deviceCode == null || deviceCode.trim().isEmpty()) {
+                return Result.error("设备编码不能为空");
+            }
+            
+            // 验证设备是否存在
+            Device device = deviceService.getByDeviceCode(deviceCode);
+            if (device == null) {
+                return Result.error("设备不存在");
+            }
+            
+            // 清除保留消息
+            mqttPublisher.clearRetainedMessage(deviceCode);
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("deviceCode", deviceCode);
+            data.put("status", "已清除");
+            data.put("message", "已清除该设备命令主题的保留消息");
+            data.put("clearTime", LocalDateTime.now().format(FORMATTER));
+            
+            log.info("✅ 已清除设备命令主题的保留消息 - DeviceCode: {}", deviceCode);
+            
+            return Result.success(data, "保留消息已清除");
+            
+        } catch (Exception e) {
+            log.error("❌ 清除保留消息失败", e);
+            return Result.error("清除保留消息失败: " + e.getMessage());
+        }
+    }
+    
+    /**
      * 命令项
      */
     @Data

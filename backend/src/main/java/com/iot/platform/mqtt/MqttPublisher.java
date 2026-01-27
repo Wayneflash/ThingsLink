@@ -160,4 +160,32 @@ public class MqttPublisher {
         
         return payload;
     }
+    
+    /**
+     * 清除指定主题的保留消息
+     * 通过发送一个空的保留消息来清除之前保留的消息
+     * 
+     * @param deviceCode 设备编码
+     */
+    public void clearRetainedMessage(String deviceCode) {
+        String topic = "ssc/" + deviceCode + "/command";
+        
+        try {
+            if (!mqttClient.isConnected()) {
+                log.warn("MQTT客户端未连接，无法清除保留消息 - DeviceCode: {}, Topic: {}", deviceCode, topic);
+                return;
+            }
+            
+            // 发送一个空的保留消息来清除之前的保留消息
+            MqttMessage clearMessage = new MqttMessage(new byte[0]);
+            clearMessage.setQos(1);
+            clearMessage.setRetained(true);  // 设置为保留，但内容是空的，这样会清除之前的保留消息
+            
+            mqttClient.publish(topic, clearMessage);
+            
+            log.info("✅ 已清除主题的保留消息 - Topic: {}", topic);
+        } catch (MqttException e) {
+            log.error("❌ 清除保留消息失败 - DeviceCode: {}, Topic: {}", deviceCode, topic, e);
+        }
+    }
 }

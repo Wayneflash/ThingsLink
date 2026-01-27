@@ -97,11 +97,13 @@ mybatis-plus:
       logic-not-delete-value: 0
 
 # MQTT 配置
+# 生产环境：默认使用 tcp://localhost:1883（直接连接EMQX）
+# 开发环境（Docker）：可通过环境变量 MQTT_BROKER_URL=tcp://localhost:11883 覆盖
 mqtt:
   broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
   client-id: iot-platform-backend
-  username: admin
-  password: admin123.
+  username: ${MQTT_USERNAME:admin}
+  password: ${MQTT_PASSWORD:admin123.}
   auto-reconnect: true
   clean-session: false
   connection-timeout: 10
