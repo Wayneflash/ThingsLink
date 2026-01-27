@@ -10,11 +10,6 @@
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="white"/>
             </svg>
           </div>
-          <div class="stat-trend" v-if="stats.deviceTrend !== 0">
-            <span :class="stats.deviceTrend > 0 ? 'trend-up' : 'trend-down'">
-              {{ stats.deviceTrend > 0 ? '↑' : '↓' }} {{ Math.abs(stats.deviceTrend) }}
-            </span>
-          </div>
         </div>
         <div class="stat-info">
           <div class="stat-label">设备总数</div>
@@ -33,9 +28,6 @@
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="white"/>
             </svg>
-          </div>
-          <div class="stat-trend" v-if="stats.onlineRate">
-            <span class="trend-up">{{ stats.onlineRate }}%</span>
           </div>
         </div>
         <div class="stat-info">
@@ -72,11 +64,6 @@
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" fill="white"/>
             </svg>
-          </div>
-          <div class="stat-trend" v-if="stats.dataTrend !== 0">
-            <span :class="stats.dataTrend > 0 ? 'trend-up' : 'trend-down'">
-              {{ stats.dataTrend > 0 ? '↑' : '↓' }} {{ formatPercent(Math.abs(stats.dataTrend)) }}
-            </span>
           </div>
         </div>
         <div class="stat-info">
@@ -973,25 +960,6 @@ onBeforeUnmount(() => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.stat-trend {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: white;
-  border-radius: 12px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.trend-up {
-  color: #67c23a;
-}
-
-.trend-down {
-  color: #f56c6c;
-}
 
 .stat-badge {
   position: absolute;

@@ -56,12 +56,28 @@ public interface DeviceDataMapper extends BaseMapper<DeviceData> {
             "  SELECT device_id, ctime, CAST(addrv AS DECIMAL(20,2)) as addrv_value " +
             "  FROM tb_device_data " +
             "  WHERE addr = #{addr} " +
+            "    AND ctime &gt;= #{startTime} " +
+            "    AND ctime &lt;= #{endTime} " +
+            "    <if test=\"deviceIds != null and deviceIds.size() &gt; 0\">" +
+            "      AND device_id IN " +
+            "      <foreach collection=\"deviceIds\" item=\"id\" open=\"(\" separator=\",\" close=\")\">" +
+            "        #{id}" +
+            "      </foreach>" +
+            "    </if>" +
             ") first_val ON stat.deviceId = first_val.device_id " +
             "  AND stat.first_time = first_val.ctime " +
             "LEFT JOIN ( " +
             "  SELECT device_id, ctime, CAST(addrv AS DECIMAL(20,2)) as addrv_value " +
             "  FROM tb_device_data " +
             "  WHERE addr = #{addr} " +
+            "    AND ctime &gt;= #{startTime} " +
+            "    AND ctime &lt;= #{endTime} " +
+            "    <if test=\"deviceIds != null and deviceIds.size() &gt; 0\">" +
+            "      AND device_id IN " +
+            "      <foreach collection=\"deviceIds\" item=\"id\" open=\"(\" separator=\",\" close=\")\">" +
+            "        #{id}" +
+            "      </foreach>" +
+            "    </if>" +
             ") last_val ON stat.deviceId = last_val.device_id " +
             "  AND stat.last_time = last_val.ctime " +
             "ORDER BY stat.statDate, stat.deviceId" +

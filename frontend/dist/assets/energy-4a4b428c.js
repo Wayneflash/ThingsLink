@@ -1,0 +1,1 @@
+import{a2 as e}from"./index-d915c72b.js";const s=t=>e({url:"/energy/statistics",method:"post",data:t}),a=t=>e({url:"/energy/trend",method:"post",data:t}),n=t=>e({url:"/energy/report",method:"post",data:t});export{a,n as b,s as g};

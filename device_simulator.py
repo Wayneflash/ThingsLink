@@ -68,6 +68,13 @@ DEVICES = [
         'protocol': "MQTT1.0",  # 使用MQTT1.0协议
         'status': {'total_energy': 2300.0}  # 初始累计电量(kWh)
     },
+    {
+        'code': "12344321",
+        'name': "三相智能电表-12344321",
+        'type': "electric_meter_3phase",  # 三相电表
+        'protocol': "MQTT1.0",  # 使用MQTT1.0协议
+        'status': {'total_energy': 5000.0}  # 初始累计电量(kWh)，三相电表通常用电量更大
+    },
     # 水表设备
     {
         'code': "SHUIBIAO1",
@@ -378,6 +385,104 @@ class DeviceSimulator:
             ]
             
             status_msg = f"电压: {voltage:.1f}V | 电流: {current:.1f}A | 功率: {active_power:.2f}kW | 累计: {self.device_status['total_energy']:.2f}kWh"
+            
+        elif device_type == "electric_meter_3phase":
+            # 三相智能电表：A/B/C相电压、A/B/C相电流、有功功率、无功功率、功率因数、总有功电能(累计值)
+            
+            # 初始化累计值
+            if 'total_energy' not in self.device_status:
+                self.device_status['total_energy'] = 5000.0  # 默认初始值
+            
+            # 三相电压：220V左右（相电压），正常范围 210-230V，三相之间略有差异
+            base_voltage = random.uniform(215.0, 225.0)  # 基准电压
+            voltage_a = base_voltage + random.uniform(-5.0, 5.0)  # A相电压
+            voltage_b = base_voltage + random.uniform(-5.0, 5.0)  # B相电压
+            voltage_c = base_voltage + random.uniform(-5.0, 5.0)  # C相电压
+            
+            # 三相电流：5-50A，根据用电情况变化，三相可能不同
+            current_a = random.uniform(5.0, 50.0)  # A相电流
+            current_b = random.uniform(5.0, 50.0)  # B相电流
+            current_c = random.uniform(5.0, 50.0)  # C相电流
+            
+            # 总有功功率 = (A相功率 + B相功率 + C相功率)
+            # 单相功率 = 电压 × 电流 × 功率因数 / 1000 (kW)
+            power_factor = random.uniform(0.85, 0.98)  # 功率因数 0.85-0.98
+            power_a = (voltage_a * current_a * power_factor) / 1000.0  # A相功率(kW)
+            power_b = (voltage_b * current_b * power_factor) / 1000.0  # B相功率(kW)
+            power_c = (voltage_c * current_c * power_factor) / 1000.0  # C相功率(kW)
+            active_power = power_a + power_b + power_c  # 总有功功率(kW)
+            
+            # 总无功功率：总有功功率的10-20%
+            reactive_power = active_power * random.uniform(0.10, 0.20)
+            
+            # 累计电量：每次增加 0.2-1.0 kWh（模拟3分钟用电量，三相电表用电量更大）
+            energy_increment = random.uniform(0.2, 1.0)
+            self.device_status['total_energy'] += energy_increment
+            
+            content = [
+                {
+                    "addr": "voltage_a",
+                    "addrv": f"{voltage_a:.2f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "voltage_b",
+                    "addrv": f"{voltage_b:.2f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "voltage_c",
+                    "addrv": f"{voltage_c:.2f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "current_a",
+                    "addrv": f"{current_a:.2f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "current_b",
+                    "addrv": f"{current_b:.2f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "current_c",
+                    "addrv": f"{current_c:.2f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "active_power",
+                    "addrv": f"{active_power:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "reactive_power",
+                    "addrv": f"{reactive_power:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "power_factor",
+                    "addrv": f"{power_factor:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                },
+                {
+                    "addr": "total_energy",
+                    "addrv": f"{self.device_status['total_energy']:.3f}",
+                    "ctime": now,
+                    "pid": self.device_code
+                }
+            ]
+            
+            status_msg = f"A相: {voltage_a:.1f}V/{current_a:.1f}A | B相: {voltage_b:.1f}V/{current_b:.1f}A | C相: {voltage_c:.1f}V/{current_c:.1f}A | 总功率: {active_power:.2f}kW | 累计: {self.device_status['total_energy']:.2f}kWh"
             
         elif device_type == "water_meter":
             # 智能水表：总流量(累计值)、瞬时流量、水压、阀门状态
