@@ -33,7 +33,8 @@ export default defineConfig({
     strictPort: false, // 如果端口被占用，自动尝试下一个可用端口
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        // 后端默认 8081，避免与 Clash 等占用 8080 的软件冲突
+        target: 'http://localhost:8081',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       }

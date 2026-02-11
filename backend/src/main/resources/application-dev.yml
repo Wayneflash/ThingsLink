@@ -1,0 +1,7 @@
+# 本地开发配置
+server:
+  port: 8081
+
+# Docker 版 EMQX 映射到 11883
+mqtt:
+  broker-url: tcp://localhost:11883

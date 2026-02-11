@@ -90,7 +90,8 @@ request.interceptors.response.use(
       } else if (status === 404) {
         ElMessage.error('请求的资源不存在')
       } else if (status === 500) {
-        ElMessage.error('服务器错误')
+        const msg = error.response?.data?.message || error.response?.data?.error || error.response?.data?.msg || '服务器错误，请检查后端日志（MySQL/Redis 是否已启动）'
+        ElMessage.error(msg)
       } else {
         ElMessage.error(error.response.data?.message || '请求失败')
       }
