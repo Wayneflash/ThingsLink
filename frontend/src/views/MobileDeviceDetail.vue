@@ -59,8 +59,27 @@
           >
             <div class="data-label">{{ item.label }}</div>
             <div class="data-value-row">
-              <span class="data-value">{{ item.value }}</span>
-              <span v-if="item.unit" class="data-unit">{{ item.unit }}</span>
+              <!-- RELAY 开关：开用对勾，关仅文字 -->
+              <template v-if="isRelayProduct && isRelaySwitchAddr(item.key)">
+                <el-icon 
+                  v-if="formatRelaySwitchDisplay(item.value) === 'on'" 
+                  class="switch-status-icon switch-on" 
+                  :size="24"
+                >
+                  <CircleCheck />
+                </el-icon>
+                <span 
+                  class="data-value" 
+                  :class="formatRelaySwitchDisplay(item.value) === 'on' ? 'switch-on-text' : 'switch-off-text'"
+                >
+                  {{ formatRelaySwitchDisplay(item.value) === 'on' ? '开' : '关' }}
+                </span>
+              </template>
+              <!-- 其他属性显示 -->
+              <template v-else>
+                <span class="data-value">{{ item.value }}</span>
+                <span v-if="item.unit" class="data-unit">{{ item.unit }}</span>
+              </template>
             </div>
             <div class="data-time">
               <el-icon :size="12"><Clock /></el-icon>
@@ -103,48 +122,88 @@
 
       <!-- 命令控制 -->
       <div v-show="activeTab === 'command'" class="tab-panel">
-        <div v-if="productCommands.length > 0" class="command-list">
-          <div
-            v-for="cmd in productCommands"
-            :key="cmd.addr"
-            class="command-card"
-          >
-            <div class="command-info">
-              <div class="command-name">{{ cmd.commandName || cmd.addr }}</div>
-              <div class="command-desc" v-if="cmd.description">{{ cmd.description }}</div>
+        <!-- RELAY 远程开关控制 -->
+        <template v-if="isRelayProduct">
+          <div class="relay-control-header">
+            <span class="relay-title">远程开关</span>
+            <div class="relay-header-actions">
+              <span v-if="deviceInfo.status !== 1" class="offline-chip">离线</span>
+              <el-button type="primary" link :loading="relayRefreshLoading" class="relay-refresh-btn" @click="handleRelayRefresh">
+                <el-icon><Refresh /></el-icon>刷新
+              </el-button>
             </div>
-            <el-button
-              type="primary"
-              :disabled="deviceInfo.status !== 1"
-              @click="sendCommand(cmd)"
-            >
-              执行
-            </el-button>
           </div>
-        </div>
-        <div v-else class="empty-state">
-          <el-icon :size="48" color="#ccc"><Tools /></el-icon>
-          <p>暂无控制命令</p>
-        </div>
+          <div class="relay-switch-panel">
+            <div v-for="i in 4" :key="`switch${i}`" class="relay-card">
+              <div class="relay-card-main">
+                <span class="relay-card-label">开关 {{ i }}</span>
+                <span class="status-badge" :class="formatRelaySwitchDisplay(getRelaySwitchValue(`switch${i}`)) === 'on' ? 'status-on' : 'status-off'">
+                  {{ formatRelaySwitchDisplay(getRelaySwitchValue(`switch${i}`)) === 'on' ? '开' : '关' }}
+                </span>
+              </div>
+              <el-switch
+                :model-value="getRelaySwitchValue(`switch${i}`)"
+                :loading="relaySwitchLoading[`switch${i}`]"
+                :disabled="deviceInfo.status !== 1"
+                inline-prompt
+                active-text="开"
+                inactive-text="关"
+                active-value="1"
+                inactive-value="0"
+                @change="(val) => handleRelaySwitchChange(`switch${i}`, val)"
+                class="relay-switch-control"
+              />
+            </div>
+          </div>
+        </template>
+        <!-- 普通命令控制 -->
+        <template v-else>
+          <div v-if="productCommands.length > 0" class="command-list">
+            <div
+              v-for="cmd in productCommands"
+              :key="cmd.addr"
+              class="command-card"
+            >
+              <div class="command-info">
+                <div class="command-name">{{ cmd.commandName || cmd.addr }}</div>
+                <div class="command-desc" v-if="cmd.description">{{ cmd.description }}</div>
+              </div>
+              <el-button
+                type="primary"
+                :disabled="deviceInfo.status !== 1"
+                @click="sendCommand(cmd)"
+              >
+                执行
+              </el-button>
+            </div>
+          </div>
+          <div v-else class="empty-state">
+            <el-icon :size="48" color="#ccc"><Tools /></el-icon>
+            <p>暂无控制命令</p>
+          </div>
+        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   ArrowLeft,
   Clock,
   Document,
-  Tools
+  Tools,
+  CircleCheck,
+  Refresh,
+  Lightning
 } from '@element-plus/icons-vue'
 import { getDeviceDetail, getDeviceLatestData } from '@/api/device'
 import { getProductAttributes, getProductCommands } from '@/api/product'
 import { getHistoryData } from '@/api/data'
-import { sendCommand as sendCommandAPI } from '@/api/command'
+import { sendCommand as sendCommandAPI, refreshRelayStatus } from '@/api/command'
 import * as echarts from 'echarts'
 
 const router = useRouter()
@@ -156,6 +215,7 @@ const deviceInfo = ref({
   deviceCode: '',
   productId: null,
   productName: '',
+  protocol: 'MQTT1.0',
   groupName: '',
   status: 0,
   lastOnlineTime: ''
@@ -185,6 +245,34 @@ const productCommands = ref([])
 
 // 产品属性
 const productAttributes = ref([])
+
+// 远程开关：开关 loading 状态
+const relaySwitchLoading = ref({})
+// 远程开关：刷新按钮 loading
+const relayRefreshLoading = ref(false)
+
+// 判断是否为 RELAY 产品
+const isRelayProduct = computed(() => {
+  return deviceInfo.value.protocol === 'RELAY'
+})
+
+// 判断是否为 RELAY 开关地址
+const isRelaySwitchAddr = (addr) => {
+  return /^switch[1-4]$/i.test(addr || '')
+}
+
+// 格式化 RELAY 开关显示值
+const formatRelaySwitchDisplay = (value) => {
+  return (value !== undefined && value !== null && value !== '' && String(value) === '1') ? 'on' : 'off'
+}
+
+// 获取 RELAY 开关当前值（用于 el-switch）
+const getRelaySwitchValue = (addr) => {
+  const item = realtimeData.value.find(r => r.key === addr)
+  const v = item?.value
+  if (v === undefined || v === null || v === '-') return '0'
+  return String(v) === '1' ? '1' : '0'
+}
 
 // 格式化时间
 const formatDateTime = (time) => {
@@ -403,6 +491,71 @@ const sendCommand = async (cmd) => {
   }
 }
 
+// 处理 RELAY 开关切换
+const handleRelaySwitchChange = async (addr, targetValue) => {
+  if (deviceInfo.value.status !== 1) {
+    ElMessage.warning('设备离线，无法下发命令')
+    return
+  }
+
+  relaySwitchLoading.value = { ...relaySwitchLoading.value, [addr]: true }
+  try {
+    await sendCommandAPI({
+      deviceCode: deviceInfo.value.deviceCode,
+      commands: [{ addr, addrv: targetValue }]
+    })
+
+    const start = Date.now()
+    const timeout = 5000
+    const pollInterval = 250
+    const checkDone = () => {
+      const cur = getRelaySwitchValue(addr)
+      return cur === targetValue
+    }
+
+    // 立即检查一次
+    await loadRealtimeData()
+    if (checkDone()) {
+      ElMessage.success('命令已生效')
+      return
+    }
+
+    // 轮询检查
+    do {
+      await new Promise(r => setTimeout(r, pollInterval))
+      await loadRealtimeData()
+      if (checkDone()) {
+        ElMessage.success('命令已生效')
+        return
+      }
+      if (Date.now() - start >= timeout) break
+    } while (Date.now() - start < timeout)
+
+    ElMessage.warning('设备无响应')
+  } catch (error) {
+    console.error('命令下发失败:', error)
+    ElMessage.error('命令下发失败')
+  } finally {
+    relaySwitchLoading.value = { ...relaySwitchLoading.value, [addr]: false }
+  }
+}
+
+// 处理 RELAY 状态刷新
+const handleRelayRefresh = async () => {
+  relayRefreshLoading.value = true
+  try {
+    await refreshRelayStatus({ deviceCode: deviceInfo.value.deviceCode })
+    await new Promise(r => setTimeout(r, 800))
+    await loadRealtimeData()
+    ElMessage.success('状态已刷新')
+  } catch (error) {
+    console.error('刷新失败:', error)
+    ElMessage.error('刷新失败')
+  } finally {
+    relayRefreshLoading.value = false
+  }
+}
+
 // Tab切换
 const switchTab = async (tabKey) => {
   activeTab.value = tabKey
@@ -433,6 +586,16 @@ const switchTab = async (tabKey) => {
       }
     } else if (tabKey === 'command') {
       await loadProductCommands()
+      if (isRelayProduct.value) {
+        await loadProductAttributes()
+        try {
+          await refreshRelayStatus({ deviceCode: deviceInfo.value.deviceCode })
+        } catch (e) {
+          console.warn('RELAY 状态刷新失败:', e)
+        }
+        await loadRealtimeData()
+        setTimeout(() => loadRealtimeData(), 1500)
+      }
     }
   }
 }
@@ -690,6 +853,127 @@ onBeforeUnmount(() => {
   font-size: 14px;
 }
 
+/* RELAY 远程开关 */
+.relay-control-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.relay-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.relay-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.offline-chip {
+  padding: 4px 12px;
+  background: rgba(255, 149, 0, 0.15);
+  border-radius: 10px;
+  font-size: 12px;
+  color: #ff9500;
+  font-weight: 500;
+}
+
+.relay-refresh-btn {
+  color: #667eea;
+  font-size: 14px;
+  padding: 0;
+}
+
+.relay-switch-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.relay-card {
+  background: #ffffff;
+  padding: 14px 16px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
+}
+
+.relay-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.relay-card-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.status-badge {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 2px 10px;
+  border-radius: 8px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.status-on {
+  background: rgba(52, 199, 89, 0.12);
+  color: #34c759;
+}
+
+.status-off {
+  background: rgba(134, 134, 139, 0.1);
+  color: #86868b;
+}
+
+.relay-switch-control {
+  flex-shrink: 0;
+}
+
+.relay-switch-control :deep(.el-switch__core) {
+  width: 52px;
+  height: 28px;
+  border-radius: 14px;
+}
+
+.relay-switch-control :deep(.el-switch__core::after) {
+  width: 24px;
+  height: 24px;
+}
+
+.relay-switch-control :deep(.el-switch.is-checked .el-switch__core) {
+  background-color: #34c759;
+}
+
+/* 实时数据中的开关图标样式 */
+.switch-status-icon.switch-on {
+  color: #34c759;
+}
+
+.switch-status-icon.switch-off {
+  color: #86868b;
+}
+
+.data-value-row .switch-on-text {
+  color: #34c759;
+  font-weight: 600;
+}
+
+.data-value-row .switch-off-text {
+  color: #86868b;
+  font-weight: 600;
+}
+
 /* 移动端响应式优化 */
 @media (max-width: 375px) {
   .mobile-header {
@@ -743,6 +1027,7 @@ onBeforeUnmount(() => {
   .history-chart {
     height: 250px;
   }
+
 }
 
 @media (min-width: 376px) and (max-width: 414px) {

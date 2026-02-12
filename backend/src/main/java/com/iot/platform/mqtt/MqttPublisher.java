@@ -75,12 +75,14 @@ public class MqttPublisher {
             
             String payload;
             
-            if ("MQTT2.0".equalsIgnoreCase(protocol)) {
-                // MQTT2.0 格式
+            if ("RELAY".equalsIgnoreCase(protocol)) {
+                // 继电器协议：addr=switch1~4, addrv=0|1 -> method/actions
+                payload = buildRelayActionsPayload(addr, addrv);
+                log.info("使用 RELAY 协议发送控制命令");
+            } else if ("MQTT2.0".equalsIgnoreCase(protocol)) {
                 payload = buildV2Payload(deviceCode, addr, addrv);
                 log.info("使用 MQTT2.0 格式发送命令");
             } else {
-                // MQTT1.0 格式（默认）
                 payload = buildV1Payload(deviceCode, addr, addrv);
                 log.info("使用 MQTT1.0 格式发送命令");
             }
@@ -159,6 +161,65 @@ public class MqttPublisher {
             deviceCode, addr, addrv, msgId, payload);
         
         return payload;
+    }
+    
+    /**
+     * 构建继电器 actions 控制命令
+     * addr: switch1~switch4 -> slotNum 1~4
+     * addrv: "0" -> off, "1" -> on
+     */
+    private String buildRelayActionsPayload(String addr, String addrv) {
+        int slotNum = 0;
+        if ("switch1".equalsIgnoreCase(addr)) slotNum = 1;
+        else if ("switch2".equalsIgnoreCase(addr)) slotNum = 2;
+        else if ("switch3".equalsIgnoreCase(addr)) slotNum = 3;
+        else if ("switch4".equalsIgnoreCase(addr)) slotNum = 4;
+        else {
+            try {
+                slotNum = Integer.parseInt(addr.replace("switch", ""));
+            } catch (Exception e) {
+                log.warn("RELAY addr 解析失败，默认 slotNum=1: {}", addr);
+                slotNum = 1;
+            }
+        }
+        
+        String action = "1".equals(addrv) ? "on" : "off";
+        String frameId = String.valueOf(System.currentTimeMillis());
+        
+        java.util.Map<String, Object> cmd = new java.util.HashMap<>();
+        cmd.put("method", "actions");
+        cmd.put("slotNums", java.util.Collections.singletonList(slotNum));
+        cmd.put("action", action);
+        cmd.put("hasStopDelayTask", false);
+        cmd.put("frameId", frameId);
+        
+        return JSON.toJSONString(cmd);
+    }
+    
+    /**
+     * 向继电器设备发送 getDevStatus 查询（定时拉取/立即刷新用）
+     */
+    public void publishGetDevStatus(String deviceCode) {
+        String topic = "ssc/" + deviceCode + "/command";
+        String frameId = String.valueOf(System.currentTimeMillis());
+        java.util.Map<String, Object> cmd = new java.util.HashMap<>();
+        cmd.put("method", "getDevStatus");
+        cmd.put("frameId", frameId);
+        String payload = JSON.toJSONString(cmd);
+        
+        try {
+            if (!mqttClient.isConnected()) {
+                log.warn("MQTT 未连接，无法发送 getDevStatus: {}", deviceCode);
+                return;
+            }
+            MqttMessage message = new MqttMessage(payload.getBytes(StandardCharsets.UTF_8));
+            message.setQos(1);
+            message.setRetained(false);
+            mqttClient.publish(topic, message);
+            log.info("已发送 getDevStatus 到设备 {} - Topic: {}", deviceCode, topic);
+        } catch (MqttException e) {
+            log.error("发送 getDevStatus 失败: {}", deviceCode, e);
+        }
     }
     
     /**

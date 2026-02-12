@@ -30,6 +30,7 @@
         <el-table-column prop="protocol" label="协议类型" width="120">
           <template #default="{ row }">
             <el-tag v-if="row.protocol === 'MQTT2.0'" type="success" size="small">MQTT2.0</el-tag>
+            <el-tag v-else-if="row.protocol === 'RELAY'" type="warning" size="small">RELAY</el-tag>
             <el-tag v-else-if="row.protocol === 'MQTT' || !row.protocol" type="info" size="small">MQTT1.0</el-tag>
             <el-tag v-else type="info" size="small">{{ row.protocol }}</el-tag>
           </template>
@@ -92,6 +93,7 @@
           >
             <el-option label="MQTT1.0" value="MQTT1.0" />
             <el-option label="MQTT2.0" value="MQTT2.0" />
+            <el-option label="RELAY" value="RELAY" />
           </el-select>
         </el-form-item>
         <el-form-item label="产品描述" prop="description">

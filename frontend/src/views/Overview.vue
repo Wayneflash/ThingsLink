@@ -113,8 +113,8 @@
       </div>
     </div>
 
-    <!-- 图表区域 - 4个图表等高对齐 -->
-    <div class="charts-grid">
+    <!-- 第一行：设备状态、产品分布 -->
+    <div class="charts-grid charts-grid-top">
       <!-- 设备状态分布 -->
       <div class="chart-card">
         <div class="chart-header">
@@ -136,70 +136,10 @@
         </div>
         <div ref="productChartRef" class="chart-container" v-loading="productChartLoading"></div>
       </div>
-
-      <!-- 今日报警趋势（按小时） -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <div class="chart-title-wrapper">
-            <el-icon class="chart-icon" :size="20"><Bell /></el-icon>
-            <span class="chart-title">今日报警趋势（按小时）</span>
-          </div>
-          <div class="chart-actions">
-            <el-button size="small" @click="loadTodayAlarmTrend()">刷新</el-button>
-          </div>
-        </div>
-        <div class="data-trend-wrapper" v-loading="trendLoading">
-          <div v-if="alarmTrendList.length > 0" class="data-trend-bars alarm-trend-bars">
-            <div v-for="(item, index) in alarmTrendList" :key="index" class="trend-bar-item">
-              <div class="trend-bar-bg">
-                <div class="trend-bar-fill alarm-bar" :style="{ height: getAlarmBarHeight(item.count) + '%' }" :title="`${item.time} 共 ${item.count} 条（严重 ${item.critical}，警告 ${item.warning}）`">
-                  <span class="trend-bar-value">{{ item.count }}</span>
-                </div>
-              </div>
-              <div class="trend-bar-label">{{ item.time }}</div>
-            </div>
-          </div>
-          <div v-else-if="!trendLoading" class="data-trend-empty">
-            <el-icon :size="32" color="#c0c4cc"><Bell /></el-icon>
-            <p>今日暂无报警</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 分组统计 -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <div class="chart-title-wrapper">
-            <el-icon class="chart-icon" :size="20"><FolderOpened /></el-icon>
-            <span class="chart-title">设备分组统计</span>
-          </div>
-        </div>
-        <div class="group-stats-list">
-          <div v-for="group in groupStats" :key="group.groupId" class="group-stat-item">
-            <div class="group-stat-header">
-              <span class="group-name">{{ group.groupName || '未分组' }}</span>
-              <span class="group-count">{{ group.deviceCount }} 台</span>
-            </div>
-            <div class="group-stat-bar">
-              <div class="group-stat-bar-fill" :style="{ width: getGroupPercentage(group.deviceCount) + '%' }">
-                <div class="group-stat-bar-info">
-                  <span class="online-count">在线 {{ group.onlineCount }}</span>
-                  <span class="offline-count">离线 {{ group.offlineCount }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div v-if="groupStats.length === 0" class="empty-state">
-            <el-icon class="empty-icon" :size="48"><Document /></el-icon>
-            <p>暂无分组数据</p>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <!-- 底部区域：最近报警和最近活跃设备 -->
-    <div class="bottom-row">
-      <!-- 最近报警 -->
+    <!-- 第二行：最近报警、最近活跃设备（单独一行，两个等宽） -->
+    <div class="info-cards-row">
       <div class="info-card">
         <div class="card-header">
           <div class="card-title-wrapper">
@@ -277,6 +217,68 @@
           <div v-if="stats.recentDevices.length === 0" class="empty-state">
             <el-icon class="empty-icon" :size="48"><Document /></el-icon>
             <p>暂无设备数据</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 下方一行：今日报警趋势、设备分组统计 -->
+    <div class="charts-grid charts-grid-bottom">
+      <!-- 今日报警趋势（按小时） -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title-wrapper">
+            <el-icon class="chart-icon" :size="20"><Bell /></el-icon>
+            <span class="chart-title">今日报警趋势（按小时）</span>
+          </div>
+          <div class="chart-actions">
+            <el-button size="small" @click="loadTodayAlarmTrend()">刷新</el-button>
+          </div>
+        </div>
+        <div class="data-trend-wrapper" v-loading="trendLoading">
+          <div v-if="alarmTrendList.length > 0" class="data-trend-bars alarm-trend-bars">
+            <div v-for="(item, index) in alarmTrendList" :key="index" class="trend-bar-item">
+              <div class="trend-bar-bg">
+                <div class="trend-bar-fill alarm-bar" :style="{ height: getAlarmBarHeight(item.count) + '%' }" :title="`${item.time} 共 ${item.count} 条（严重 ${item.critical}，警告 ${item.warning}）`">
+                  <span class="trend-bar-value">{{ item.count }}</span>
+                </div>
+              </div>
+              <div class="trend-bar-label">{{ item.time }}</div>
+            </div>
+          </div>
+          <div v-else-if="!trendLoading" class="data-trend-empty">
+            <el-icon :size="32" color="#c0c4cc"><Bell /></el-icon>
+            <p>今日暂无报警</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 设备分组统计 -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title-wrapper">
+            <el-icon class="chart-icon" :size="20"><FolderOpened /></el-icon>
+            <span class="chart-title">设备分组统计</span>
+          </div>
+        </div>
+        <div class="group-stats-list">
+          <div v-for="group in groupStats" :key="group.groupId" class="group-stat-item">
+            <div class="group-stat-header">
+              <span class="group-name">{{ group.groupName || '未分组' }}</span>
+              <span class="group-count">{{ group.deviceCount }} 台</span>
+            </div>
+            <div class="group-stat-bar">
+              <div class="group-stat-bar-fill" :style="{ width: getGroupPercentage(group.deviceCount) + '%' }">
+                <div class="group-stat-bar-info">
+                  <span class="online-count">在线 {{ group.onlineCount }}</span>
+                  <span class="offline-count">离线 {{ group.offlineCount }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="groupStats.length === 0" class="empty-state">
+            <el-icon class="empty-icon" :size="48"><Document /></el-icon>
+            <p>暂无分组数据</p>
           </div>
         </div>
       </div>
@@ -418,7 +420,7 @@ const loadTodayAlarmTrend = async () => {
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
     const res = await axios.post('/alarm-log/list', {
       page: 1,
-      pageSize: 5000,
+      pageSize: 500,
       startTime: formatDateTime(todayStart),
       endTime: formatDateTime(todayEnd)
     })
@@ -1023,12 +1025,43 @@ onBeforeUnmount(() => {
   font-weight: 500;
 }
 
-/* ===== 图表区域：2x2 网格 ===== */
+/* ===== 图表区域 ===== */
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
   margin-bottom: 24px;
+}
+
+.charts-grid-top {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.charts-grid-bottom {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* ===== 信息卡片行：最近报警、最近活跃设备（单独一行，两列等宽） ===== */
+.info-cards-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.info-cards-row .info-card {
+  height: 360px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.info-cards-row .info-card .alarm-list,
+.info-cards-row .info-card .device-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .chart-card {
@@ -1522,11 +1555,21 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 960px) {
-  .charts-grid {
+  .charts-grid,
+  .charts-grid-top,
+  .charts-grid-bottom {
     grid-template-columns: 1fr;
   }
 
   .chart-card {
+    height: 320px;
+  }
+
+  .info-cards-row {
+    grid-template-columns: 1fr;
+  }
+
+  .info-cards-row .info-card {
     height: 320px;
   }
 }
@@ -1540,7 +1583,9 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 
-  .charts-grid {
+  .charts-grid,
+  .charts-grid-top,
+  .charts-grid-bottom {
     grid-template-columns: 1fr;
     gap: 16px;
   }
@@ -1549,8 +1594,12 @@ onBeforeUnmount(() => {
     height: 300px;
   }
 
-  .bottom-row {
+  .info-cards-row {
     grid-template-columns: 1fr;
+  }
+
+  .info-cards-row .info-card {
+    height: 300px;
   }
 
   .stat-card {

@@ -75,8 +75,27 @@
           >
             <text class="data-label">{{ attr.name || attr.identifier }}</text>
             <view class="data-value-row">
-              <text class="data-value">{{ formatValue(attr.value) }}</text>
-              <text class="data-unit" v-if="attr.unit">{{ attr.unit }}</text>
+              <!-- RELAY 开关：开用对勾，关仅文字 -->
+              <template v-if="isRelayProduct && isRelaySwitchAddr(attr.identifier)">
+                <Icon 
+                  v-if="formatRelaySwitchDisplay(attr.value) === 'on'"
+                  name="CircleCheck" 
+                  :size="24" 
+                  color="#34c759"
+                  class="switch-status-icon"
+                />
+                <text 
+                  class="data-value" 
+                  :class="formatRelaySwitchDisplay(attr.value) === 'on' ? 'switch-on-text' : 'switch-off-text'"
+                >
+                  {{ formatRelaySwitchDisplay(attr.value) === 'on' ? '开' : '关' }}
+                </text>
+              </template>
+              <!-- 其他属性 -->
+              <template v-else>
+                <text class="data-value">{{ formatValue(attr.value) }}</text>
+                <text class="data-unit" v-if="attr.unit">{{ attr.unit }}</text>
+              </template>
             </view>
             <view class="data-time">
               <Icon name="Clock" :size="12" color="#86868b" />
@@ -214,6 +233,11 @@ export default {
         pageSize: 20,
         total: 0
       }
+    }
+  },
+  computed: {
+    isRelayProduct() {
+      return (this.deviceInfo.protocol || '').toUpperCase() === 'RELAY'
     }
   },
   onLoad(options) {
@@ -361,9 +385,10 @@ export default {
           url: `/pages/device/history?code=${this.deviceCode}&name=${encodeURIComponent(this.deviceInfo.name || this.deviceInfo.deviceName || '')}`
         })
       } else if (tabName === 'command') {
-        // 跳转到命令控制页面
+        // 跳转到命令控制页面（传递 protocol 用于 RELAY 远程开关识别）
+        const protocol = (this.deviceInfo.protocol || '').toUpperCase()
         uni.navigateTo({
-          url: `/pages/device/command?code=${this.deviceCode}&name=${encodeURIComponent(this.deviceInfo.name || this.deviceInfo.deviceName || '')}`
+          url: `/pages/device/command?code=${this.deviceCode}&name=${encodeURIComponent(this.deviceInfo.name || this.deviceInfo.deviceName || '')}&protocol=${encodeURIComponent(protocol)}`
         })
       } else if (tabName === 'log') {
         // 切换到日志tab，设置默认时间范围并加载日志
@@ -474,6 +499,14 @@ export default {
         return value.toFixed(2)
       }
       return value
+    },
+    // 是否 RELAY 开关属性（switch1~4）
+    isRelaySwitchAddr(addr) {
+      return /^switch[1-4]$/i.test(addr || '')
+    },
+    // 格式化 RELAY 开关显示
+    formatRelaySwitchDisplay(value) {
+      return (value !== undefined && value !== null && value !== '' && String(value) === '1') ? 'on' : 'off'
     },
     formatTime(time) {
       if (!time) return '未知'
@@ -652,6 +685,20 @@ export default {
   font-size: 48rpx;
   font-weight: 600;
   color: #1d1d1f;
+}
+
+.switch-on-text {
+  color: #34c759;
+  font-weight: 600;
+}
+
+.switch-off-text {
+  color: #86868b;
+  font-weight: 600;
+}
+
+.switch-status-icon {
+  margin-right: 8rpx;
 }
 
 .data-unit {

@@ -34,7 +34,21 @@ export const getProductCommands = (params) => {
   })
 }
 
+/**
+ * 立即拉取继电器状态（触发 getDevStatus）
+ * 仅支持 RELAY 协议设备
+ * @param {Object} params - { deviceCode }
+ */
+export const refreshRelayStatus = (params) => {
+  return request({
+    url: '/commands/refresh-status',
+    method: 'post',
+    data: params
+  })
+}
+
 export default {
   sendCommand,
-  getProductCommands
+  getProductCommands,
+  refreshRelayStatus
 }

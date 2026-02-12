@@ -127,6 +127,25 @@ public class DeviceDataService extends ServiceImpl<DeviceDataMapper, DeviceData>
     }
     
     /**
+     * 将 Redis 中的最新值覆盖到 dataMap（设备上报时先写 Redis，读 Redis 可更快拿到响应）
+     * 用于 RELAY 等场景，避免因 DB 写入延迟导致前端误判超时
+     */
+    public void mergeRedisLatestToMap(String deviceCode, Map<String, String> dataMap, List<String> addrs) {
+        if (addrs == null || addrs.isEmpty()) return;
+        for (String addr : addrs) {
+            String key = DEVICE_LATEST_DATA_KEY + deviceCode + ":" + addr;
+            try {
+                String val = stringRedisTemplate.opsForValue().get(key);
+                if (val != null && !val.isEmpty()) {
+                    dataMap.put(addr, val);
+                }
+            } catch (Exception e) {
+                log.debug("Redis 读取失败 {}:{} - {}", deviceCode, addr, e.getMessage());
+            }
+        }
+    }
+    
+    /**
      * 查询设备历史数据
      */
     public List<DeviceData> getHistoryData(String deviceCode, String addr, 

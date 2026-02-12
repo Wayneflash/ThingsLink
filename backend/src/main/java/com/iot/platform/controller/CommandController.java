@@ -106,10 +106,11 @@ public class CommandController {
                     // 兼容旧数据：如果 protocol 是 "MQTT"，当作 "MQTT1.0" 处理
                     if ("MQTT".equalsIgnoreCase(productProtocol)) {
                         protocol = "MQTT1.0";
-                    } else if ("MQTT1.0".equalsIgnoreCase(productProtocol) || "MQTT2.0".equalsIgnoreCase(productProtocol)) {
+                    } else if ("MQTT1.0".equalsIgnoreCase(productProtocol)
+                            || "MQTT2.0".equalsIgnoreCase(productProtocol)
+                            || "RELAY".equalsIgnoreCase(productProtocol)) {
                         protocol = productProtocol;
                     } else {
-                        // 未知协议类型，默认使用 MQTT1.0
                         protocol = "MQTT1.0";
                     }
                 }
@@ -181,6 +182,37 @@ public class CommandController {
     public static class SendCommandRequest {
         private String deviceCode;
         private List<CommandItem> commands;
+    }
+    
+    /**
+     * 立即拉取继电器状态（触发 getDevStatus）
+     * 用于用户进入命令 Tab 时快速刷新
+     */
+    @PostMapping("/refresh-status")
+    public Result<Map<String, Object>> refreshRelayStatus(@RequestBody Map<String, String> request) {
+        try {
+            String deviceCode = request.get("deviceCode");
+            if (deviceCode == null || deviceCode.trim().isEmpty()) {
+                return Result.error("设备编码不能为空");
+            }
+            Device device = deviceService.getByDeviceCode(deviceCode);
+            if (device == null) {
+                return Result.error("设备不存在");
+            }
+            Product product = productService.getById(device.getProductId());
+            if (product == null || !"RELAY".equalsIgnoreCase(product.getProtocol())) {
+                return Result.error("仅支持 RELAY 协议设备");
+            }
+            mqttPublisher.publishGetDevStatus(deviceCode);
+            Map<String, Object> data = new HashMap<>();
+            data.put("deviceCode", deviceCode);
+            data.put("status", "已发送");
+            data.put("message", "已发送 getDevStatus，设备应答后状态将更新");
+            return Result.success(data);
+        } catch (Exception e) {
+            log.error("刷新继电器状态失败", e);
+            return Result.error(e.getMessage());
+        }
     }
     
     /**

@@ -6,6 +6,7 @@ import com.iot.platform.entity.Device;
 import com.iot.platform.entity.Product;
 import com.iot.platform.entity.DeviceGroup;
 import com.iot.platform.entity.DeviceData;
+import com.iot.platform.entity.Attribute;
 import com.iot.platform.service.DeviceDataService;
 import com.iot.platform.service.DeviceService;
 import com.iot.platform.service.ProductService;
@@ -415,22 +416,26 @@ public class DeviceController {
             result.put("deviceId", device.getId());
             result.put("deviceCode", device.getDeviceCode());
             
+            Map<String, String> dataMap = new HashMap<>();
             if (!latestDataList.isEmpty()) {
-                // 构造data对象
-                Map<String, String> dataMap = new HashMap<>();
-                
                 // 按时间排序，最新的数据优先，填充到dataMap中
                 latestDataList.sort((a, b) -> b.getCtime().compareTo(a.getCtime()));
                 for (DeviceData dataItem : latestDataList) {
                     dataMap.put(dataItem.getAddr(), dataItem.getAddrv());
                 }
-                
-                result.put("data", dataMap);
-                result.put("reportTime", latestDataList.get(0).getCtime());
-            } else {
-                result.put("data", new HashMap<>());
-                result.put("reportTime", null);
             }
+            
+            // 优先用 Redis 最新值覆盖（设备上报先写 Redis，可更快拿到响应，避免 RELAY 控制误报超时）
+            if (device.getProductId() != null) {
+                List<Attribute> attrs = productService.getProductAttributes(device.getProductId());
+                if (attrs != null && !attrs.isEmpty()) {
+                    List<String> addrs = attrs.stream().map(Attribute::getAddr).collect(Collectors.toList());
+                    deviceDataService.mergeRedisLatestToMap(deviceCode, dataMap, addrs);
+                }
+            }
+            
+            result.put("data", dataMap);
+            result.put("reportTime", !latestDataList.isEmpty() ? latestDataList.get(0).getCtime() : null);
             
             return Result.success(result);
         } catch (Exception e) {

@@ -23,9 +23,9 @@ if sys.platform == 'win32':
     except:
         pass
 
-# MQTT配置 - 从后端配置获取
-MQTT_BROKER = "117.72.222.8"  # 实际部署时请替换为实际服务器地址
-MQTT_PORT = 1883
+# MQTT配置 - 本地docker-compose映射为 11883，远端部署一般为 1883
+MQTT_BROKER = "127.0.0.1"  # 实际部署时请替换为实际服务器地址
+MQTT_PORT = 11883  # 本地 docker: 11883，远端通常为 1883
 MQTT_USERNAME = "admin"
 MQTT_PASSWORD = "admin123."  # 与EMQX配置保持一致
 
@@ -104,6 +104,14 @@ DEVICES = [
         'type': "gas_meter",  # 气表
         'protocol': "MQTT1.0",  # 使用MQTT1.0协议
         'status': {'total_gas': 680.0}  # 初始累计用气量(m³)
+    },
+    # 远程开关（4路继电器，RELAY 协议，不主动上报）
+    {
+        'code': "1122334455",
+        'name': "远程开关-1122334455",
+        'type': "relay",  # 4路继电器
+        'protocol': "RELAY",  # 继电器自有协议
+        'status': {'slots': [0, 0, 0, 0]}  # slots[0~3] 对应 开关1~4，0=关 1=开
     }
 ]
 
@@ -173,6 +181,11 @@ class DeviceSimulator:
                 try:
                     command_data = json.loads(payload)
                     print_success(f"[{self.device_code}] 成功解析命令")
+                    
+                    # RELAY 协议：getDevStatus / actions
+                    if self.device_type == "relay":
+                        self._handle_relay_command(command_data)
+                        return
                     
                     # 判断命令格式（MQTT1.0 或 MQTT2.0）
                     commands_to_process = []
@@ -640,6 +653,83 @@ class DeviceSimulator:
         except ValueError:
             return False
 
+    def _handle_relay_command(self, command_data):
+        """
+        处理 RELAY 协议命令并上报响应（完全按协议实现）
+        流程：平台发命令到 ssc/{deviceCode}/command → 本方法处理 → 响应发布到 ssc/{deviceCode}/report
+        - getDevStatus: 响应当前 slots 状态
+        - actions: 更新 slots 后响应新状态
+        """
+        method = command_data.get("method", "")
+        frame_id = command_data.get("frameId", str(int(time.time() * 1000)))
+        
+        if method == "getDevStatus":
+            # 响应当前 slots 状态
+            slots = self.device_status.get('slots', [0, 0, 0, 0])
+            response = {
+                "imei": self.device_code,
+                "method": "getDevStatus",
+                "timestamp": int(time.time()),
+                "signal": 29,
+                "result": "ok",
+                "model": "Simulator",
+                "EMdata": [{"c": 0, "v": 0, "p": 0}] * 4,
+                "slots": slots,
+                "netType": "4G",
+                "temperature": "23.8",
+                "frameId": frame_id
+            }
+            self._publish_relay_response(response)
+            print_success(f"[{self.device_code}] 响应 getDevStatus: slots={slots}")
+            
+        elif method == "actions":
+            # 更新 slots 并响应
+            slot_nums = command_data.get("slotNums", [])
+            action = command_data.get("action", "off")  # on / off / toggle
+            slots = list(self.device_status.get('slots', [0, 0, 0, 0]))
+            # 保证至少4个元素
+            while len(slots) < 4:
+                slots.append(0)
+            
+            new_val = 1 if action == "on" else 0
+            if action == "toggle":
+                for idx in slot_nums:
+                    i = int(idx) - 1  # slotNum 1~4 -> index 0~3
+                    if 0 <= i < 4:
+                        slots[i] = 1 - slots[i]
+            else:
+                for idx in slot_nums:
+                    i = int(idx) - 1
+                    if 0 <= i < 4:
+                        slots[i] = new_val
+            
+            self.device_status['slots'] = slots
+            
+            response = {
+                "timestamp": int(time.time()),
+                "imei": self.device_code,
+                "method": "actions",
+                "slots": slots,
+                "result": "ok",
+                "frameId": frame_id
+            }
+            self._publish_relay_response(response)
+            print_success(f"[{self.device_code}] 响应 actions: action={action}, slots={slots}")
+        else:
+            print_warning(f"[{self.device_code}] 未知 RELAY 方法: {method}")
+
+    def _publish_relay_response(self, response):
+        """发布 RELAY 协议响应到 report 主题"""
+        try:
+            payload = json.dumps(response, ensure_ascii=False)
+            result = self.client.publish(self.topic_report, payload, qos=1)
+            if result.rc == mqtt.MQTT_ERR_SUCCESS:
+                print_info(f"[{self.device_code}] 已响应到 {self.topic_report}")
+            else:
+                print_error(f"[{self.device_code}] 响应发布失败，错误码: {result.rc}")
+        except Exception as e:
+            print_error(f"[{self.device_code}] 发布 RELAY 响应时出错: {e}")
+
     def publish_data(self):
         """上报数据到平台"""
         try:
@@ -662,6 +752,8 @@ class DeviceSimulator:
         print_info(f"设备编码: {self.device_code}")
         print_info(f"设备名称: {self.device_name}")
         print_info(f"协议类型: {self.protocol}")
+        if self.device_type == "relay":
+            print_info(f"[RELAY] 订阅 {self.topic_command}，收到 getDevStatus/actions 后将响应上报到 {self.topic_report}")
         print_info(f"MQTT服务器: {MQTT_BROKER}:{MQTT_PORT}")
         print_info(f"上报主题: {self.topic_report}")
         print_info(f"命令主题: {self.topic_command} (将订阅QoS=1)")
@@ -715,17 +807,18 @@ class DeviceSimulator:
             # 等待一下确保连接稳定
             time.sleep(1)
             
-            # 周期性上报数据
+            # 周期性上报数据（RELAY 设备不主动上报，仅响应命令）
             while True:
                 if self.client.is_connected():
-                    self.publish_data()
+                    if self.device_type != "relay":
+                        self.publish_data()
                 else:
                     print_warning(f"[{self.device_code}] MQTT连接已断开，尝试重连...")
                     try:
                         self.client.reconnect()
                     except:
                         pass
-                time.sleep(180)  # 每3分钟上报一次数据
+                time.sleep(180)  # 每3分钟（RELAY 设备仅保持心跳）
             
         except Exception as e:
             print_error(f"[{self.device_code}] 启动设备模拟器时出错: {e}")

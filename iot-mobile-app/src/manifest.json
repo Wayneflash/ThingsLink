@@ -2,7 +2,7 @@
     "name" : "ThingsLink",
     "appid" : "__UNI__17F311B",
     "description" : "物联网设备管理平台",
-    "versionName" : "1.0.0",
+    "versionName" : "1.0.1",
     "versionCode" : "100",
     "transformPx" : false,
     "app-plus" : {
@@ -114,7 +114,7 @@
         "devServer" : {
             "proxy" : {
                 "/api" : {
-                    "target" : "http://localhost:8080",
+                    "target" : "http://localhost:8081",
                     "changeOrigin" : true,
                     "secure" : false,
                     "pathRewrite" : {

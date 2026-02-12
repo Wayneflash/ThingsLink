@@ -1,6 +1,8 @@
 package com.iot.platform.mqtt;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.iot.platform.dto.DeviceReportDTO;
 import com.iot.platform.dto.DeviceReportV2DTO;
 import com.iot.platform.dto.UnifiedReportData;
@@ -84,7 +86,17 @@ public class MqttMessageHandler {
             UnifiedReportData unifiedData = null;
             boolean parseSuccess = false;
             
-            if ("MQTT2.0".equalsIgnoreCase(protocol)) {
+            if ("RELAY".equalsIgnoreCase(protocol)) {
+                // 继电器协议：解析 getDevStatus / actions 应答
+                unifiedData = parseAndConvertRelayReport(payload, deviceCode);
+                if (unifiedData != null) {
+                    parseSuccess = true;
+                    log.info("设备 {} 使用 RELAY 协议解析成功, method: {}", deviceCode,
+                            JSON.parseObject(payload).getString("method"));
+                } else {
+                    log.error("设备 {} RELAY 协议解析失败: {}", deviceCode, payload);
+                }
+            } else if ("MQTT2.0".equalsIgnoreCase(protocol)) {
                 // 优先使用配置的MQTT2.0格式解析
                 DeviceReportV2DTO v2DTO = parseV2Report(payload);
                 if (v2DTO != null) {
@@ -120,9 +132,9 @@ public class MqttMessageHandler {
                 }
             }
             
-            // 如果两种格式都解析失败，记录错误并返回
+            // 如果所有格式都解析失败，记录错误并返回
             if (!parseSuccess || unifiedData == null) {
-                log.error("设备 {} 数据解析失败，两种协议格式都无法解析: {}", deviceCode, payload);
+                log.error("设备 {} 数据解析失败，协议 {} 无法解析: {}", deviceCode, protocol, payload);
                 return;
             }
             
@@ -352,5 +364,56 @@ public class MqttMessageHandler {
         }
         
         return unifiedData;
+    }
+    
+    /**
+     * 解析继电器协议应答（getDevStatus / actions）
+     * 提取 slots 数组，转换为 switch1~4 属性
+     */
+    private UnifiedReportData parseAndConvertRelayReport(String payload, String deviceCode) {
+        try {
+            JSONObject json = JSON.parseObject(payload);
+            if (json == null) return null;
+            
+            String method = json.getString("method");
+            JSONArray slots = json.getJSONArray("slots");
+            if (slots == null || slots.isEmpty()) {
+                log.warn("RELAY 应答缺少 slots 字段: {}", payload);
+                return null;
+            }
+            
+            // 解析时间戳
+            LocalDateTime ctime = LocalDateTime.now();
+            Integer ts = json.getInteger("timestamp");
+            if (ts != null && ts > 0) {
+                try {
+                    ctime = LocalDateTime.ofInstant(
+                        Instant.ofEpochSecond(ts),
+                        ZoneId.systemDefault()
+                    );
+                } catch (Exception e) {
+                    log.debug("RELAY 时间戳解析失败，使用当前时间: {}", ts);
+                }
+            }
+            
+            List<UnifiedReportData.PropertyData> properties = new ArrayList<>();
+            String[] addrs = {"switch1", "switch2", "switch3", "switch4"};
+            for (int i = 0; i < Math.min(4, slots.size()); i++) {
+                UnifiedReportData.PropertyData prop = new UnifiedReportData.PropertyData();
+                prop.setName(addrs[i]);
+                Object val = slots.get(i);
+                prop.setValue(val != null ? String.valueOf(val) : "0");
+                prop.setCtime(ctime);
+                properties.add(prop);
+            }
+            
+            UnifiedReportData unifiedData = new UnifiedReportData();
+            unifiedData.setDeviceCode(deviceCode);
+            unifiedData.setProperties(properties);
+            return unifiedData;
+        } catch (Exception e) {
+            log.error("解析 RELAY 协议失败: {}", payload, e);
+            return null;
+        }
     }
 }
