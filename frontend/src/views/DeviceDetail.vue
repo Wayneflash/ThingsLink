@@ -171,7 +171,7 @@
     </div>
 
     <!-- 历史数据 Tab -->
-    <div class="tab-content" :class="{ active: activeTab === 'history' }">
+    <div class="tab-content" :class="{ active: activeTab === 'history' }" v-loading="historyLoading" element-loading-text="加载中...">
       <div class="history-toolbar">
         <el-radio-group v-model="historyViewMode" size="small">
           <el-radio-button label="chart">
@@ -198,7 +198,7 @@
             value-format="YYYY-MM-DD HH:mm:ss"
             style="width: 400px;"
           />
-          <el-button type="primary" @click="queryHistory">查询</el-button>
+          <el-button type="primary" @click="queryHistory" :loading="historyLoading">查询</el-button>
         </div>
       </div>
           
@@ -497,6 +497,9 @@ const historyPagination = reactive({
 // 当前激活的Tab
 const activeTab = ref('realtime')
 
+// 历史数据加载状态
+const historyLoading = ref(false)
+
 // 设备日志数据
 const deviceLogList = ref([])
 const logLoading = ref(false)
@@ -540,7 +543,6 @@ const loadMqttConfig = async () => {
 const loadDeviceDetail = async () => {
   try {
     const deviceCode = route.query.deviceCode || route.params.deviceCode
-    console.log('设备编码:', deviceCode, '路由参数:', route.query, route.params)
     
     if (!deviceCode) {
       ElMessage.error('设备编码不存在')
@@ -552,9 +554,7 @@ const loadDeviceDetail = async () => {
     await loadMqttConfig()
     
     // 只加载设备基本信息
-    console.log('请求设备详情，参数:', { deviceCode })
     const data = await getDeviceDetail({ deviceCode })
-    console.log('设备详情响应数据:', data)
     
     if (data && typeof data === 'object') {
       Object.assign(deviceInfo, data)
@@ -594,7 +594,6 @@ const loadProductAttributes = async () => {
     const attrData = await getProductAttributes(deviceInfo.productId)
     if (attrData) {
       productAttributes.value = attrData || []
-      console.log('产品属性加载完成:', productAttributes.value.length, '个')
     }
   } catch (error) {
     console.error('加载产品属性失败:', error)
@@ -625,7 +624,6 @@ const loadProductCommands = async () => {
       } else {
         productCommands.value = []
       }
-      console.log('产品命令加载完成:', productCommands.value.length, '个')
     }
   } catch (error) {
     console.error('加载产品命令失败:', error)
@@ -823,13 +821,12 @@ const tableHeight = computed(() => {
 
 // 查询历史数据
 const queryHistory = async () => {
+  if (!historyDateRange.value || historyDateRange.value.length !== 2) {
+    ElMessage.warning('请选择查询时间范围')
+    return
+  }
+  historyLoading.value = true
   try {
-    if (!historyDateRange.value || historyDateRange.value.length !== 2) {
-      ElMessage.warning('请选择查询时间范围')
-      return
-    }
-
-    // 只在查询历史数据时才加载产品属性（如果还没有加载）
     if (productAttributes.value.length === 0) {
       await loadProductAttributes()
     }
@@ -890,35 +887,27 @@ const queryHistory = async () => {
       
       ElMessage.success(`查询成功，共 ${historyData.value.length} 条记录`)
       
-      // 如果当前是图表视图，渲染图表
       if (historyViewMode.value === 'chart') {
         nextTick(() => {
-          renderHistoryChart()
+          requestAnimationFrame(() => renderHistoryChart())
         })
       }
     }
   } catch (error) {
     console.error('查询历史数据失败:', error)
     ElMessage.error('查询历史数据失败')
+  } finally {
+    historyLoading.value = false
   }
 }
 
 // 渲染历史数据图表
 const renderHistoryChart = () => {
-  console.log('=== 开始渲染图表 ===')
-  console.log('historyChartRef.value:', historyChartRef.value)
-  console.log('historyData.value.length:', historyData.value.length)
-  console.log('productAttributes.value.length:', productAttributes.value.length)
-  
   if (!historyChartRef.value) {
-    console.error('图表容器未找到')
     return
   }
   
-  // 检查容器尺寸
   const rect = historyChartRef.value.getBoundingClientRect()
-  console.log('容器尺寸:', rect.width, 'x', rect.height)
-  
   if (rect.width === 0 || rect.height === 0) {
     console.error('容器尺寸为0，可能未显示')
     // 延迟重试
@@ -949,16 +938,12 @@ const renderHistoryChart = () => {
     historyChartInstance = null
   }
   
-  // 创建新实例
   historyChartInstance = echarts.init(historyChartRef.value)
-  console.log('图表实例已创建')
   
   // 准备数据：按时间升序排列
   const sortedData = [...historyData.value].sort((a, b) => {
     return new Date(a.reportTime.replace('T', ' ')) - new Date(b.reportTime.replace('T', ' '))
   })
-  
-  console.log('排序后数据:', sortedData.length, '条')
   
   // 提取时间轴数据
   const timeData = sortedData.map(item => {
@@ -967,7 +952,6 @@ const renderHistoryChart = () => {
     return time.split(' ')[1] || time
   })
   
-  console.log('时间轴数据:', timeData.slice(0, 5))
   
   // 为每个数值属性创建一条曲线
   const numericAttrs = productAttributes.value.filter(attr => {
@@ -975,7 +959,6 @@ const renderHistoryChart = () => {
     return dataType === 'int' || dataType === 'float' || dataType === 'double'
   })
   
-  console.log('数值属性:', numericAttrs.map(a => `${a.attrName}(${a.addr})`))
   
   if (numericAttrs.length === 0) {
     console.warn('没有数值类型的属性')
@@ -992,7 +975,6 @@ const renderHistoryChart = () => {
     })
     
     const validCount = seriesData.filter(v => v !== null).length
-    console.log(`${attr.attrName}: ${validCount} 个有效数据点`)
     
     return {
       name: attr.attrName,
@@ -1122,10 +1104,7 @@ const renderHistoryChart = () => {
     series: series
   }
   
-  console.log('设置图表配置')
   historyChartInstance.setOption(option, true)
-  console.log('图表渲染完成')
-  console.log('=== 渲染图表结束 ===')
 }
 
 // 监听视图模式切换
@@ -1146,11 +1125,9 @@ watch(historyViewMode, async (newMode, oldMode) => {
     // 切换到图表视图
     if (historyData.value.length === 0) {
       // 如果没有数据，先查询
-      console.log('图表视图无数据，开始查询...')
       await queryHistory()
     } else {
       // 有数据，直接渲染图表
-      console.log('图表视图有数据，渲染图表...')
       // 等待 DOM 更新并稍微延迟，确保容器显示
       setTimeout(() => {
         nextTick(() => {
@@ -1234,8 +1211,6 @@ const handleRelaySwitchChange = async (addr, targetValue) => {
 
 /// 发送命令
 const sendCommand = async (cmd) => {
-  console.log('点击命令按钮:', cmd)
-  console.log('设备状态:', deviceInfo.status)
   
   if (deviceInfo.status !== 1) {
     ElMessage.warning('设备离线，无法下发命令')

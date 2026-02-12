@@ -279,23 +279,17 @@ const handleLogin = async () => {
       localStorage.setItem('userInfo', JSON.stringify(user))
       localStorage.setItem('menus', JSON.stringify(menus || []))
       
-      // 跳转到目标页面或首页（使用 replace 避免在历史记录中留下登录页）
       const redirect = route.query.redirect || '/overview'
       
-      // 立即跳转，不等待任何延迟（同步操作已完成后直接跳转）
+      // 登录成功：不重置 loading，保持按钮 loading 状态直到页面切换，避免闪烁
       try {
-        // 使用 replace 跳转，立即执行，不等待Promise
         router.replace(redirect)
-        
-        // 显示成功消息（异步，不阻塞跳转）
-        setTimeout(() => {
-          ElMessage.success('登录成功')
-        }, 100)
+        setTimeout(() => ElMessage.success('登录成功'), 150)
       } catch (error) {
-        console.error('路由跳转失败:', error)
-        // 如果路由跳转失败，使用 window.location 作为降级方案
+        loading.value = false
         window.location.href = redirect
       }
+      return
     } else {
       ElMessage.error(result.message || '登录失败')
     }
@@ -341,11 +335,23 @@ const handleLogin = async () => {
   background-size: 64px 64px;
   opacity: 0.4;
   animation: gridMove 25s linear infinite;
+  will-change: transform;
 }
 
 @keyframes gridMove {
   0% { transform: translate(0, 0); }
   100% { transform: translate(64px, 64px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grid-pattern,
+  .data-flow,
+  .node,
+  .node-ring,
+  .data-package,
+  .connection-line {
+    animation: none !important;
+  }
 }
 
 .data-flow {
@@ -358,6 +364,7 @@ const handleLogin = async () => {
     rgba(102, 126, 234, 0.1) 0%, 
     transparent 70%);
   animation: rotateFlow 40s linear infinite;
+  will-change: transform;
 }
 
 @keyframes rotateFlow {
@@ -377,6 +384,7 @@ const handleLogin = async () => {
   height: 12px;
   transform: translate(-50%, -50%);
   animation: nodePulse 3s ease-in-out infinite;
+  will-change: transform;
 }
 
 .node-core {
@@ -431,6 +439,7 @@ const handleLogin = async () => {
   top: var(--start-y);
   animation: packageMove var(--animation-duration, 5s) linear infinite;
   animation-delay: var(--animation-delay, 0s);
+  will-change: transform;
 }
 
 .package-content {
