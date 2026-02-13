@@ -1,8 +1,9 @@
 package com.iot.platform.service;
 
-import cn.hutool.core.date.DateUtil;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.iot.platform.dto.DeviceReportDTO;
 import com.iot.platform.dto.UnifiedReportData;
@@ -157,6 +158,22 @@ public class DeviceDataService extends ServiceImpl<DeviceDataMapper, DeviceData>
              .le(endTime != null, DeviceData::getCtime, endTime)
              .orderByDesc(DeviceData::getCtime);
         return this.list(query);
+    }
+
+    /**
+     * 分页查询设备历史数据（数据库层 LIMIT，避免全量加载）
+     */
+    public IPage<DeviceData> getHistoryDataPage(String deviceCode, String addr,
+                                                 LocalDateTime startTime, LocalDateTime endTime,
+                                                 int pageNum, int pageSize) {
+        LambdaQueryWrapper<DeviceData> query = new LambdaQueryWrapper<>();
+        query.eq(DeviceData::getDeviceCode, deviceCode)
+             .eq(addr != null, DeviceData::getAddr, addr)
+             .ge(startTime != null, DeviceData::getCtime, startTime)
+             .le(endTime != null, DeviceData::getCtime, endTime)
+             .orderByDesc(DeviceData::getCtime);
+        Page<DeviceData> pageParam = new Page<>(pageNum, pageSize);
+        return this.page(pageParam, query);
     }
     
     /**

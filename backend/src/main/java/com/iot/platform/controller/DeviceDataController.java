@@ -1,5 +1,6 @@
 package com.iot.platform.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.iot.platform.common.Result;
 import com.iot.platform.entity.Device;
 import com.iot.platform.entity.DeviceData;
@@ -8,7 +9,6 @@ import com.iot.platform.service.DeviceService;
 import com.iot.platform.util.PermissionUtil;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -66,10 +66,10 @@ public class DeviceDataController {
     }
     
     /**
-     * 查询设备历史数据
+     * 分页查询设备历史数据（数据库层 LIMIT，避免全量加载）
      */
     @PostMapping("/list")
-    public Result<List<DeviceData>> getDeviceDataList(
+    public Result<Map<String, Object>> getDeviceDataList(
             @RequestBody DataQueryRequest request,
             @RequestHeader(value = "Authorization", required = false) String token) {
         try {
@@ -101,19 +101,23 @@ public class DeviceDataController {
                     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             }
             
-            List<DeviceData> dataList = deviceDataService.getHistoryData(
+            int pageNum = request.getPageNum() != null ? Math.max(1, request.getPageNum()) : 1;
+            int pageSize = request.getPageSize() != null ? request.getPageSize() : 100;
+            pageSize = Math.min(Math.max(1, pageSize), 500);  // 限制 1~500
+            
+            IPage<DeviceData> page = deviceDataService.getHistoryDataPage(
                 request.getDeviceCode(),
                 request.getAttrs(),
                 startTime,
-                endTime
+                endTime,
+                pageNum,
+                pageSize
             );
             
-            // 限制最大1000条
-            if (dataList.size() > 1000) {
-                dataList = dataList.subList(0, 1000);
-            }
-            
-            return Result.success(dataList);
+            Map<String, Object> result = new HashMap<>(2);
+            result.put("list", page.getRecords());
+            result.put("total", page.getTotal());
+            return Result.success(result);
         } catch (Exception e) {
             log.error("查询设备历史数据失败", e);
             return Result.error(e.getMessage());
@@ -129,5 +133,7 @@ public class DeviceDataController {
         private String startTime;
         private String endTime;
         private String attrs;      // 属性标识符（多个用逗号分隔）
+        private Integer pageNum;   // 页码，默认 1
+        private Integer pageSize;  // 每页条数，默认 100，最大 500
     }
 }

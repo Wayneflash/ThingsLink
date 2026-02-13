@@ -2,6 +2,11 @@
 server:
   port: 8081
 
+# 本地 Docker MySQL 映射到 13306（避免 Windows 保留端口），仅 dev 生效
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:13306/iot_platform?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+
 # Docker 版 EMQX 映射到 11883
 mqtt:
   broker-url: tcp://localhost:11883

@@ -378,7 +378,7 @@ const loadProductCommands = async () => {
   }
 }
 
-// 查询历史数据
+// 查询历史数据（分页，图表模式单次最多 500 条）
 const queryHistory = async () => {
   if (!historyDateRange.value || historyDateRange.value.length !== 2) {
     ElMessage.warning('请选择时间范围')
@@ -389,11 +389,19 @@ const queryHistory = async () => {
     const res = await getHistoryData({
       deviceCode: deviceInfo.value.deviceCode,
       startTime: historyDateRange.value[0],
-      endTime: historyDateRange.value[1]
+      endTime: historyDateRange.value[1],
+      pageNum: 1,
+      pageSize: 500
     })
 
-    if (res.code === 200) {
-      historyData.value = res.data || []
+    if (res && res.list) {
+      const dataMap = new Map()
+      res.list.forEach(item => {
+        let time = item.ctime ? (item.ctime.includes('T') ? item.ctime.replace('T', ' ') : item.ctime) : ''
+        if (!dataMap.has(time)) dataMap.set(time, { reportTime: time })
+        dataMap.get(time)[item.addr] = item.addrv
+      })
+      historyData.value = Array.from(dataMap.values()).sort((a, b) => new Date(a.reportTime) - new Date(b.reportTime))
       await nextTick()
       renderHistoryChart()
     }
@@ -420,10 +428,10 @@ const renderHistoryChart = () => {
     return `${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}`
   })
 
-  // 提取每个属性的数据
+  // 提取每个属性的数据（合并后格式为 { reportTime, [addr]: value }）
   const series = productAttributes.value.map(attr => {
     const values = sortedData.map(item => {
-      const value = item.data?.[attr.addr]
+      const value = item[attr.addr] ?? item.data?.[attr.addr]
       return value !== undefined && value !== null ? parseFloat(value) : null
     })
 

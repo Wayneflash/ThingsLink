@@ -8,8 +8,9 @@ services:
       MYSQL_ROOT_PASSWORD: root123456
       MYSQL_DATABASE: iot_platform
       TZ: Asia/Shanghai
+    # Windows 可能保留 3221-3320，用 13306 避免 bind 失败
     ports:
-      - "3306:3306"
+      - "13306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql

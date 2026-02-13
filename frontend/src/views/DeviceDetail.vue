@@ -198,7 +198,7 @@
             value-format="YYYY-MM-DD HH:mm:ss"
             style="width: 400px;"
           />
-          <el-button type="primary" @click="queryHistory" :loading="historyLoading">查询</el-button>
+          <el-button type="primary" @click="() => queryHistory(true)" :loading="historyLoading">查询</el-button>
         </div>
       </div>
           
@@ -239,6 +239,8 @@
             :total="historyPagination.total"
             layout="total, sizes, prev, pager, next, jumper"
             class="history-pagination"
+            @current-change="onHistoryPageChange"
+            @size-change="onHistorySizeChange"
           />
           <div v-if="historyData.length === 0" class="empty-data">
             <el-icon class="empty-icon" :size="64"><Document /></el-icon>
@@ -278,9 +280,11 @@
             v-model:current-page="historyPagination.currentPage"
             v-model:page-size="historyPagination.pageSize"
             :page-sizes="[20, 50, 100, 200]"
-            :total="metadataList.length"
+            :total="historyPagination.total"
             layout="total, sizes, prev, pager, next, jumper"
             class="metadata-pagination"
+            @current-change="onHistoryPageChange"
+            @size-change="onHistorySizeChange"
           />
           
           <div v-if="metadataList.length === 0" class="empty-data">
@@ -714,12 +718,8 @@ const isRelaySwitchAddr = (addr) => /^switch[1-4]$/i.test(addr || '')
 // 格式化 RELAY 开关显示：返回 'on' | 'off'
 const formatRelaySwitchDisplay = (value) => (value !== undefined && value !== null && value !== '' && String(value) === '1') ? 'on' : 'off'
 
-// 分页后的历史数据
-const paginatedHistoryData = computed(() => {
-  const start = (historyPagination.currentPage - 1) * historyPagination.pageSize
-  const end = start + historyPagination.pageSize
-  return historyData.value.slice(start, end)
-})
+// 历史数据（后端已分页，当前页数据）
+const paginatedHistoryData = computed(() => historyData.value)
 
 // 元数据列表（显示所有完整的JSON数据包，不去重）
 const metadataList = computed(() => {
@@ -777,12 +777,8 @@ const metadataList = computed(() => {
     })
 })
 
-// 计算分页后的元数据
-const paginatedMetadata = computed(() => {
-  const start = (historyPagination.currentPage - 1) * historyPagination.pageSize
-  const end = start + historyPagination.pageSize
-  return metadataList.value.slice(start, end)
-})
+// 元数据列表（后端已分页，当前页数据）
+const paginatedMetadata = computed(() => metadataList.value)
 
 // 复制元数据
 const copyMetadata = async (jsonStr) => {
@@ -819,74 +815,67 @@ const tableHeight = computed(() => {
   return 'calc(100vh - 320px)'
 })
 
-// 查询历史数据
-const queryHistory = async () => {
+// 查询历史数据（分页，数据库层 LIMIT）
+// resetPage: 点击查询按钮时重置到第 1 页
+const queryHistory = async (resetPage = false) => {
   if (!historyDateRange.value || historyDateRange.value.length !== 2) {
     ElMessage.warning('请选择查询时间范围')
     return
   }
+  if (resetPage) historyPagination.currentPage = 1
   historyLoading.value = true
   try {
     if (productAttributes.value.length === 0) {
       await loadProductAttributes()
     }
 
-    const data = await getHistoryData({
+    // 图表模式单次加载 500 条便于展示趋势；表格/元数据用分页
+    const pageSize = historyViewMode.value === 'chart' ? 500 : historyPagination.pageSize
+
+    const res = await getHistoryData({
       deviceCode: deviceInfo.deviceCode,
       startTime: historyDateRange.value[0],
-      endTime: historyDateRange.value[1]
+      endTime: historyDateRange.value[1],
+      pageNum: historyPagination.currentPage,
+      pageSize
     })
 
-    if (data) {
-      // 将后端返回的DeviceData数组转换为表格需要的格式
-      // 后端返回的是 [{addr: 'tem', addrv: '22.5', ctime: '2025-12-25 22:30:00', rawPayload: '...'}, ...]
-      // 需要按时间分组，将同一时间的多个属性合并到一行
-      // 注意：为了性能，不在查询时保存rawPayload，只在元数据视图需要时才处理
+    if (res && res.list) {
+      const data = res.list
+      const total = res.total ?? 0
+      historyPagination.total = total
+
+      // 按时间合并：同一时间的多个属性合并到一行
       const dataMap = new Map()
-      
       data.forEach(item => {
-        // 确保时间格式为 yyyy-MM-dd HH:mm:ss
-        let time = '';
+        let time = ''
         if (item.ctime) {
-          time = item.ctime.includes('T') ? item.ctime.replace('T', ' ') : item.ctime;
+          time = item.ctime.includes('T') ? item.ctime.replace('T', ' ') : item.ctime
         }
         if (!dataMap.has(time)) {
-          dataMap.set(time, { 
-            reportTime: time
-            // 不在这里保存rawPayload，减少处理时间（除非是元数据视图）
-          })
+          dataMap.set(time, { reportTime: time })
         }
         dataMap.get(time)[item.addr] = item.addrv
       })
-      
-      // 如果当前是元数据视图，才保存原始数据（包含rawPayload）
+
+      historyData.value = Array.from(dataMap.values()).sort((a, b) => {
+        return new Date(b.reportTime) - new Date(a.reportTime)
+      })
+
       if (historyViewMode.value === 'metadata') {
         rawHistoryDataList.value = data.map(item => ({
           ...item,
           reportTime: item.ctime ? (item.ctime.includes('T') ? item.ctime.replace('T', ' ') : item.ctime) : ''
         }))
       } else {
-        // 非元数据视图，清空rawHistoryDataList以节省内存
         rawHistoryDataList.value = []
       }
-      
-      historyData.value = Array.from(dataMap.values()).sort((a, b) => {
-        return new Date(b.reportTime) - new Date(a.reportTime)
-      })
-      
-      historyPagination.total = historyData.value.length
-      historyPagination.currentPage = 1
-      
-      // 如果当前是元数据视图，需要保存完整的rawPayload数据
-      if (historyViewMode.value === 'metadata') {
-        rawHistoryDataList.value = data.map(item => ({
-          ...item,
-          reportTime: item.ctime ? (item.ctime.includes('T') ? item.ctime.replace('T', ' ') : item.ctime) : ''
-        }))
-      }
-      
-      ElMessage.success(`查询成功，共 ${historyData.value.length} 条记录`)
-      
+
+      const msg = total > pageSize
+        ? `查询成功，共 ${total} 条，当前显示 ${historyData.value.length} 条`
+        : `查询成功，共 ${historyData.value.length} 条记录`
+      ElMessage.success(msg)
+
       if (historyViewMode.value === 'chart') {
         nextTick(() => {
           requestAnimationFrame(() => renderHistoryChart())
@@ -899,6 +888,17 @@ const queryHistory = async () => {
   } finally {
     historyLoading.value = false
   }
+}
+
+// 分页变化时重新请求（表格/元数据）
+const onHistoryPageChange = (page) => {
+  historyPagination.currentPage = page
+  queryHistory()
+}
+const onHistorySizeChange = (size) => {
+  historyPagination.pageSize = size
+  historyPagination.currentPage = 1
+  queryHistory()
 }
 
 // 渲染历史数据图表
@@ -1112,20 +1112,16 @@ watch(historyViewMode, async (newMode, oldMode) => {
   if (newMode === 'metadata') {
     // 切换到元数据视图：如果已有历史数据但rawHistoryDataList为空，自动重新查询以获取完整数据
     if (historyData.value.length > 0 && rawHistoryDataList.value.length === 0) {
-      // 自动查询，不显示提示
-      await queryHistory()
+      await queryHistory(true)
     } else if (historyData.value.length === 0) {
-      // 如果完全没有数据，也自动查询
       if (historyDateRange.value.length === 0) {
         setDefaultHistoryRange()
       }
-      await queryHistory()
+      await queryHistory(true)
     }
   } else if (newMode === 'chart') {
-    // 切换到图表视图
     if (historyData.value.length === 0) {
-      // 如果没有数据，先查询
-      await queryHistory()
+      await queryHistory(true)
     } else {
       // 有数据，直接渲染图表
       // 等待 DOM 更新并稍微延迟，确保容器显示

@@ -19,13 +19,15 @@ export const getLatestData = (deviceCode, limit = 10) => {
 }
 
 /**
- * 查询设备历史数据
+ * 分页查询设备历史数据
  * @param {Object} params - 查询参数
  * @param {string} params.deviceCode - 设备编码
  * @param {string} params.startTime - 开始时间 (yyyy-MM-dd HH:mm:ss)
  * @param {string} params.endTime - 结束时间 (yyyy-MM-dd HH:mm:ss)
  * @param {string} params.attrs - 属性标识符（多个用逗号分隔，可选）
- * @returns {Promise} 返回历史数据列表
+ * @param {number} params.pageNum - 页码，默认 1
+ * @param {number} params.pageSize - 每页条数，默认 100，最大 500
+ * @returns {Promise<{list: Array, total: number}>}
  */
 export const getHistoryData = (params) => {
   return request({
