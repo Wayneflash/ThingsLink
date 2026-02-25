@@ -28,9 +28,9 @@ export default defineConfig({
     }
   },
   server: {
-    port: 5173,
-    host: '127.0.0.1', // 使用 IPv4 地址，避免 IPv6 权限问题
-    strictPort: false, // 如果端口被占用，自动尝试下一个可用端口
+    port: 3080,        // 5173 在本机易 EACCES，改用 3080
+    host: '127.0.0.1',
+    strictPort: false,
     proxy: {
       '/api': {
         // 后端默认 8081，避免与 Clash 等占用 8080 的软件冲突

@@ -34,5 +34,8 @@ backups/*.sql
 # 部署配置文件（包含敏感信息，不提交）
 scripts/deploy-config.txt
 
+# 开发环境配置（本地选择，不提交）
+scripts/dev-config.txt
+
 # 前端编译输出（可选，如果不想提交dist）
 # frontend/dist/

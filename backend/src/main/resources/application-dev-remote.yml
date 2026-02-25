@@ -1,0 +1,18 @@
+# 开发环境 - 远程数据库 ThingsLink 1.0（需先启动 SSH 隧道，或由 start-dev.bat 自动启动）
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:23307/thingslink_1_0?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: root123456
+  redis:
+    host: localhost
+    port: 26379
+    password: redis123456
+
+mqtt:
+  broker-url: tcp://localhost:21183
+  username: admin
+  password: admin123.

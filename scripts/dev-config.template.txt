@@ -1,0 +1,5 @@
+# 开发环境配置模板
+# 复制此文件为 dev-config.txt（该文件不提交 Git）
+
+# 数据库模式：0=本地Docker，1=远程服务器（需先启动 scripts/start-ssh-tunnel.bat）
+USE_REMOTE_DB=0
