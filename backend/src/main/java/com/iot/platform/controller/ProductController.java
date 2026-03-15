@@ -362,4 +362,21 @@ public class ProductController {
             return Result.error(e.getMessage());
         }
     }
+    
+    /**
+     * 更新产品命令
+     */
+    @PostMapping("/command/update")
+    public Result<Command> updateCommand(@RequestBody Command command) {
+        try {
+            if (command.getId() == null) {
+                return Result.error("命令ID不能为空");
+            }
+            Command result = productService.updateCommand(command);
+            return Result.success(result, "更新成功");
+        } catch (Exception e) {
+            log.error("更新产品命令失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
 }

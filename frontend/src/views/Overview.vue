@@ -191,7 +191,7 @@
           <el-button type="text" @click="goToDevices">查看全部 →</el-button>
         </div>
         <div class="device-list">
-          <div v-for="device in stats.recentDevices" :key="device.deviceCode" class="device-item" @click="goToDeviceDetail(device.deviceCode)">
+          <div v-for="device in stats.recentDevices" :key="device.deviceCode" class="device-item">
             <div class="device-icon-wrapper">
               <div class="device-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1439,12 +1439,11 @@ onBeforeUnmount(() => {
   background: #F8FAFC;
   border-radius: 12px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
+  cursor: default;
 }
 
 .device-item:hover {
-  background: #F1F5F9;
-  transform: translateX(3px);
+  background: #F8FAFC;
 }
 
 .device-icon-wrapper {

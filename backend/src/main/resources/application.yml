@@ -24,7 +24,7 @@ spring:
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/iot_platform?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://117.72.162.225:13307/thingslink_1_0?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:root123456}
     hikari:
@@ -57,8 +57,8 @@ spring:
   
   # Redis 配置
   redis:
-    host: ${SPRING_REDIS_HOST:localhost}
-    port: 6379
+    host: ${SPRING_REDIS_HOST:117.72.162.225}
+    port: 16379
     password: redis123456
     database: 0
     timeout: 5000ms
@@ -101,7 +101,7 @@ mybatis-plus:
 # 生产环境：默认使用 tcp://localhost:1883（直接连接EMQX）
 # 开发环境（Docker）：可通过环境变量 MQTT_BROKER_URL=tcp://localhost:11883 覆盖
 mqtt:
-  broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
+  broker-url: ${MQTT_BROKER_URL:tcp://117.72.162.225:11883}
   client-id: iot-platform-backend
   username: ${MQTT_USERNAME:admin}
   password: ${MQTT_PASSWORD:admin123.}

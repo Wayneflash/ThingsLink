@@ -13,21 +13,7 @@ echo.
 echo Project: %CD%
 echo.
 
-set USE_REMOTE_DB=1
-if exist "scripts\dev-config.txt" (
-    for /f "usebackq eol=# tokens=1,* delims==" %%a in ("scripts\dev-config.txt") do (
-        if "%%~a"=="USE_REMOTE_DB" set "USE_REMOTE_DB=%%~b"
-    )
-)
-set "USE_REMOTE_DB=%USE_REMOTE_DB: =%"
-
-if "%USE_REMOTE_DB%"=="1" (
-    set SPRING_PROFILES=dev-remote
-    echo [CONFIG] Remote: 117.72.162.225 (MySQL/Redis/MQTT via tunnel)
-) else (
-    set SPRING_PROFILES=dev
-    echo [CONFIG] Local Docker
-)
+echo [CONFIG] Remote: 117.72.162.225 (MySQL/Redis/MQTT direct)
 echo.
 
 if not exist "backend\pom.xml" (
@@ -83,14 +69,8 @@ if not exist "frontend\node_modules" (
 echo       OK
 echo.
 
-if "%USE_REMOTE_DB%"=="1" (
-    echo [5/6] Remote DB via SSH tunnel
-    echo       Please run scripts\start-ssh-tunnel.bat first and keep that window OPEN.
-    echo.
-) else (
-    echo [5/6] Local Docker (no tunnel)
-    echo.
-)
+echo [5/6] Remote DB (direct connection, no tunnel needed)
+echo.
 
 echo [6/6] Backend + Frontend...
 netstat -an | findstr ":8081" | findstr "LISTENING" >nul 2>&1
@@ -100,27 +80,15 @@ if not errorlevel 1 echo [WARN] 3080 in use
 
 for %%A in ("%JAVA_EXE%") do set "JAVA_BIN=%%~dpA"
 set "LAUNCH=%TEMP%\iot-backend-start.bat"
-if "%USE_REMOTE_DB%"=="1" (
-    echo Backend: dev-remote ^(23307/21183^)
-    (
-        echo @echo off
-        echo echo Backend: spring.profiles.active=dev-remote
-        echo cd /d "%CD%\backend"
-        echo set "PATH=%JAVA_BIN%;%%PATH%%"
-        echo "%JAVA_EXE%" -jar target\iot-platform.jar --spring.profiles.active=dev-remote --server.port=8081
-        echo pause
-    ) > "%LAUNCH%"
-) else (
-    echo Backend: dev ^(local Docker^)
-    (
-        echo @echo off
-        echo echo Backend: spring.profiles.active=dev
-        echo cd /d "%CD%\backend"
-        echo set "PATH=%JAVA_BIN%;%%PATH%%"
-        echo "%JAVA_EXE%" -jar target\iot-platform.jar --spring.profiles.active=dev --server.port=8081
-        echo pause
-    ) > "%LAUNCH%"
-)
+echo Backend: direct remote connection
+(
+    echo @echo off
+    echo echo Backend: connecting to 117.72.162.225
+    echo cd /d "%CD%\backend"
+    echo set "PATH=%JAVA_BIN%;%%PATH%%"
+    echo "%JAVA_EXE%" -jar target\iot-platform.jar --server.port=8081
+    echo pause
+) > "%LAUNCH%"
 start "Backend-8081" cmd /k "%LAUNCH%"
 
 echo       Backend starting, wait 12 sec...
@@ -133,7 +101,7 @@ echo ========================================
 echo   Done.
 echo   Frontend: http://localhost:3080
 echo   Backend:  http://localhost:8081
-echo   Keep "SSH-Tunnel" window open.
+echo   No SSH tunnel needed.
 echo ========================================
 echo.
 pause

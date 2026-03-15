@@ -423,6 +423,25 @@
     <!-- <div class="tab-content" :class="{ active: activeTab === 'analysis' }">
       <AlarmAnalysis :device-code="deviceInfo.deviceCode" />
     </div> -->
+
+    <!-- 动态指令输入对话框 -->
+    <el-dialog 
+      v-model="dynamicCommandDialogVisible" 
+      :title="dynamicCommandTitle"
+      width="400px"
+    >
+      <el-form label-width="80px">
+        <el-form-item label="下发值">
+          <el-input v-model="dynamicCommandValue" placeholder="请输入下发值" style="width: 200px;">
+            <template #append v-if="dynamicCommandUnit">{{ dynamicCommandUnit }}</template>
+          </el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dynamicCommandDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmDynamicCommand">确定下发</el-button>
+      </template>
+    </el-dialog>
   </div>
 
 </template>
@@ -524,6 +543,14 @@ const mqttConfig = reactive({
   username: '',
   password: ''
 })
+
+// 动态指令对话框
+const dynamicCommandDialogVisible = ref(false)
+const dynamicCommandTitle = ref('')
+const dynamicCommandValue = ref('')
+const dynamicCommandUnit = ref('')
+const dynamicCommandCurrentCmd = ref(null)  // 当前正在编辑的命令
+
 const showPassword = ref(false)
 
 // 加载MQTT配置
@@ -1213,9 +1240,28 @@ const sendCommand = async (cmd) => {
     return
   }
 
+  // 动态指令需要用户输入值
+  let commandValue = cmd.commandValue
+  
+  if (cmd.commandType === 'dynamic') {
+    // 从属性列表中查找单位
+    const attr = productAttributes.value.find(a => a.addr === cmd.addr)
+    const unit = attr?.unit || ''
+    
+    // 使用自定义对话框
+    dynamicCommandTitle.value = `动态指令 - ${cmd.commandName}`
+    dynamicCommandValue.value = ''
+    dynamicCommandUnit.value = unit
+    dynamicCommandCurrentCmd.value = cmd
+    dynamicCommandDialogVisible.value = true
+    
+    // 等待用户输入（通过confirmDynamicCommand处理）
+    return
+  }
+
   try {
     await ElMessageBox.confirm(
-      `是否确认执行 ${cmd.commandName || cmd.addr} 指令？`,
+      `是否确认执行 ${cmd.commandName} 指令？`,
       '命令确认',
       {
         confirmButtonText: '确定',
@@ -1229,7 +1275,56 @@ const sendCommand = async (cmd) => {
       commands: [
         {
           addr: cmd.addr,
-          addrv: cmd.commandValue
+          addrv: commandValue
+        }
+      ]
+    })
+
+    if (data) {
+      ElMessage.success(`命令已下发`)
+      // 刷新实时数据
+      setTimeout(() => {
+        loadRealtimeData()
+      }, 1000)
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('发送命令失败:', error)
+      ElMessage.error('发送命令失败')
+    }
+  }
+}
+
+// 确认动态指令下发
+const confirmDynamicCommand = async () => {
+  if (!dynamicCommandValue.value || !dynamicCommandValue.value.trim()) {
+    ElMessage.warning('请输入下发值')
+    return
+  }
+  
+  const cmd = dynamicCommandCurrentCmd.value
+  const commandValue = dynamicCommandValue.value.trim()
+  
+  // 关闭对话框
+  dynamicCommandDialogVisible.value = false
+  
+  try {
+    await ElMessageBox.confirm(
+      `是否确认执行 ${cmd.commandName} 指令？（值：${commandValue}${dynamicCommandUnit.value ? ' ' + dynamicCommandUnit.value : ''}）`,
+      '命令确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    const data = await sendCommandAPI({
+      deviceCode: deviceInfo.deviceCode,
+      commands: [
+        {
+          addr: cmd.addr,
+          addrv: commandValue
         }
       ]
     })

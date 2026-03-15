@@ -29,6 +29,11 @@ public class Command implements Serializable {
     
     private String commandValue;
     
+    /**
+     * 命令类型：fixed-固定指令, dynamic-动态指令
+     */
+    private String commandType;
+    
     private String description;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")

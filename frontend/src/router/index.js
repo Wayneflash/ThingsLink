@@ -92,6 +92,12 @@ const routes = [
         meta: { title: '设备分组' }
       },
       {
+        path: 'scene',
+        name: 'SceneLinkage',
+        component: () => import('../views/SceneLinkage.vue'),
+        meta: { title: '场景联动' }
+      },
+      {
         path: 'energy',
         redirect: '/energy/statistics',
         meta: { title: '能源统计' }

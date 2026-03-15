@@ -11,6 +11,7 @@ import com.iot.platform.entity.Device;
 import com.iot.platform.entity.DeviceData;
 import com.iot.platform.mapper.DeviceDataMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,10 @@ public class DeviceDataService extends ServiceImpl<DeviceDataMapper, DeviceData>
     
     @Resource
     private AlarmLogService alarmLogService;
+    
+    @Lazy
+    @Resource
+    private SceneRuleService sceneRuleService;
     
     @Resource
     private StringRedisTemplate stringRedisTemplate;
@@ -242,6 +247,18 @@ public class DeviceDataService extends ServiceImpl<DeviceDataMapper, DeviceData>
         } catch (Exception e) {
             log.error("告警检查失败 - 设备: {}", deviceCode, e);
             // 告警检查失败不影响数据保存，只记录日志
+        }
+        
+        // 触发场景联动规则检查
+        try {
+            if (unifiedData.getProperties() != null) {
+                for (UnifiedReportData.PropertyData property : unifiedData.getProperties()) {
+                    sceneRuleService.checkAndExecute(device.getId(), property.getName(), property.getValue());
+                }
+            }
+        } catch (Exception e) {
+            log.error("场景联动规则检查失败 - 设备: {}", deviceCode, e);
+            // 场景联动检查失败不影响数据保存，只记录日志
         }
     }
 }

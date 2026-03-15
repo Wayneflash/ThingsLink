@@ -276,22 +276,32 @@ public class RoleController {
         products.put("children", null);
         permissions.add(products);
         
-        // 6. 用户管理（超级管理员或有权限的角色可访问，但只有超级管理员可以创建/编辑/删除用户）
+        // 6. 场景联动
+        Map<String, Object> scene = new java.util.LinkedHashMap<>();
+        scene.put("code", "scene");
+        scene.put("name", "场景联动");
+        scene.put("icon", "🔗");
+        scene.put("sort", 6);
+        scene.put("granted", grantedSet.contains("scene"));
+        scene.put("children", null);
+        permissions.add(scene);
+        
+        // 7. 用户管理（超级管理员或有权限的角色可访问，但只有超级管理员可以创建/编辑/删除用户）
         Map<String, Object> users = new java.util.LinkedHashMap<>();
         users.put("code", "users");
         users.put("name", "用户管理");
         users.put("icon", "👥");
-        users.put("sort", 6);
+        users.put("sort", 7);
         users.put("granted", grantedSet.contains("users"));
         users.put("children", null);
         permissions.add(users);
         
-        // 7. 角色管理（超级管理员或有权限的角色可访问，但只有超级管理员可以创建/编辑/删除角色）
+        // 8. 角色管理（超级管理员或有权限的角色可访问，但只有超级管理员可以创建/编辑/删除角色）
         Map<String, Object> roles = new java.util.LinkedHashMap<>();
         roles.put("code", "roles");
         roles.put("name", "角色管理");
         roles.put("icon", "🎭");
-        roles.put("sort", 7);
+        roles.put("sort", 8);
         roles.put("granted", grantedSet.contains("roles"));
         roles.put("children", null);
         permissions.add(roles);

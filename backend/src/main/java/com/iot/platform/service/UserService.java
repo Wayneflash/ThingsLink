@@ -183,12 +183,17 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             menus.add(createMenu("products", "产品管理", "/products", "Box", null, sort++));
         }
         
-        // 6. 用户管理（仅超级管理员或有权限的角色）
+        // 6. 场景联动
+        if (isSuperAdmin || permissions.contains("scene")) {
+            menus.add(createMenu("scene", "场景联动", "/scene", "Operation", null, sort++));
+        }
+        
+        // 7. 用户管理（仅超级管理员或有权限的角色）
         if (isSuperAdmin || permissions.contains("users")) {
             menus.add(createMenu("users", "用户管理", "/users", "User", null, sort++));
         }
         
-        // 7. 角色管理（仅超级管理员或有权限的角色）
+        // 8. 角色管理（仅超级管理员或有权限的角色）
         if (isSuperAdmin || permissions.contains("roles")) {
             menus.add(createMenu("roles", "角色管理", "/roles", "Setting", null, sort++));
         }

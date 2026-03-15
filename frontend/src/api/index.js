@@ -24,6 +24,8 @@ export const productApi = {
   addProductCommand: (data) => request.post('/products/command/create', data),
   // 获取产品命令列表
   getProductCommands: (productId) => request.get(`/products/${productId}/commands`),
+  // 更新产品命令
+  updateProductCommand: (data) => request.post('/products/command/update', data),
   // 删除产品命令
   deleteProductCommand: (id) => request.post('/products/command/delete', { id }),
   // 兼容旧方法名
@@ -36,6 +38,7 @@ export const productApi = {
   deleteAttribute: (id) => request.post('/products/attribute/delete', { id }),
   addCommand: (data) => request.post('/products/command/create', data),
   getCommands: (productId) => request.get(`/products/${productId}/commands`),
+  updateCommand: (data) => request.post('/products/command/update', data),
   deleteCommand: (id) => request.post('/products/command/delete', { id })
 }
 
@@ -62,4 +65,28 @@ export const dataApi = {
 export const commandApi = {
   // 发送命令
   send: (data) => request.post('/command/send', data)
+}
+
+// 场景联动 API
+export const sceneApi = {
+  // 获取可选设备列表（支持模糊搜索）
+  getAvailableDevices: (keyword) => request.get('/scene/devices', { params: { keyword } }),
+  // 获取规则列表
+  getRules: (pageNum = 1, pageSize = 10) => request.get(`/scene/rules?pageNum=${pageNum}&pageSize=${pageSize}`),
+  // 获取启用的规则
+  getEnabledRules: () => request.get('/scene/rules/enabled'),
+  // 获取规则详情
+  getRuleDetail: (id) => request.get(`/scene/rules/${id}`),
+  // 创建规则
+  createRule: (data) => request.post('/scene/rules', data),
+  // 更新规则
+  updateRule: (id, data) => request.put(`/scene/rules/${id}`, data),
+  // 切换规则启用状态
+  toggleRule: (id) => request.put(`/scene/rules/${id}/toggle`),
+  // 删除规则
+  deleteRule: (id) => request.delete(`/scene/rules/${id}`),
+  // 获取规则执行日志
+  getRuleLogs: (ruleId) => request.get(`/scene/rules/${ruleId}/logs`),
+  // 获取最近执行日志
+  getRecentLogs: (limit = 50) => request.get(`/scene/logs/recent?limit=${limit}`)
 }

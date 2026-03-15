@@ -173,6 +173,30 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
     }
     
     /**
+     * 更新产品命令
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Command updateCommand(Command command) {
+        // 检查命令是否存在
+        Command existing = commandMapper.selectById(command.getId());
+        if (existing == null) {
+            throw new RuntimeException("命令不存在");
+        }
+        
+        // 检查产品是否存在
+        Product product = this.getById(existing.getProductId());
+        if (product == null) {
+            throw new RuntimeException("产品不存在");
+        }
+        
+        // 更新命令（保持原有productId）
+        command.setProductId(existing.getProductId());
+        commandMapper.updateById(command);
+        log.info("更新产品命令成功: {} - {}", product.getProductName(), command.getCommandName());
+        return command;
+    }
+    
+    /**
      * 初始化预置产品（智能电表、智能水表、智能气表）
      * 幂等操作：如果产品已存在，则跳过创建
      */

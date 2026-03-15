@@ -130,7 +130,7 @@
       >
         <template #default="{ node, data }">
           <span class="custom-tree-node">
-            <span>{{ data.icon }} {{ data.name }}</span>
+            <span>{{ data.name }}</span>
             <el-tag v-if="data.isButton" size="small" type="info" class="ml-2">按钮</el-tag>
           </span>
         </template>

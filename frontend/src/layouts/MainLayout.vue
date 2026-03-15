@@ -30,7 +30,6 @@
         :collapse="isCollapsed"
         :unique-opened="true"
         class="sidebar-menu"
-        router
         @select="handleMenuSelect"
       >
         <template v-for="menu in menuList" :key="menu.code">
@@ -152,6 +151,7 @@ import {
   User,
   Bell,
   ArrowDown,
+  Operation,
   Setting,
   SwitchButton,
   Fold,
@@ -199,7 +199,8 @@ const iconMap = {
   User,
   Tools,
   VideoCamera,
-  Document
+  Document,
+  Operation
 }
 
 // 获取图标组件
@@ -258,12 +259,29 @@ const loadUserInfo = () => {
     try {
       const menus = JSON.parse(menusData)
       // 过滤掉"数据查询"和"系统配置"菜单项（兼容旧数据）
-      menuList.value = menus.filter(menu => 
+      const filteredMenus = menus.filter(menu => 
         menu.code !== 'data-query' && 
         menu.path !== '/data-query' &&
         menu.code !== 'system-config' &&
         menu.path !== '/system-config'
       )
+
+      // 规范化 path：确保是以 / 开头的绝对路由，避免点击无响应
+      const normalizePath = (p) => {
+        if (!p || typeof p !== 'string') return p
+        return p.startsWith('/') ? p : `/${p}`
+      }
+
+      menuList.value = filteredMenus.map(menu => {
+        const normalized = { ...menu, path: normalizePath(menu.path) }
+        if (Array.isArray(menu.children)) {
+          normalized.children = menu.children.map(child => ({
+            ...child,
+            path: normalizePath(child.path)
+          }))
+        }
+        return normalized
+      })
     } catch (e) {
       console.error('解析菜单数据失败:', e)
       menuList.value = []
@@ -275,11 +293,19 @@ const loadUserInfo = () => {
 
 // 菜单选择处理（确保路由跳转正常工作）
 const handleMenuSelect = (index) => {
-  if (index && router.currentRoute.value.path !== index) {
-    router.push(index).catch(err => {
-      console.error('路由跳转失败:', err)
-    })
-  }
+  if (!index || typeof index !== 'string') return
+  console.log('[MenuSelect]', index)
+
+  // 兼容旧缓存：index 可能是 'scene' 这类相对路径
+  const path = index.startsWith('/') ? index : `/${index}`
+
+  // el-sub-menu 的 index 是 menu.code（不是路由），这里过滤掉非路由项
+  if (!path.startsWith('/')) return
+  if (router.currentRoute.value.path === path) return
+
+  router.push(path).catch(err => {
+    console.error('路由跳转失败:', err)
+  })
 }
 
 // 下拉菜单命令处理

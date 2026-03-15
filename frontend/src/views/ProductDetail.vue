@@ -111,9 +111,22 @@
           <el-table v-else :data="commands" stripe size="small" class="cmd-table">
             <el-table-column prop="commandName" label="命令名称" min-width="150" />
             <el-table-column prop="addr" label="控制属性" width="120" />
-            <el-table-column prop="commandValue" label="下发值" width="120" />
-            <el-table-column label="操作" width="100" fixed="right">
+            <el-table-column label="指令类型" width="100">
               <template #default="{ row }">
+                <el-tag :type="row.commandType === 'dynamic' ? 'warning' : 'success'" size="small">
+                  {{ row.commandType === 'dynamic' ? '动态指令' : '固定指令' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="下发值" width="120">
+              <template #default="{ row }">
+                <span v-if="row.commandType === 'dynamic'" style="color: #909399;">下发时输入</span>
+                <span v-else>{{ row.commandValue || '-' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="150" fixed="right">
+              <template #default="{ row }">
+                <el-button size="small" type="primary" link @click="showEditCmdDialog(row)">编辑</el-button>
                 <el-button size="small" type="danger" link @click="deleteCommand(row)">删除</el-button>
               </template>
             </el-table-column>
@@ -219,10 +232,10 @@
       </template>
     </el-dialog>
 
-    <!-- 添加命令对话框 -->
+    <!-- 添加/编辑命令对话框 -->
     <el-dialog 
       v-model="cmdDialogVisible" 
-      title="添加产品命令" 
+      :title="isEditCmdMode ? '编辑产品命令' : '添加产品命令'" 
       width="600px"
     >
       <el-form :model="cmdForm" label-width="120px" :rules="cmdRules" ref="cmdFormRef">
@@ -247,7 +260,18 @@
             选择要控制的属性，命令会修改该属性的值
           </div>
         </el-form-item>
-        <el-form-item label="下发值" prop="commandValue">
+        <el-form-item label="指令类型" prop="commandType">
+          <el-radio-group v-model="cmdForm.commandType">
+            <el-radio label="fixed">固定指令</el-radio>
+            <el-radio label="dynamic">动态指令</el-radio>
+          </el-radio-group>
+          <div class="input-hint">
+            <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
+            <span v-if="cmdForm.commandType === 'fixed'">固定指令：下发值固定，创建时设定，下发时直接执行</span>
+            <span v-else>动态指令：下发值不固定，下发时由用户输入</span>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="cmdForm.commandType === 'fixed'" label="下发值" prop="commandValue">
           <el-input v-model="cmdForm.commandValue" placeholder="如：1、0、ON、OFF" />
           <div class="input-hint">
             <el-icon class="hint-icon" :size="14"><InfoFilled /></el-icon>
@@ -264,14 +288,17 @@
               示例
             </div>
           </template>
-          如果有一个属性叫 "window"，可以创建两个命令：<br/>
-          • 命令名：打开窗户 | 控制属性：window | 下发值：1<br/>
-          • 命令名：关闭窗户 | 控制属性：window | 下发值：0
+          <strong>固定指令示例：</strong><br/>
+          • 命令名：打开窗户 | 类型：固定指令 | 控制属性：window | 下发值：1<br/>
+          • 命令名：关闭窗户 | 类型：固定指令 | 控制属性：window | 下发值：0<br/><br/>
+          <strong>动态指令示例：</strong><br/>
+          • 命令名：设置温度 | 类型：动态指令 | 控制属性：temperature<br/>
+          <span style="color: #909399;">（下发时用户输入具体温度值，如：26）</span>
         </el-alert>
       </el-form>
       <template #footer>
         <el-button @click="cmdDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="addCommand">确定添加</el-button>
+        <el-button type="primary" @click="isEditCmdMode ? updateCommand() : addCommand()">{{ isEditCmdMode ? '保存修改' : '确定添加' }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -296,6 +323,7 @@ const editDialogVisible = ref(false)
 const attrDialogVisible = ref(false)
 const cmdDialogVisible = ref(false)
 const isEditAttrMode = ref(false) // 是否为编辑属性模式
+const isEditCmdMode = ref(false) // 是否为编辑命令模式
 
 const editFormRef = ref(null)
 const attrFormRef = ref(null)
@@ -321,6 +349,7 @@ const attrForm = ref({
 const cmdForm = ref({
   commandName: '',
   addr: '',
+  commandType: 'fixed',
   commandValue: ''
 })
 
@@ -361,7 +390,19 @@ const attrRules = {
 const cmdRules = {
   commandName: [{ required: true, message: '请输入命令名称', trigger: 'blur' }],
   addr: [{ required: true, message: '请选择控制属性', trigger: 'change' }],
-  commandValue: [{ required: true, message: '请输入下发值', trigger: 'blur' }]
+  commandType: [{ required: true, message: '请选择指令类型', trigger: 'change' }],
+  commandValue: [{ 
+    required: true, 
+    message: '固定指令必须填写下发值', 
+    trigger: 'blur',
+    validator: (rule, value, callback) => {
+      if (cmdForm.value.commandType === 'fixed' && !value) {
+        callback(new Error('固定指令必须填写下发值'))
+      } else {
+        callback()
+      }
+    }
+  }]
 }
 
 // 加载产品详情
@@ -572,10 +613,26 @@ const showAddCmdDialog = () => {
     return
   }
   
+  isEditCmdMode.value = false
   cmdForm.value = {
+    id: null,
     commandName: '',
     addr: '',
+    commandType: 'fixed',
     commandValue: ''
+  }
+  cmdDialogVisible.value = true
+}
+
+// 显示编辑命令对话框
+const showEditCmdDialog = (cmd) => {
+  isEditCmdMode.value = true
+  cmdForm.value = {
+    id: cmd.id,
+    commandName: cmd.commandName,
+    addr: cmd.addr,
+    commandType: cmd.commandType || 'fixed',
+    commandValue: cmd.commandValue || ''
   }
   cmdDialogVisible.value = true
 }
@@ -591,8 +648,11 @@ const addCommand = async () => {
       productId: route.params.id,
       addr: cmdForm.value.addr,
       commandName: cmdForm.value.commandName,
-      commandValue: cmdForm.value.commandValue,
-      description: `控制属性 ${cmdForm.value.addr} 为 ${cmdForm.value.commandValue}`
+      commandType: cmdForm.value.commandType,
+      commandValue: cmdForm.value.commandType === 'fixed' ? cmdForm.value.commandValue : '',
+      description: cmdForm.value.commandType === 'fixed' 
+        ? `控制属性 ${cmdForm.value.addr} 为 ${cmdForm.value.commandValue}`
+        : `动态控制属性 ${cmdForm.value.addr}`
     })
     
     ElMessage.success('命令添加成功')
@@ -602,6 +662,37 @@ const addCommand = async () => {
     if (error !== false) {
       console.error('添加命令失败:', error)
       ElMessage.error('添加命令失败')
+    }
+  }
+}
+
+// 更新命令
+const updateCommand = async () => {
+  if (!cmdFormRef.value) return
+  
+  try {
+    await cmdFormRef.value.validate()
+    
+    if (!cmdForm.value.id) {
+      ElMessage.error('命令ID不能为空')
+      return
+    }
+    
+    await productApi.updateProductCommand({
+      id: cmdForm.value.id,
+      addr: cmdForm.value.addr,
+      commandName: cmdForm.value.commandName,
+      commandType: cmdForm.value.commandType,
+      commandValue: cmdForm.value.commandType === 'fixed' ? cmdForm.value.commandValue : ''
+    })
+    
+    ElMessage.success('命令更新成功')
+    cmdDialogVisible.value = false
+    loadCommands()
+  } catch (error) {
+    if (error !== false) {
+      console.error('更新命令失败:', error)
+      ElMessage.error('更新命令失败')
     }
   }
 }
