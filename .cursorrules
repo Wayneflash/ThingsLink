@@ -121,7 +121,7 @@ python3 .shared/ui-ux-pro-max/scripts/search.py "<product_type> <industry> <keyw
 - **大圆角**：16px-20px（大卡片、模态框）
 - **超大圆角**：24px（特殊装饰元素）
 
-**阴影规范**：
+**规范**：
 - **轻阴影**：`0 1px 3px rgba(0, 0, 0, 0.04)`
 - **中阴影**：`0 4px 12px rgba(0, 0, 0, 0.08)`
 - **重阴影**：`0 8px 24px rgba(0, 0, 0, 0.12)`
