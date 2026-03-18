@@ -37,6 +37,13 @@ DEVICES = [
         'protocol': "MQTT1.0",
         'status': {'window': 0}  # 窗户状态
     },
+    {
+        'code': "88887777",
+        'name': "温湿度传感器-88887777",
+        'type': "environment",  # 环境监测设备（温湿度）
+        'protocol': "MQTT1.0",
+        'status': {'window': 0}  # 窗户状态
+    },
 ]
 
 # 颜色输出
@@ -81,44 +88,90 @@ class DeviceSimulator:
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
             print_success(f"[{self.device_code}] MQTT连接成功")
+            print_info(f"[{self.device_code}] 连接标志: {flags}")
+            
+            # 订阅命令主题
             result, mid = client.subscribe(self.topic_command, qos=1)
             if result == 0:
-                print_success(f"[{self.device_code}] 已订阅命令主题: {self.topic_command}")
+                print_success(f"[{self.device_code}] ✓ 订阅命令主题成功")
+                print_info(f"[{self.device_code}]   主题: {self.topic_command}")
+                print_info(f"[{self.device_code}]   QoS: 1")
+                print_info(f"[{self.device_code}]   消息ID: {mid}")
             else:
-                print_error(f"[{self.device_code}] 订阅命令主题失败")
+                print_error(f"[{self.device_code}] ✗ 订阅命令主题失败")
+                print_error(f"[{self.device_code}]   错误码: {result}")
+                print_error(f"[{self.device_code}]   消息ID: {mid}")
         else:
-            print_error(f"[{self.device_code}] MQTT连接失败，错误码: {rc}")
+            print_error(f"[{self.device_code}] MQTT连接失败")
+            print_error(f"[{self.device_code}]   错误码: {rc}")
+            print_error(f"[{self.device_code}]   错误描述: {self._get_mqtt_error_desc(rc)}")
 
     def on_message(self, client, userdata, msg):
         try:
             payload = msg.payload.decode('utf-8')
-            print_info(f"[{self.device_code}] 收到命令: {payload}")
+            print_info(f"[{self.device_code}] 收到命令消息")
+            print_info(f"[{self.device_code}]   主题: {msg.topic}")
+            print_info(f"[{self.device_code}]   QoS: {msg.qos}")
+            print_info(f"[{self.device_code}]   retain: {msg.retain}")
+            print_info(f"[{self.device_code}]   payload: {payload}")
             
             command_data = json.loads(payload)
+            print_info(f"[{self.device_code}] 解析后的命令数据: {json.dumps(command_data, ensure_ascii=False, indent=2)}")
             
             # 处理命令
             if 'content' in command_data:
-                for cmd in command_data['content']:
+                print_info(f"[{self.device_code}] 命令内容数量: {len(command_data['content'])}")
+                for i, cmd in enumerate(command_data['content']):
                     addr = cmd.get('addr', '')
                     addrv = cmd.get('addrv', '')
-                    print_info(f"[{self.device_code}] 执行命令 - {addr} = {addrv}")
+                    print_info(f"[{self.device_code}] 执行命令 [{i+1}/{len(command_data['content'])}]: {addr} = {addrv}")
                     
                     # 更新状态
                     if addr in self.device_status:
-                        self.device_status[addr] = float(addrv) if '.' in str(addrv) else int(addrv)
-                        print_success(f"[{self.device_code}] 状态已更新: {addr} = {self.device_status[addr]}")
+                        old_value = self.device_status[addr]
+                        new_value = float(addrv) if '.' in str(addrv) else int(addrv)
+                        self.device_status[addr] = new_value
+                        print_success(f"[{self.device_code}] ✓ 状态已更新: {addr} {old_value} -> {new_value}")
                         # 立即上报新状态
+                        print_info(f"[{self.device_code}] 正在立即上报新状态...")
                         self.publish_data()
+                    else:
+                        print_warning(f"[{self.device_code}] 属性 '{addr}' 不在设备状态列表中")
+            else:
+                print_warning(f"[{self.device_code}] 命令数据中没有 'content' 字段")
                         
+        except json.JSONDecodeError as e:
+            print_error(f"[{self.device_code}] JSON解析失败: {e}")
+            print_error(f"[{self.device_code}] 原始payload: {payload}")
         except Exception as e:
             print_error(f"[{self.device_code}] 处理消息时出错: {e}")
+            import traceback
+            print_error(f"[{self.device_code}] 错误堆栈: {traceback.format_exc()}")
 
     def on_publish(self, client, userdata, mid):
-        print_success(f"[{self.device_code}] 数据上报成功")
+        print_success(f"[{self.device_code}] ✓ 数据上报成功")
+        print_info(f"[{self.device_code}]   消息ID: {mid}")
+        print_info(f"[{self.device_code}]   主题: {self.topic_report}")
 
     def on_disconnect(self, client, userdata, rc):
         if rc != 0:
-            print_error(f"[{self.device_code}] MQTT连接断开，错误码: {rc}")
+            print_error(f"[{self.device_code}] MQTT连接断开")
+            print_error(f"[{self.device_code}]   错误码: {rc}")
+            print_error(f"[{self.device_code}]   错误描述: {self._get_mqtt_error_desc(rc)}")
+        else:
+            print_info(f"[{self.device_code}] MQTT正常断开")
+    
+    def _get_mqtt_error_desc(self, rc):
+        """获取MQTT错误码描述"""
+        error_map = {
+            0: "连接成功",
+            1: "连接被拒绝 - 协议版本错误",
+            2: "连接被拒绝 - 客户端标识符无效",
+            3: "连接被拒绝 - 服务器不可用",
+            4: "连接被拒绝 - 用户名或密码错误",
+            5: "连接被拒绝 - 未授权",
+        }
+        return error_map.get(rc, f"未知错误码: {rc}")
 
     def generate_sample_data(self):
         """生成示例数据"""
@@ -156,10 +209,24 @@ class DeviceSimulator:
         try:
             data = self.generate_sample_data()
             payload = json.dumps(data, ensure_ascii=False)
-            self.client.publish(self.topic_report, payload, qos=1)
-            print_info(f"[{self.device_code}] 上报数据到 {self.topic_report}")
+            print_info(f"[{self.device_code}] 准备上报数据")
+            print_info(f"[{self.device_code}]   主题: {self.topic_report}")
+            print_info(f"[{self.device_code}]   QoS: 1")
+            print_info(f"[{self.device_code}]   数据: {payload[:200]}..." if len(payload) > 200 else f"[{self.device_code}]   数据: {payload}")
+            
+            result = self.client.publish(self.topic_report, payload, qos=1)
+            
+            if result.rc == mqtt.MQTT_ERR_SUCCESS:
+                print_info(f"[{self.device_code}] 消息已发送到MQTT broker")
+                print_info(f"[{self.device_code}]   消息ID: {result.mid}")
+            else:
+                print_error(f"[{self.device_code}] 消息发送失败")
+                print_error(f"[{self.device_code}]   错误码: {result.rc}")
+                
         except Exception as e:
             print_error(f"[{self.device_code}] 上报数据时出错: {e}")
+            import traceback
+            print_error(f"[{self.device_code}] 错误堆栈: {traceback.format_exc()}")
 
     def run(self):
         """运行设备模拟器"""
@@ -197,10 +264,10 @@ class DeviceSimulator:
             time.sleep(2)
             
             # 定时上报数据
-            print_info("开始定时上报数据（每10秒）...")
+            print_info("开始定时上报数据（每3分钟）...")
             while True:
                 self.publish_data()
-                time.sleep(10)
+                time.sleep(180)  # 3分钟 = 180秒
                 
         except KeyboardInterrupt:
             print_warning(f"\n[{self.device_code}] 用户中断，正在停止...")
@@ -218,39 +285,30 @@ def main():
     for i, dev in enumerate(DEVICES):
         print(f"  {i+1}. {dev['name']} ({dev['code']}) - {dev['type']}")
     
-    print("\n选择要启动的设备:")
-    print("  0. 启动所有设备")
-    print("  1-N. 启动指定设备")
+    print_info("正在启动所有设备...")
     
     try:
-        choice = input("\n请输入选择: ").strip()
+        # 启动所有设备（多线程）
+        threads = []
+        for dev in DEVICES:
+            simulator = DeviceSimulator(dev)
+            t = threading.Thread(target=simulator.run, daemon=True)
+            t.start()
+            threads.append(t)
+            time.sleep(1)  # 错开启动时间
         
-        if choice == '0':
-            # 启动所有设备（多线程）
-            print_info("启动所有设备...")
-            threads = []
-            for dev in DEVICES:
-                simulator = DeviceSimulator(dev)
-                t = threading.Thread(target=simulator.run, daemon=True)
-                t.start()
-                threads.append(t)
-                time.sleep(1)  # 错开启动时间
+        print_success(f"已启动 {len(DEVICES)} 个设备")
+        print_info("按 Ctrl+C 停止所有设备")
+        
+        # 主线程等待
+        while True:
+            time.sleep(1)
             
-            # 主线程等待
-            while True:
-                time.sleep(1)
-        else:
-            # 启动指定设备
-            idx = int(choice) - 1
-            if 0 <= idx < len(DEVICES):
-                simulator = DeviceSimulator(DEVICES[idx])
-                simulator.run()
-            else:
-                print_error("无效的选择")
-    except ValueError:
-        print_error("请输入有效数字")
     except KeyboardInterrupt:
-        print_warning("\n用户中断，退出程序")
+        print_warning("\n用户中断，正在停止所有设备...")
+        print_success("所有设备已停止")
+    except Exception as e:
+        print_error(f"启动设备失败: {e}")
 
 
 if __name__ == "__main__":

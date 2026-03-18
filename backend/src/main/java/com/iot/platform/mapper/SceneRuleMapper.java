@@ -37,8 +37,8 @@ public interface SceneRuleMapper extends BaseMapper<SceneRule> {
             "FROM tb_scene_rule r " +
             "LEFT JOIN tb_device td ON r.trigger_device_id = td.id " +
             "LEFT JOIN tb_device tdd ON r.target_device_id = tdd.id " +
-            "LEFT JOIN tb_attribute ta ON td.product_id = ta.product_id AND r.trigger_attr = ta.addr " +
-            "LEFT JOIN tb_attribute tda ON tdd.product_id = tda.product_id AND r.target_attr = tda.addr " +
+            "LEFT JOIN tb_attribute ta ON td.product_id = ta.product_id AND r.trigger_attr COLLATE utf8mb4_unicode_ci = ta.addr COLLATE utf8mb4_unicode_ci " +
+            "LEFT JOIN tb_attribute tda ON tdd.product_id = tda.product_id AND r.target_attr COLLATE utf8mb4_unicode_ci = tda.addr COLLATE utf8mb4_unicode_ci " +
             "ORDER BY r.id DESC")
     List<SceneRule> selectRulesWithDevice();
 }

@@ -50,7 +50,7 @@ public class DeviceLogController {
             // 获取当前用户信息
             User currentUser = permissionUtil.getCurrentUser(token);
             if (currentUser == null) {
-                return Result.error("用户未登录");
+                return Result.error(401, "用户未登录，请重新登录");
             }
 
             // 获取查询参数

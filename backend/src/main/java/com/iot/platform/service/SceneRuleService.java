@@ -87,7 +87,7 @@ public class SceneRuleService extends ServiceImpl<SceneRuleMapper, SceneRule> {
     /**
      * 创建规则（带权限和唯一性校验）
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SceneRule createRule(SceneRule rule, List<Long> allowedGroupIds) {
         // 1. 校验设备权限
         validateDevicePermission(rule.getTriggerDeviceId(), allowedGroupIds, "触发设备");
@@ -113,7 +113,7 @@ public class SceneRuleService extends ServiceImpl<SceneRuleMapper, SceneRule> {
     /**
      * 更新规则（带权限和唯一性校验）
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SceneRule updateRule(SceneRule rule, List<Long> allowedGroupIds) {
         // 1. 校验原规则权限
         SceneRule existRule = getById(rule.getId());
@@ -144,7 +144,7 @@ public class SceneRuleService extends ServiceImpl<SceneRuleMapper, SceneRule> {
     /**
      * 切换规则启用状态
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean toggleEnabled(Long ruleId, List<Long> allowedGroupIds) {
         SceneRule rule = getById(ruleId);
         if (rule == null) {
@@ -161,7 +161,7 @@ public class SceneRuleService extends ServiceImpl<SceneRuleMapper, SceneRule> {
     /**
      * 删除规则
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteRule(Long ruleId, List<Long> allowedGroupIds) {
         SceneRule rule = getById(ruleId);
         if (rule == null) {
@@ -198,7 +198,7 @@ public class SceneRuleService extends ServiceImpl<SceneRuleMapper, SceneRule> {
     /**
      * 检查并执行规则（内部使用，由设备数据上报触发）
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void checkAndExecute(Long deviceId, String attr, String value) {
         if (value == null || value.isEmpty()) {
             return;

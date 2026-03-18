@@ -16,6 +16,49 @@ echo.
 echo Project: %CD%
 echo.
 
+REM Set default environment
+set ENV=dev
+
+REM Check command line arguments
+if "%1"=="prod" (
+    set ENV=prod
+) else if "%1"=="dev" (
+    set ENV=dev
+) else (
+    echo Select environment:
+    echo   1. Development (dev)
+    echo   2. Production (prod)
+    echo.
+    set /p CHOICE="Please select [1/2] (default: 1): "
+    if "!CHOICE!"=="2" (
+        set ENV=prod
+    ) else (
+        set ENV=dev
+    )
+)
+
+echo.
+echo ========================================
+echo Environment Configuration
+echo ========================================
+echo.
+
+if "!ENV!"=="dev" (
+    echo Environment: Development
+    echo Database:    117.72.162.225:13307/thingslink_1_0
+    echo Redis:       117.72.162.225
+    echo MQTT:        117.72.162.225:11883
+) else (
+    echo Environment: Production
+    echo Database:    127.0.0.1:3306/iot_platform
+    echo Redis:       127.0.0.1:16379
+    echo MQTT:        127.0.0.1:11883
+)
+
+echo.
+echo ========================================
+echo.
+
 REM Check Java installation (prefer JAVA_HOME)
 set "JAVA_CMD=java"
 if defined JAVA_HOME (
@@ -102,10 +145,15 @@ if not exist "pom.xml" (
 
 echo.
 echo [INFO] Building backend (clean + package)...
+echo [INFO] Environment: !ENV!
 echo.
 
-REM Execute build
-mvn clean package -DskipTests
+REM Execute build with environment profile
+if "!ENV!"=="prod" (
+    mvn clean package -DskipTests -Dspring.profiles.active=prod
+) else (
+    mvn clean package -DskipTests -Dspring.profiles.active=dev
+)
 
 if errorlevel 1 (
     echo.
@@ -119,21 +167,25 @@ echo ========================================
 echo   Build Success!
 echo ========================================
 echo.
-echo Output: backend\target\iot-platform.jar
+echo Output: backend\target\iot-platform-1.0.0.jar
 echo.
 
 REM Check jar file
-if exist "target\iot-platform.jar" (
-    for %%F in (target\iot-platform.jar) do (
+if exist "target\iot-platform-1.0.0.jar" (
+    for %%F in (target\iot-platform-1.0.0.jar) do (
         echo [OK] JAR file size: %%~zF bytes
     )
 ) else (
-    echo [WARNING] iot-platform.jar not found
+    echo [WARNING] iot-platform-1.0.0.jar not found
 )
 
 echo.
 echo Next steps:
-echo   - Local test: java -jar target\iot-platform.jar
+if "!ENV!"=="dev" (
+    echo   - Local test: java -jar target\iot-platform-1.0.0.jar
+) else (
+    echo   - Local test: java -jar target\iot-platform-1.0.0.jar --spring.profiles.active=prod
+)
 echo   - Deploy: scripts\deploy-backend.bat
 echo.
 pause
